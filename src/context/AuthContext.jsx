@@ -1,74 +1,50 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
-const AuthContext = createContext({});
+const AuthContext = createContext(null);
+const API_URL = "https://apipaskibra.my.id/api";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fungsi untuk update user state dan localStorage secara sinkron
-  const updateUser = (userData) => {
-    if (userData) {
-      // Pastikan role ada
-      if (!userData.role) {
-        userData.role = "user";
-      }
-
-      // Simpan ke localStorage
-      localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem("userRole", userData.role);
-
-      // Update state
-      setUser(userData);
-    } else {
-      // Clear semua
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      localStorage.removeItem("userRole");
-      setUser(null);
-    }
-  };
-
   useEffect(() => {
-    const checkUser = () => {
+    console.log("AuthProvider - Initializing...");
+    const initAuth = () => {
       try {
         const storedUser = localStorage.getItem("user");
-        const token = localStorage.getItem("token");
+        console.log("AuthProvider - Stored user:", storedUser);
 
-        if (storedUser && token) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            console.log(
-              "AuthContext - User found in localStorage:",
-              parsedUser,
-            );
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          console.log("AuthProvider - Parsed user:", parsedUser);
+
+          // Validasi user data
+          if (parsedUser && parsedUser.role) {
             setUser(parsedUser);
-          } catch (e) {
-            console.error("Error parsing user JSON:", e);
-            // Clear invalid data
-            localStorage.removeItem("token");
+            console.log("AuthProvider - User loaded successfully");
+          } else {
+            console.warn("AuthProvider - Invalid user data, clearing...");
             localStorage.removeItem("user");
-            localStorage.removeItem("userRole");
+            localStorage.removeItem("access_token");
           }
-        } else {
-          console.log("AuthContext - No valid user found in localStorage");
         }
       } catch (error) {
-        console.error("Error loading user from storage:", error);
+        console.error("AuthProvider - Error loading user:", error);
+        localStorage.clear();
       } finally {
         setLoading(false);
-        console.log("AuthContext - Loading complete");
+        console.log("AuthProvider - Initialization complete");
       }
     };
 
-    checkUser();
+    initAuth();
   }, []);
 
   const login = async (email, password) => {
     try {
-      console.log("AuthContext - Attempting login for:", { email, password });
+      console.log("AuthContext - Login attempt with:", { email });
 
-      const response = await fetch("http://localhost:8000/api/login", {
+      const res = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -77,91 +53,115 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log("AuthContext - Response status:", response.status);
+      const responseData = await res.json();
+      console.log("AuthContext - Login response:", responseData);
 
-      if (response.status === 422) {
-        const errorData = await response.json();
-        console.error("AuthContext - Validation error:", errorData);
-
-        let errorMessage = "Email atau password salah";
-        if (errorData.errors) {
-          if (errorData.errors.email) errorMessage = errorData.errors.email[0];
-          else if (errorData.errors.password)
-            errorMessage = errorData.errors.password[0];
-        }
-
-        return { success: false, message: errorMessage };
+      if (!res.ok) {
+        throw new Error(responseData.message || "Login gagal");
       }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("AuthContext - Server error:", errorText);
-        return { success: false, message: `Login gagal (${response.status})` };
+      let userData;
+
+      // CASE 1: Data ada di responseData.data.user
+      if (responseData.data && responseData.data.user) {
+        const apiUser = responseData.data.user;
+
+        // Mapping user_role_id ke role - dengan default "user" bukan "admin"
+        const roleMapping = {
+          1: "admin",
+          2: "juri",
+          3: "user",
+          admin: "admin",
+          juri: "juri",
+          user: "user",
+        };
+
+        // 🔥 PERBAIKAN: Default ke "user" bukan "admin"
+        const userRoleId = apiUser.user_role_id;
+
+        userData = {
+          id: apiUser.id,
+          name: apiUser.name || apiUser.username || "User",
+          email: apiUser.email || email,
+          role: roleMapping[userRoleId] || "user", // Default ke "user"
+        };
+
+        console.log(
+          `AuthContext - user_role_id: ${userRoleId}, mapped to: ${userData.role}`,
+        );
       }
+      // CASE 2: Data langsung di responseData.data
+      else if (responseData.data) {
+        const apiData = responseData.data;
+        const roleMapping = {
+          1: "admin",
+          2: "juri",
+          3: "user",
+          admin: "admin",
+          juri: "juri",
+          user: "user",
+        };
 
-      const data = await response.json();
-      console.log("AuthContext - Login response:", data);
-
-      // Cek format response
-      if (!data.token) {
-        console.error("AuthContext - No token in response:", data);
-        return {
-          success: false,
-          message: "Token tidak ditemukan dalam response",
+        userData = {
+          id: apiData.id,
+          name: apiData.name || "User",
+          email: apiData.email || email,
+          role: roleMapping[apiData.user_role_id] || "user", // Default ke "user"
+        };
+      }
+      // CASE 3: Fallback
+      else {
+        console.warn("Unexpected response structure, using fallback");
+        userData = {
+          id: "temp_" + Date.now(),
+          name: "User",
+          email: email,
+          role: "user", // Default ke "user"
         };
       }
 
-      // Format user data
-      const userData = {
-        id: data.user?.id || data.id || Date.now(),
-        name: data.user?.name || data.name || "User",
-        email: data.user?.email || data.email || email,
-        role: data.user?.role || data.role || "user",
-      };
+      console.log("AuthContext - Final user data:", userData);
 
-      // Simpan token
-      localStorage.setItem("token", data.token);
+      // Simpan ke localStorage
+      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem(
+        "access_token",
+        responseData.data?.token || responseData.token || "LOGIN_OK",
+      );
 
-      // Update user state
-      updateUser(userData);
+      // Update state
+      setUser(userData);
+      console.log("AuthContext - User state updated successfully");
 
-      console.log("AuthContext - Login successful, user:", userData);
-
-      return {
-        success: true,
-        user: userData,
-        token: data.token,
-      };
+      return userData;
     } catch (error) {
-      console.error("AuthContext - Network error:", error);
-      return {
-        success: false,
-        message: "Tidak dapat terhubung ke server. Periksa koneksi internet.",
-      };
+      console.error("AuthContext - Login error:", error);
+      throw error;
     }
   };
 
   const logout = () => {
     console.log("AuthContext - Logging out");
-    updateUser(null); // Gunakan fungsi updateUser untuk konsistensi
+    localStorage.clear();
+    setUser(null);
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    logout,
-  };
-
-  console.log("AuthContext - Current user state:", user);
-  console.log("AuthContext - Loading state:", loading);
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+      }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;

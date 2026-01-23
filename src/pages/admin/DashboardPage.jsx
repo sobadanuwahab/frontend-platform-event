@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext"; // <-- TAMBAHKAN INI
 import {
   Users,
   Coins,
@@ -40,12 +41,12 @@ import { motion } from "framer-motion";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth(); // <-- INI SEKARANG AKAN BEKERJA
   const [activeTab, setActiveTab] = useState("overview");
   const [activeSubTab, setActiveSubTab] = useState("list");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDateRange, setSelectedDateRange] = useState("today");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   // Data statistik - dengan properti yang lengkap
@@ -291,20 +292,34 @@ const DashboardPage = () => {
   // Cek role admin saat component mount
   useEffect(() => {
     checkAdminAccess();
-  }, []);
+  }, [user, loading]); // <-- Tambahkan dependency user dan loading
 
   const checkAdminAccess = () => {
-    // Simulasi cek role dari localStorage/auth context
-    const userRole = localStorage.getItem("userRole") || "user";
+    // Tidak perlu loading lagi karena sudah di-handle oleh ProtectedRoute
+    if (loading) {
+      return; // Tunggu sampai loading selesai
+    }
 
-    if (userRole !== "admin") {
-      alert("Akses ditolak! Hanya admin yang dapat mengakses dashboard.");
+    // Cek role dari user yang sudah login
+    if (!user) {
+      console.log("DashboardPage - No user, redirecting to login");
+      navigate("/auth/login");
+      return;
+    }
+
+    console.log("DashboardPage - Checking user role:", user.role);
+
+    if (user.role !== "admin") {
+      console.log(
+        `DashboardPage - User is ${user.role}, not admin, redirecting`,
+      );
+      alert("Hanya admin yang dapat mengakses dashboard!");
       navigate("/");
       return;
     }
 
+    console.log("DashboardPage - Admin access granted");
     setIsAdmin(true);
-    setLoading(false);
   };
 
   const handleParticipantFormChange = (e) => {
@@ -462,19 +477,38 @@ const DashboardPage = () => {
     }
   };
 
+  // Loading state sudah di-handle oleh ProtectedRoute, tapi kita tetap kasih fallback
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <RefreshCw className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Memverifikasi akses...</p>
+          <p className="text-gray-600">Memuat dashboard...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAdmin) {
-    return null;
+  // Seharusnya ProtectedRoute sudah handle ini, tapi kita tetap kasih safety net
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Akses Ditolak
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Hanya admin yang dapat mengakses halaman ini
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            Kembali ke Beranda
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const formatCurrency = (amount) => {
@@ -546,10 +580,10 @@ const DashboardPage = () => {
   };
 
   const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase()),
+    (u) =>
+      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.role.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const filteredParticipants = participants.filter(
@@ -1482,66 +1516,66 @@ const DashboardPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
+                {filteredUsers.map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-medium text-gray-900">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                        <p className="font-medium text-gray-900">{u.name}</p>
+                        <p className="text-sm text-gray-500">{u.email}</p>
                         <p className="text-xs text-gray-400">
-                          Bergabung: {user.joinDate}
+                          Bergabung: {u.joinDate}
                         </p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          user.role === "admin"
+                          u.role === "admin"
                             ? "bg-red-100 text-red-800"
-                            : user.role === "juri"
+                            : u.role === "juri"
                               ? "bg-purple-100 text-purple-800"
                               : "bg-blue-100 text-blue-800"
                         }`}>
-                        {user.role}
+                        {u.role}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Coins size={16} className="text-yellow-600" />
-                        <span className="font-medium">{user.coinBalance}</span>
+                        <span className="font-medium">{u.coinBalance}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        {user.status === "active" ? (
+                        {u.status === "active" ? (
                           <CheckCircle size={16} className="text-green-500" />
                         ) : (
                           <XCircle size={16} className="text-red-500" />
                         )}
                         <span
                           className={`font-medium ${
-                            user.status === "active"
+                            u.status === "active"
                               ? "text-green-700"
                               : "text-red-700"
                           }`}>
-                          {user.status === "active" ? "Aktif" : "Nonaktif"}
+                          {u.status === "active" ? "Aktif" : "Nonaktif"}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {user.lastActivity}
+                      {u.lastActivity}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleEditUser(user.id)}
+                          onClick={() => handleEditUser(u.id)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                           title="Edit">
                           <Edit size={18} />
                         </button>
-                        {user.role !== "admin" && (
+                        {u.role !== "admin" && (
                           <button
-                            onClick={() => handleDeleteUser(user.id)}
+                            onClick={() => handleDeleteUser(u.id)}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                             title="Delete">
                             <Trash2 size={18} />
@@ -1552,7 +1586,7 @@ const DashboardPage = () => {
                           title="View Details"
                           onClick={() => {
                             // Implement view details logic
-                            console.log("View user details:", user.id);
+                            console.log("View user details:", u.id);
                           }}>
                           <Eye size={18} />
                         </button>

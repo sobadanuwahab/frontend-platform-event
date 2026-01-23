@@ -20,7 +20,7 @@ const Header = () => {
     {
       to: "/",
       label: "Beranda",
-      roles: ["user", "juri", "admin"],
+      roles: ["user", "juri"],
     },
     {
       to: "/voting",
@@ -42,11 +42,11 @@ const Header = () => {
       label: "Hasil",
       roles: ["user", "juri"],
     },
-    // {
-    //   to: "/admin",
-    //   label: "Admin",
-    //   roles: ["admin"],
-    // },
+    {
+      to: "/admin/dashboard",
+      label: "Dashboard",
+      roles: ["admin"],
+    },
   ];
 
   useEffect(() => {
@@ -203,7 +203,7 @@ const Header = () => {
                     ${scrolled ? "text-gray-900" : "text-white"}
                     ${isMobileMenuOpen ? "text-gray-900" : ""}
                   `}>
-                  Lomba Paskibra 2026
+                  Platform Alakadarnya 2026
                 </motion.h1>
                 <p
                   className={`
@@ -211,7 +211,7 @@ const Header = () => {
                     ${scrolled ? "text-gray-600" : "text-red-100"}
                     ${isMobileMenuOpen ? "text-gray-600" : ""}
                   `}>
-                  Kreasi • Prestasi • Kebanggaan
+                  Sing Penting Yakin • Legowo • Rajin Solat
                 </p>
               </div>
             </div>
@@ -316,7 +316,7 @@ const Header = () => {
                   className="group relative overflow-hidden rounded-lg lg:rounded-xl px-3 py-2 lg:px-4 lg:py-2.5 bg-white text-red-600 font-medium hover:bg-red-50 hover:shadow-lg transition-all duration-300 border border-red-600 text-xs lg:text-sm">
                   <span className="relative flex items-center space-x-1 lg:space-x-2">
                     <User size={14} className="lg:size-4" />
-                    <span>Login</span>
+                    <span>Login/Register</span>
                   </span>
                 </motion.button>
               )}

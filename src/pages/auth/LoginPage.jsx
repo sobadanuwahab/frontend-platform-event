@@ -166,7 +166,7 @@ const LoginPage = () => {
           <LoginForm onSubmit={handleLogin} isLoading={isLoading} />
 
           {/* Demo untuk testing */}
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+          {/* <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
             <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
               <svg
                 className="w-5 h-5 text-yellow-600"
@@ -229,7 +229,7 @@ const LoginPage = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
         </>
       )}
     </AuthLayout>

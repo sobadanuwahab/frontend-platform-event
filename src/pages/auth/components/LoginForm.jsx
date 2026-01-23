@@ -1,93 +1,104 @@
 import { useState } from "react";
+import { useAuth } from "../../../context/AuthContext";
+import { useNavigate, useLocation } from "react-router-dom";
 
-const LoginForm = ({ onSubmit, isLoading }) => {
+const LoginForm = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
 
-    if (!email.trim() || !password.trim()) {
-      alert("Email dan password harus diisi");
-      return;
+    try {
+      setLoading(true);
+      console.log("LoginForm - Starting login...");
+
+      const user = await login(email, password);
+
+      console.log("LoginForm - Login successful, user:", user);
+      console.log("LoginForm - User role:", user.role);
+
+      // Tunggu sebentar untuk memastikan state terupdate
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Redirect based on role
+      const redirectPath = location.state?.from || "/";
+
+      console.log("LoginForm - Redirect path:", redirectPath);
+      console.log("LoginForm - User role for redirect:", user.role);
+
+      if (user.role === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (user.role === "juri") {
+        navigate("/judging", { replace: true });
+      } else if (user.role === "user") {
+        navigate(redirectPath, { replace: true });
+      } else {
+        console.warn("LoginForm - Unknown role, redirecting to home");
+        navigate("/", { replace: true });
+      }
+    } catch (err) {
+      console.error("LoginForm - Login error:", err);
+      setError(err.message || "Email atau password salah");
+    } finally {
+      setLoading(false);
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      alert("Format email tidak valid");
-      return;
-    }
-
-    console.log("LoginForm - Submitting:", { email, password });
-    onSubmit({ email, password });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      )}
+
       <div>
-        <label
-          htmlFor="email"
-          className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           Email
         </label>
         <input
-          id="email"
           type="email"
-          placeholder="contoh@email.com"
-          required
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
-          disabled={isLoading}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          required
         />
       </div>
 
       <div>
-        <label
-          htmlFor="password"
-          className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
           Password
         </label>
         <input
-          id="password"
           type="password"
-          placeholder="Masukkan password"
-          required
+          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition"
-          disabled={isLoading}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          required
         />
       </div>
 
       <button
         type="submit"
-        disabled={isLoading}
-        className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold rounded-lg hover:from-red-700 hover:to-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300">
-        {isLoading ? (
+        disabled={loading}
+        className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+        {loading ? (
           <span className="flex items-center justify-center">
-            <svg
-              className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-              fill="none"
-              viewBox="0 0 24 24">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
             Memproses...
           </span>
         ) : (
-          "Masuk"
+          "Login"
         )}
       </button>
     </form>
