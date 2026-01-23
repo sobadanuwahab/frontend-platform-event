@@ -5,12 +5,12 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  console.log("ProtectedRoute - Checking access:", {
-    user,
-    loading,
-    allowedRoles,
-    path: location.pathname,
-  });
+  // console.log("ProtectedRoute - Checking access:", {
+  //   user,
+  //   loading,
+  //   allowedRoles,
+  //   path: location.pathname,
+  // });
 
   // Loading state
   if (loading) {
@@ -26,7 +26,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
   // Jika belum login, redirect ke login page
   if (!user) {
-    console.log("ProtectedRoute - No user, redirecting to login");
+    // console.log("ProtectedRoute - No user, redirecting to login");
     return (
       <Navigate to="/auth/login" state={{ from: location.pathname }} replace />
     );
@@ -36,7 +36,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   if (allowedRoles.length > 0) {
     // Admin bisa akses semua
     if (user.role === "admin") {
-      console.log("ProtectedRoute - Admin access granted");
+      // console.log("ProtectedRoute - Admin access granted");
       return children;
     }
 
@@ -44,9 +44,9 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     const hasAccess = allowedRoles.includes(user.role);
 
     if (!hasAccess) {
-      console.log(
-        `ProtectedRoute - Access denied for role: ${user.role}, allowed: ${allowedRoles.join(", ")}`,
-      );
+      // console.log(
+      //   `ProtectedRoute - Access denied for role: ${user.role}, allowed: ${allowedRoles.join(", ")}`,
+      // );
 
       // Show alert
       setTimeout(() => {
@@ -66,7 +66,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     }
   }
 
-  console.log("ProtectedRoute - Access granted");
+  // console.log("ProtectedRoute - Access granted");
   return children;
 };
 

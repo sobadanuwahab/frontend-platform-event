@@ -1,26 +1,33 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { User, LogOut, Trophy, Menu, X, Loader } from "lucide-react"; // Tambahkan Loader
+import {
+  User,
+  LogOut,
+  Trophy,
+  Menu,
+  X,
+  Loader,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 const Header = () => {
   const [scrolled, setScrolled] = useState(false);
-  const { user, loading, logout } = useAuth(); // Tambahkan loading dari useAuth
+  const { user, loading, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [hoveredNav, setHoveredNav] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const navigationTimeoutRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
   const navItems = [
     {
       to: "/",
-      label: "Beranda",
-      roles: ["user", "juri"],
+      label: "Home",
+      roles: ["user", "juri", "guest"],
     },
     {
       to: "/voting",
@@ -50,8 +57,10 @@ const Header = () => {
   ];
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10);
+    const handleScroll = () => setScrolled(window.scrollY > 0);
     window.addEventListener("scroll", handleScroll);
+    // Set initial state
+    setScrolled(window.scrollY > 0);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [location.pathname]);
 
@@ -78,22 +87,7 @@ const Header = () => {
     };
   }, [isMobileMenuOpen]);
 
-  // Debug: Log when user changes
-  useEffect(() => {
-    console.log("Header - User updated:", user);
-    console.log("Header - Loading:", loading);
-  }, [user, loading]);
-
-  // Gunakan loading state untuk menentukan currentRole
-  const currentRole = (() => {
-    if (loading) {
-      console.log("Header - Still loading, using guest role temporarily");
-      return "guest";
-    }
-    return user?.role ?? "guest";
-  })();
-
-  console.log("Header - Final currentRole:", currentRole);
+  const currentRole = user?.role ?? "guest";
 
   const handleNavigation = (to) => {
     if (location.pathname === to) {
@@ -128,23 +122,24 @@ const Header = () => {
     visible: { opacity: 1, y: 0 },
   };
 
-  const mobileNavItemVariants = {
-    hidden: { opacity: 0, x: -10 },
-    visible: { opacity: 1, x: 0 },
-  };
-
   // Jika masih loading, tampilkan header sederhana
   if (loading) {
     return (
-      <header className="sticky top-0 z-50 bg-white shadow-md">
+      <header className="sticky top-0 z-50 bg-gray-900 border-b border-gray-800">
         <div className="container mx-auto px-3 sm:px-4">
-          <div className="flex items-center justify-between py-2 sm:py-3">
+          <div className="flex items-center justify-between py-3">
             <div className="flex items-center space-x-2 sm:space-x-3">
-              <div className="relative rounded-lg sm:rounded-2xl p-2 sm:p-3 bg-red-600">
+              <div className="relative rounded-lg sm:rounded-2xl p-2 sm:p-3 bg-gradient-to-r from-red-600 to-pink-600">
                 <Trophy size={24} className="text-white" />
+                <div className="absolute -top-1 -right-1">
+                  <div className="relative">
+                    <div className="w-2 h-2 sm:w-3 sm:h-3 bg-yellow-500 rounded-full"></div>
+                    <div className="absolute inset-0 bg-yellow-500 rounded-full animate-ping opacity-75"></div>
+                  </div>
+                </div>
               </div>
               <div>
-                <h1 className="font-bold text-gray-900 text-sm sm:text-base md:text-xl">
+                <h1 className="font-bold text-white text-sm sm:text-base md:text-xl">
                   Lomba Paskibra 2026
                 </h1>
               </div>
@@ -163,34 +158,31 @@ const Header = () => {
       <header
         className={`
           sticky top-0 z-50 transition-all duration-300 w-full
-          ${scrolled ? "bg-white shadow-md" : "bg-red-700"}
-          ${isMobileMenuOpen ? "bg-white" : ""}
-        `}>
-        <div className="container mx-auto px-3 sm:px-4">
-          <div className="flex items-center justify-between py-2 sm:py-3">
+          bg-gray-900
+          ${scrolled ? "bg-gray-900/95 backdrop-blur-md border-b border-gray-800" : "border-b border-gray-900"}
+        `}
+      >
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between py-3">
             {/* Logo & Brand */}
             <div className="flex items-center space-x-2 sm:space-x-3">
               <motion.div
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.05, rotate: 5 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleNavigation("/")}
                 className={`
                   relative rounded-lg sm:rounded-2xl p-2 sm:p-3 transition-all duration-300 cursor-pointer
-                  ${scrolled ? "bg-red-600" : "bg-white"}
-                  ${isMobileMenuOpen ? "bg-red-600" : ""}
-                `}>
-                <Trophy
-                  size={scrolled || isMobileMenuOpen ? 24 : 28}
-                  className={`
-                    ${scrolled ? "text-white" : "text-red-600"}
-                    ${isMobileMenuOpen ? "text-white" : ""}
-                    sm:size-6 md:size-8
-                  `}
-                />
+                  bg-gradient-to-r from-red-600 to-pink-600
+                  hover:from-red-700 hover:to-pink-700
+                  shadow-lg hover:shadow-xl
+                `}
+              >
+                <Trophy size={24} className="text-white" />
+                {/* Live Badge */}
                 <div className="absolute -top-1 -right-1">
                   <div className="relative">
-                    <div className="w-2 h-2 sm:w-3 sm:h-3 bg-yellow-500 rounded-full"></div>
-                    <div className="absolute inset-0 bg-yellow-500 rounded-full animate-ping opacity-75"></div>
+                    <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full"></div>
+                    <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
                   </div>
                 </div>
               </motion.div>
@@ -200,18 +192,19 @@ const Header = () => {
                   onClick={() => handleNavigation("/")}
                   className={`
                     font-bold transition-all duration-300 cursor-pointer text-sm sm:text-base md:text-xl lg:text-2xl xl:text-3xl
-                    ${scrolled ? "text-gray-900" : "text-white"}
-                    ${isMobileMenuOpen ? "text-gray-900" : ""}
-                  `}>
-                  Platform Alakadarnya 2026
+                    bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300
+                    hover:from-red-400 hover:to-pink-400
+                  `}
+                >
+                  Paskibra Championship 2026
                 </motion.h1>
                 <p
                   className={`
                     text-xs sm:text-sm transition-all duration-300 hidden sm:block
-                    ${scrolled ? "text-gray-600" : "text-red-100"}
-                    ${isMobileMenuOpen ? "text-gray-600" : ""}
-                  `}>
-                  Sing Penting Yakin • Legowo • Rajin Solat
+                    text-gray-300
+                  `}
+                >
+                  Platform Voting Nasional • Real-time • Terpercaya
                 </p>
               </div>
             </div>
@@ -224,28 +217,33 @@ const Header = () => {
                   .filter((item) => item.roles.includes(currentRole))
                   .map((item, index) => (
                     <motion.div key={item.to} whileHover={{ scale: 1.05 }}>
-                      <NavLink
-                        to={item.to}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleNavigation(item.to);
-                        }}
-                        onMouseEnter={() => setHoveredNav(index)}
-                        onMouseLeave={() => setHoveredNav(null)}
-                        className={({ isActive }) => `
-                          relative px-3 lg:px-4 py-2 font-medium transition-all duration-300
-                          ${
-                            scrolled
-                              ? isActive
-                                ? "text-red-600"
-                                : "text-gray-800 hover:text-gray-900"
-                              : isActive
-                                ? "text-white"
-                                : "text-white/90 hover:text-white"
-                          }
-                        `}>
-                        {item.label}
-                      </NavLink>
+                      <div className="relative">
+                        <NavLink
+                          to={item.to}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleNavigation(item.to);
+                          }}
+                          className={({ isActive }) => `
+                            relative px-3 lg:px-4 py-2 font-medium transition-all duration-300 rounded-lg
+                            ${
+                              isActive
+                                ? "text-white bg-gradient-to-r from-red-600/20 to-pink-600/20 border border-red-500/30"
+                                : "text-gray-300 hover:text-white hover:bg-gray-800/50"
+                            }
+                            group
+                          `}
+                        >
+                          {({ isActive }) => (
+                            <>
+                              {item.label}
+                              {isActive && (
+                                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full"></div>
+                              )}
+                            </>
+                          )}
+                        </NavLink>
+                      </div>
                     </motion.div>
                   ))}
               </nav>
@@ -255,53 +253,42 @@ const Header = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="h-6 lg:h-8 w-px bg-gray-300"></motion.div>
+                className="h-6 lg:h-8 w-px bg-gray-700"
+              ></motion.div>
 
               {user ? (
                 <motion.div
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="flex items-center space-x-2 lg:space-x-3">
+                  className="flex items-center space-x-2 lg:space-x-3"
+                >
                   <div className="text-right hidden lg:block">
-                    <p
-                      className={`font-medium text-xs lg:text-sm transition-all duration-300 ${
-                        scrolled ? "text-gray-900" : "text-white"
-                      }`}>
+                    <p className="font-medium text-white text-xs lg:text-sm">
                       {user.name}
                     </p>
-                    <p
-                      className={`text-xs transition-all duration-300 ${
-                        scrolled ? "text-gray-500" : "text-red-100"
-                      }`}>
-                      {user.role}
-                    </p>
+                    <p className="text-gray-400 text-xs">Role: {user.role}</p>
                   </div>
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="relative">
-                    <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-red-600 flex items-center justify-center text-white font-semibold shadow-md text-xs lg:text-sm">
-                      {user.avatar || <User size={14} className="lg:size-5" />}
+                    className="relative group"
+                  >
+                    <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-gradient-to-r from-red-600 to-pink-600 flex items-center justify-center text-white font-semibold shadow-md text-xs lg:text-sm">
+                      <User size={14} className="lg:size-5" />
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-2 h-2 lg:w-3 lg:h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                    <div className="absolute -bottom-1 -right-1 w-2 h-2 lg:w-3 lg:h-3 bg-green-500 rounded-full border-2 border-gray-900 group-hover:border-red-500 transition-colors"></div>
                   </motion.div>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleLogout}
-                    className="group relative overflow-hidden rounded-lg lg:rounded-xl px-2 py-2 lg:px-3 lg:py-2 bg-white/20 hover:bg-red-500/30 transition-all duration-300"
-                    title="Logout">
+                    className="group relative overflow-hidden rounded-lg lg:rounded-xl px-2 py-2 lg:px-3 lg:py-2 bg-gray-800 hover:bg-red-600/30 transition-all duration-300 border border-gray-700 hover:border-red-500"
+                    title="Logout"
+                  >
                     <LogOut
                       size={14}
-                      className={`
-                        ${
-                          scrolled
-                            ? "text-gray-600 group-hover:text-red-600"
-                            : "text-white group-hover:text-red-200"
-                        }
-                        lg:size-5
-                      `}
+                      className="text-gray-400 group-hover:text-red-400 lg:size-5"
                     />
                   </motion.button>
                 </motion.div>
@@ -313,11 +300,13 @@ const Header = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleLogin}
-                  className="group relative overflow-hidden rounded-lg lg:rounded-xl px-3 py-2 lg:px-4 lg:py-2.5 bg-white text-red-600 font-medium hover:bg-red-50 hover:shadow-lg transition-all duration-300 border border-red-600 text-xs lg:text-sm">
+                  className="group relative overflow-hidden rounded-lg lg:rounded-xl px-3 py-2 lg:px-4 lg:py-2.5 bg-gradient-to-r from-red-600 to-pink-600 text-white font-medium hover:from-red-700 hover:to-pink-700 hover:shadow-lg transition-all duration-300 text-xs lg:text-sm"
+                >
                   <span className="relative flex items-center space-x-1 lg:space-x-2">
-                    <User size={14} className="lg:size-4" />
-                    <span>Login/Register</span>
+                    <Zap size={14} className="lg:size-4" />
+                    <span>Login / Register</span>
                   </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </motion.button>
               )}
             </div>
@@ -328,29 +317,16 @@ const Header = () => {
               onClick={toggleMobileMenu}
               className={`
                 md:hidden p-2 rounded-lg transition-all duration-300
-                ${
-                  scrolled
-                    ? "bg-gray-100 hover:bg-gray-200"
-                    : "bg-white/20 hover:bg-white/30"
-                }
-                ${isMobileMenuOpen ? "bg-gray-200" : ""}
+                bg-gray-800 hover:bg-gray-700 border border-gray-700
+                ${isMobileMenuOpen ? "bg-gray-700" : ""}
               `}
               aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={isMobileMenuOpen}>
+              aria-expanded={isMobileMenuOpen}
+            >
               {isMobileMenuOpen ? (
-                <X
-                  size={20}
-                  className={
-                    scrolled || isMobileMenuOpen
-                      ? "text-gray-700"
-                      : "text-white"
-                  }
-                />
+                <X size={20} className="text-gray-300" />
               ) : (
-                <Menu
-                  size={20}
-                  className={scrolled ? "text-gray-700" : "text-white"}
-                />
+                <Menu size={20} className="text-gray-300" />
               )}
             </motion.button>
           </div>
@@ -365,7 +341,7 @@ const Header = () => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="fixed inset-0 bg-black/50 md:hidden z-40 mt-16"
+                  className="fixed inset-0 bg-black/70 md:hidden z-40 mt-16 backdrop-blur-sm"
                 />
 
                 {/* Mobile Menu */}
@@ -375,30 +351,47 @@ const Header = () => {
                   initial="hidden"
                   animate="visible"
                   exit="hidden"
-                  className="fixed top-16 left-0 right-0 bg-white shadow-lg md:hidden z-50 max-h-[calc(100vh-4rem)] overflow-y-auto">
-                  <div className="px-4 py-4">
+                  className="fixed top-16 left-0 right-0 bg-gray-900 border-t border-gray-800 shadow-2xl md:hidden z-50 max-h-[calc(100vh-4rem)] overflow-y-auto"
+                >
+                  <div className="px-4 py-6">
                     {/* Mobile Navigation Items */}
-                    <nav className="space-y-1 mb-6">
+                    <nav className="space-y-2 mb-8">
                       {navItems
                         .filter((item) => item.roles.includes(currentRole))
                         .map((item) => (
-                          <NavLink
+                          <motion.div
                             key={item.to}
-                            to={item.to}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleNavigation(item.to);
-                            }}
-                            className={({ isActive }) => `
-                              flex items-center justify-between p-3 sm:p-4 rounded-xl transition-all duration-300 font-medium
-                              ${
-                                isActive
-                                  ? "bg-red-600 text-white"
-                                  : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                              }
-                            `}>
-                            <span>{item.label}</span>
-                          </NavLink>
+                            whileHover={{ x: 5 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <NavLink
+                              to={item.to}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleNavigation(item.to);
+                              }}
+                              className={({ isActive }) => `
+                                flex items-center justify-between p-4 rounded-xl transition-all duration-300 font-medium
+                                ${
+                                  isActive
+                                    ? "bg-gradient-to-r from-red-600/30 to-pink-600/30 text-white border border-red-500/30"
+                                    : "text-gray-300 hover:text-white hover:bg-gray-800"
+                                }
+                              `}
+                            >
+                              {({ isActive }) => (
+                                <>
+                                  <span>{item.label}</span>
+                                  {isActive && (
+                                    <Sparkles
+                                      size={16}
+                                      className="text-yellow-400"
+                                    />
+                                  )}
+                                </>
+                              )}
+                            </NavLink>
+                          </motion.div>
                         ))}
                     </nav>
 
@@ -408,34 +401,36 @@ const Header = () => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: 0.2 }}
-                        className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                        <div className="flex items-center space-x-3">
+                        className="p-4 rounded-xl bg-gray-800/50 border border-gray-700"
+                      >
+                        <div className="flex items-center space-x-4">
                           <motion.div
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="relative">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-600 flex items-center justify-center text-white font-semibold shadow-md">
-                              {user.avatar || (
-                                <User size={20} className="sm:size-6" />
-                              )}
+                            className="relative"
+                          >
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 flex items-center justify-center text-white font-semibold shadow-lg">
+                              <User size={24} />
                             </div>
-                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>
                           </motion.div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 truncate text-sm sm:text-base">
+                            <p className="font-medium text-white text-lg">
                               {user.name}
                             </p>
-                            <p className="text-gray-500 text-xs sm:text-sm truncate">
-                              {user.role}
-                            </p>
+                            <p className="text-gray-400 text-sm">{user.role}</p>
                           </div>
                           <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={handleLogout}
-                            className="p-2.5 rounded-xl bg-gray-100 hover:bg-red-500/10 transition-colors flex-shrink-0"
-                            title="Logout">
-                            <LogOut size={18} className="text-gray-600" />
+                            className="p-3 rounded-xl bg-gray-700 hover:bg-red-600/20 transition-colors border border-gray-600 hover:border-red-500"
+                            title="Logout"
+                          >
+                            <LogOut
+                              size={20}
+                              className="text-gray-300 hover:text-red-400"
+                            />
                           </motion.button>
                         </div>
                       </motion.div>
@@ -447,10 +442,14 @@ const Header = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleLogin}
-                        className="w-full py-3 px-4 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 hover:shadow-lg transition-all duration-300">
-                        <div className="flex items-center justify-center space-x-2 text-sm sm:text-base">
-                          <User size={18} className="sm:size-5" />
-                          <span>Login / Daftar</span>
+                        className="w-full py-4 px-4 bg-gradient-to-r from-red-600 to-pink-600 text-white font-semibold rounded-xl hover:from-red-700 hover:to-pink-700 hover:shadow-xl transition-all duration-300 group"
+                      >
+                        <div className="flex items-center justify-center space-x-3 text-lg">
+                          <Zap
+                            size={24}
+                            className="group-hover:rotate-12 transition-transform"
+                          />
+                          <span>Login / Register</span>
                         </div>
                       </motion.button>
                     )}

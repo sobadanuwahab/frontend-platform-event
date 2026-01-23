@@ -8,20 +8,20 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("AuthProvider - Initializing...");
+    // console.log("AuthProvider - Initializing...");
     const initAuth = () => {
       try {
         const storedUser = localStorage.getItem("user");
-        console.log("AuthProvider - Stored user:", storedUser);
+        // console.log("AuthProvider - Stored user:", storedUser);
 
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
-          console.log("AuthProvider - Parsed user:", parsedUser);
+          // console.log("AuthProvider - Parsed user:", parsedUser);
 
           // Validasi user data
           if (parsedUser && parsedUser.role) {
             setUser(parsedUser);
-            console.log("AuthProvider - User loaded successfully");
+            // console.log("AuthProvider - User loaded successfully");
           } else {
             console.warn("AuthProvider - Invalid user data, clearing...");
             localStorage.removeItem("user");
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.clear();
       } finally {
         setLoading(false);
-        console.log("AuthProvider - Initialization complete");
+        // console.log("AuthProvider - Initialization complete");
       }
     };
 
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log("AuthContext - Login attempt with:", { email });
+      // console.log("AuthContext - Login attempt with:", { email });
 
       const res = await fetch(`${API_URL}/login`, {
         method: "POST",
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const responseData = await res.json();
-      console.log("AuthContext - Login response:", responseData);
+      // console.log("AuthContext - Login response:", responseData);
 
       if (!res.ok) {
         throw new Error(responseData.message || "Login gagal");
@@ -86,9 +86,9 @@ export const AuthProvider = ({ children }) => {
           role: roleMapping[userRoleId] || "user", // Default ke "user"
         };
 
-        console.log(
-          `AuthContext - user_role_id: ${userRoleId}, mapped to: ${userData.role}`,
-        );
+        // console.log(
+        //   `AuthContext - user_role_id: ${userRoleId}, mapped to: ${userData.role}`,
+        // );
       }
       // CASE 2: Data langsung di responseData.data
       else if (responseData.data) {
@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }) => {
         };
       }
 
-      console.log("AuthContext - Final user data:", userData);
+      // console.log("AuthContext - Final user data:", userData);
 
       // Simpan ke localStorage
       localStorage.setItem("user", JSON.stringify(userData));
@@ -131,7 +131,7 @@ export const AuthProvider = ({ children }) => {
 
       // Update state
       setUser(userData);
-      console.log("AuthContext - User state updated successfully");
+      // console.log("AuthContext - User state updated successfully");
 
       return userData;
     } catch (error) {
@@ -141,7 +141,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    console.log("AuthContext - Logging out");
+    // console.log("AuthContext - Logging out");
     localStorage.clear();
     setUser(null);
   };
@@ -153,7 +153,8 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         logout,
-      }}>
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

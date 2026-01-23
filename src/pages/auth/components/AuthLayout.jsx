@@ -2,6 +2,7 @@
 import { Trophy, Shield, Users, Flag, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect } from "react";
+import Header from "../../../components/Layout/Header";
 
 const AuthLayout = ({ children, title, subtitle, type = "login" }) => {
   const features = [
@@ -45,53 +46,8 @@ const AuthLayout = ({ children, title, subtitle, type = "login" }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-red-50/30">
-      {/* Header */}
-      <div className="sticky top-0 bg-white/80 backdrop-blur-sm border-b border-gray-200 z-50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-2 group">
-              <div className="w-10 h-10 rounded-lg bg-red-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Trophy size={22} className="text-white" />
-              </div>
-              <div>
-                <h1 className="font-bold text-gray-900 group-hover:text-red-600 transition-colors">
-                  Lomba Paskibra 2026
-                </h1>
-                <p className="text-xs text-gray-600">
-                  Kreasi • Prestasi • Kebanggaan
-                </p>
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-3">
-              {/* Tombol Kembali ke Home */}
-              <Link
-                to="/"
-                className="px-3 py-2 text-sm text-gray-600 hover:text-red-600 transition-colors flex items-center gap-1">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                  />
-                </svg>
-                Kembali ke Home
-              </Link>
-
-              <Link
-                to={type === "login" ? "/auth/register" : "/auth/login"}
-                className="px-4 py-2 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 transition-colors">
-                {type === "login" ? "Daftar" : "Masuk"}
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Menggunakan komponen Header yang sudah ada */}
+      <Header />
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
@@ -141,7 +97,8 @@ const AuthLayout = ({ children, title, subtitle, type = "login" }) => {
                 {features.map((feature, index) => (
                   <div
                     key={index}
-                    className="bg-red-50 p-4 rounded-lg border border-red-100">
+                    className="bg-red-50 p-4 rounded-lg border border-red-100"
+                  >
                     <div className="mb-2">{feature.icon}</div>
                     <h3 className="font-semibold text-gray-900 text-sm mb-1">
                       {feature.title}
