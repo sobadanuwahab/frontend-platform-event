@@ -434,7 +434,7 @@ const Home = () => {
         onMouseLeave={() => setIsHovering(false)}
       >
         {/* Glow Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-red-900/20 via-purple-900/20 to-blue-900/20 blur-3xl opacity-50 rounded-2xl" />
+        <div className="absolute inset-0 bg-gradient-to-r blur-3xl opacity-50 rounded-2xl" />
 
         {/* Slider Container */}
         <div className="relative h-[65vh] md:h-[70vh] lg:h-[75vh] rounded-2xl overflow-hidden shadow-2xl">

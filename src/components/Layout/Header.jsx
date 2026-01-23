@@ -125,7 +125,7 @@ const Header = () => {
   // Jika masih loading, tampilkan header sederhana
   if (loading) {
     return (
-      <header className="sticky top-0 z-50 bg-gray-900 border-b border-gray-800">
+      <header className="sticky top-0 z-50 bg-black border-b border-black">
         <div className="container mx-auto px-3 sm:px-4">
           <div className="flex items-center justify-between py-3">
             <div className="flex items-center space-x-2 sm:space-x-3">
@@ -158,8 +158,8 @@ const Header = () => {
       <header
         className={`
           sticky top-0 z-50 transition-all duration-300 w-full
-          bg-gray-900
-          ${scrolled ? "bg-gray-900/95 backdrop-blur-md border-b border-gray-800" : "border-b border-gray-900"}
+          bg-black
+          ${scrolled ? "bg-black backdrop-blur-md border-b border-black" : "border-b border-black"}
         `}
       >
         <div className="container mx-auto px-4">

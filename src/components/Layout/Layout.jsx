@@ -60,18 +60,8 @@ const Layout = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-black via-black to-black">
       {/* Background decorative elements - DI BAWAH header */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-50">
-        {/* Red glow effect */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-red-600/10 to-pink-600/10 rounded-full blur-3xl"></div>
-        {/* Purple glow effect */}
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-gradient-to-r from-purple-600/10 to-blue-600/10 rounded-full blur-3xl"></div>
-        {/* Yellow/orange glow effect */}
-        <div className="absolute top-3/4 left-1/3 w-64 h-64 bg-gradient-to-r from-yellow-600/5 to-orange-600/5 rounded-full blur-3xl"></div>
-        {/* Grid pattern overlay */}
-        <div className="absolute inset-0 opacity-5 grid-pattern"></div>
-      </div>
 
       {/* Loading Overlay */}
       <AnimatePresence>
