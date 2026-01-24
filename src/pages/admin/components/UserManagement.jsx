@@ -9,9 +9,7 @@ import {
   CheckCircle,
   XCircle,
   RefreshCw,
-  Filter,
   Download,
-  MoreVertical,
   Shield,
   Mail,
   Phone,
@@ -29,7 +27,9 @@ const API_URL = "https://apipaskibra.my.id/api";
 const UserManagementTab = ({ stats, setStats }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState([]);
+  const [userRoles, setUserRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingRoles, setLoadingRoles] = useState(true);
   const [error, setError] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -43,8 +43,7 @@ const UserManagementTab = ({ stats, setStats }) => {
     whatsapp: "",
     password: "",
     password_confirmation: "",
-    role: "user",
-    user_role_id: 3,
+    user_role_id: 3, // Default ke user
     status: "active",
   });
 
@@ -58,10 +57,68 @@ const UserManagementTab = ({ stats, setStats }) => {
   // Get auth token
   const getAuthToken = () => {
     const token = localStorage.getItem("access_token");
-    return token || "LOGIN_OK"; // Fallback jika token tidak ada
+    return token || "LOGIN_OK";
   };
 
-  // Fetch users from API
+  // Fetch user roles dari API
+  const fetchUserRoles = async () => {
+    try {
+      setLoadingRoles(true);
+      const token = getAuthToken();
+      // console.log("Fetching user roles from API...");
+
+      const response = await fetch(`${API_URL}/user-roles`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      });
+
+      const data = await response.json();
+      // console.log("API Response for user roles:", data);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Gagal mengambil data roles");
+      }
+
+      // Mapping response untuk user roles
+      let rolesData = [];
+
+      if (data.data && Array.isArray(data.data)) {
+        rolesData = data.data;
+      } else if (Array.isArray(data)) {
+        rolesData = data;
+      } else if (data.roles && Array.isArray(data.roles)) {
+        rolesData = data.roles;
+      }
+
+      // console.log("Mapped roles data:", rolesData);
+      setUserRoles(rolesData);
+
+      // Simpan ke localStorage untuk cache
+      localStorage.setItem("cached_user_roles", JSON.stringify(rolesData));
+    } catch (err) {
+      console.error("Error fetching user roles:", err);
+      // Coba ambil dari cache dulu
+      const cached = localStorage.getItem("cached_user_roles");
+      if (cached) {
+        setUserRoles(JSON.parse(cached));
+      } else {
+        // Fallback ke roles default
+        setUserRoles([
+          { id: 1, name: "admin", display_name: "Admin" },
+          { id: 2, name: "juri", display_name: "Juri" },
+          { id: 3, name: "user", display_name: "User" },
+        ]);
+      }
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
+
+  // Fetch users dari API - TANPA user_role_id
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -69,7 +126,7 @@ const UserManagementTab = ({ stats, setStats }) => {
 
       const token = getAuthToken();
 
-      console.log("Fetching users from API...");
+      // console.log("Fetching users from API...");
       const response = await fetch(`${API_URL}/users`, {
         method: "GET",
         headers: {
@@ -80,7 +137,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       });
 
       const data = await response.json();
-      console.log("API Response for users:", data);
+      // console.log("API Response for users:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengambil data users");
@@ -97,37 +154,71 @@ const UserManagementTab = ({ stats, setStats }) => {
         usersData = data.users;
       }
 
-      console.log("Mapped users data:", usersData);
+      // console.log("Mapped users data:", usersData);
 
-      const formattedUsers = usersData.map((user) => ({
-        id: user.id || user.user_id,
-        name: user.name || user.username || user.full_name || "User",
-        email: user.email,
-        whatsapp: user.whatsapp || user.phone || user.telepon || "-",
-        role:
-          user.role ||
-          (user.user_role_id === 1
-            ? "admin"
-            : user.user_role_id === 2
-              ? "juri"
-              : user.user_role_id === 3
-                ? "user"
-                : "user"),
-        user_role_id: user.user_role_id || 3,
-        joinDate: user.created_at
-          ? new Date(user.created_at).toLocaleDateString("id-ID")
-          : user.createdAt
-            ? new Date(user.createdAt).toLocaleDateString("id-ID")
-            : "Tanggal tidak tersedia",
-        coinBalance: user.coin_balance || user.coins || user.balance || 0,
-        status: user.status || "active",
-        lastActivity:
-          user.last_login || user.last_activity || user.updated_at
-            ? new Date(user.last_login || user.updated_at).toLocaleString(
-                "id-ID",
-              )
-            : "Belum ada aktivitas",
-      }));
+      // Ambil roles dari state atau cache
+      let rolesList =
+        userRoles.length > 0
+          ? userRoles
+          : JSON.parse(localStorage.getItem("cached_user_roles") || "[]");
+
+      // console.log("Roles list for mapping:", rolesList);
+
+      // Buat mapping dari role string ke ID
+      const roleNameToIdMap = {};
+      rolesList.forEach((role) => {
+        roleNameToIdMap[role.role] = role.id; // Perhatikan: fieldnya "role" bukan "name"
+      });
+
+      // console.log("Role name to ID map:", roleNameToIdMap);
+
+      // Format users
+      const formattedUsers = usersData.map((user, index) => {
+        // console.log(`User ${index} data:`, user);
+
+        const userRoleName = user.role || "user";
+        const roleId = roleNameToIdMap[userRoleName] || 1; // Default ke user (ID 1)
+
+        // Cari role object berdasarkan ID
+        let roleData = rolesList.find((r) => r.id === roleId) || {
+          id: roleId,
+          role: userRoleName,
+          display_name: userRoleName,
+        };
+
+        // Untuk role 'juri' (dari user) mapping ke 'judge' (dari roles)
+        if (userRoleName === "juri" && !roleNameToIdMap[userRoleName]) {
+          const judgeRole = rolesList.find((r) => r.role === "judge");
+          if (judgeRole) {
+            roleData = judgeRole;
+          }
+        }
+
+        return {
+          id: user.id || user.user_id,
+          name: user.name || user.username || user.full_name || "User",
+          email: user.email,
+          whatsapp: user.whatsapp || user.phone || user.telepon || "-",
+          role_name: userRoleName,
+          role_display_name: roleData.display_name || roleData.role,
+          role_object: roleData,
+          // Untuk form edit, kita perlu ID yang benar
+          user_role_id: roleData.id,
+          joinDate: user.created_at
+            ? new Date(user.created_at).toLocaleDateString("id-ID")
+            : user.createdAt
+              ? new Date(user.createdAt).toLocaleDateString("id-ID")
+              : "Tanggal tidak tersedia",
+          coinBalance: user.coin_balance || user.coins || user.balance || 0,
+          status: user.status || "active",
+          lastActivity:
+            user.last_login || user.last_activity || user.updated_at
+              ? new Date(user.last_login || user.updated_at).toLocaleString(
+                  "id-ID",
+                )
+              : "Belum ada aktivitas",
+        };
+      });
 
       setUsers(formattedUsers);
 
@@ -140,7 +231,7 @@ const UserManagementTab = ({ stats, setStats }) => {
     } catch (err) {
       console.error("Error fetching users:", err);
       setError(err.message);
-      setUsers([]); // Set empty array on error
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -154,24 +245,17 @@ const UserManagementTab = ({ stats, setStats }) => {
 
       const token = getAuthToken();
 
-      // Map role to user_role_id
-      const roleMapping = {
-        admin: 1,
-        juri: 2,
-        user: 3,
-      };
-
       const requestData = {
         name: formData.name,
         email: formData.email,
         whatsapp: formData.whatsapp,
         password: formData.password,
         password_confirmation: formData.password_confirmation,
-        user_role_id: roleMapping[formData.role] || 3,
+        user_role_id: formData.user_role_id,
         status: formData.status,
       };
 
-      console.log("Creating user with data:", requestData);
+      // console.log("Creating user with data:", requestData);
 
       const response = await fetch(`${API_URL}/users`, {
         method: "POST",
@@ -184,7 +268,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       });
 
       const data = await response.json();
-      console.log("Create user response:", data);
+      // console.log("Create user response:", data);
 
       if (!response.ok) {
         if (data.errors) {
@@ -203,15 +287,14 @@ const UserManagementTab = ({ stats, setStats }) => {
         whatsapp: "",
         password: "",
         password_confirmation: "",
-        role: "user",
         user_role_id: 3,
         status: "active",
       });
 
       setShowAddForm(false);
 
-      // Refresh users list
-      fetchUsers();
+      // Refresh data
+      await Promise.all([fetchUserRoles(), fetchUsers()]);
     } catch (err) {
       console.error("Error creating user:", err);
       alert(`Gagal membuat user: ${err.message}`);
@@ -228,18 +311,11 @@ const UserManagementTab = ({ stats, setStats }) => {
 
       const token = getAuthToken();
 
-      const roleMapping = {
-        admin: 1,
-        juri: 2,
-        user: 3,
-      };
-
       const requestData = {
         name: formData.name,
         email: formData.email,
         whatsapp: formData.whatsapp,
-        role: formData.role,
-        user_role_id: roleMapping[formData.role] || 3,
+        user_role_id: formData.user_role_id,
         status: formData.status,
       };
 
@@ -249,20 +325,103 @@ const UserManagementTab = ({ stats, setStats }) => {
         requestData.password_confirmation = formData.password_confirmation;
       }
 
-      console.log("Updating user with data:", requestData);
+      // console.log("Updating user with data:", requestData);
+      // console.log("Updating user ID:", selectedUser.id);
 
-      const response = await fetch(`${API_URL}/users/${selectedUser.id}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(requestData),
-      });
+      // COBA beberapa kemungkinan endpoint:
+      const endpointsToTry = [
+        `${API_URL}/user/${selectedUser.id}`,
+        `${API_URL}/user/update/${selectedUser.id}`,
+      ];
+
+      let response = null;
+      let lastError = null;
+
+      // Coba berbagai endpoint dan method
+      for (const endpoint of endpointsToTry) {
+        for (const method of ["PUT", "PATCH", "POST"]) {
+          try {
+            // console.log(`Trying ${method} ${endpoint}`);
+
+            const config = {
+              method: method,
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify(requestData),
+            };
+
+            // Untuk POST dengan parameter di body
+            if (method === "POST") {
+              requestData._method = "PUT"; // Laravel style
+            }
+
+            response = await fetch(endpoint, config);
+
+            if (response.ok) {
+              // console.log(`Success with ${method} ${endpoint}`);
+              break;
+            }
+          } catch (err) {
+            lastError = err;
+            // console.log(`Failed with ${method} ${endpoint}:`, err.message);
+          }
+        }
+        if (response && response.ok) break;
+      }
+
+      // Jika semua gagal
+      if (!response || !response.ok) {
+        // Coba endpoint alternatif dengan format berbeda
+        // console.log("Trying alternative format...");
+
+        // COBA 1: endpoint dengan query parameter
+        try {
+          response = await fetch(`${API_URL}/user?id=${selectedUser.id}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(requestData),
+          });
+        } catch (err) {
+          lastError = err;
+        }
+
+        // COBA 2: endpoint yang lebih spesifik
+        if (!response || !response.ok) {
+          try {
+            response = await fetch(
+              `${API_URL}/admin/users/${selectedUser.id}`,
+              {
+                method: "PUT",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                  Accept: "application/json",
+                },
+                body: JSON.stringify(requestData),
+              },
+            );
+          } catch (err) {
+            lastError = err;
+          }
+        }
+      }
+
+      // Jika masih gagal
+      if (!response || !response.ok) {
+        throw new Error(
+          `Tidak dapat menemukan endpoint update. Status: ${response?.status || "no response"}`,
+        );
+      }
 
       const data = await response.json();
-      console.log("Update user response:", data);
+      // console.log("Update user response:", data);
 
       if (!response.ok) {
         if (data.errors) {
@@ -281,7 +440,6 @@ const UserManagementTab = ({ stats, setStats }) => {
         whatsapp: "",
         password: "",
         password_confirmation: "",
-        role: "user",
         user_role_id: 3,
         status: "active",
       });
@@ -289,11 +447,13 @@ const UserManagementTab = ({ stats, setStats }) => {
       setShowEditForm(false);
       setSelectedUser(null);
 
-      // Refresh users list
-      fetchUsers();
+      // Refresh data
+      await Promise.all([fetchUserRoles(), fetchUsers()]);
     } catch (err) {
       console.error("Error updating user:", err);
-      alert(`Gagal mengupdate user: ${err.message}`);
+      alert(
+        `Gagal mengupdate user: ${err.message}\n\nCoba cek endpoint update di backend.`,
+      );
     } finally {
       setActionLoading(false);
     }
@@ -310,7 +470,7 @@ const UserManagementTab = ({ stats, setStats }) => {
 
       const token = getAuthToken();
 
-      const response = await fetch(`${API_URL}/users/${userId}`, {
+      const response = await fetch(`${API_URL}/user/${userId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -320,7 +480,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       });
 
       const data = await response.json();
-      console.log("Delete user response:", data);
+      // console.log("Delete user response:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal menghapus user");
@@ -328,8 +488,8 @@ const UserManagementTab = ({ stats, setStats }) => {
 
       alert("User berhasil dihapus!");
 
-      // Refresh users list
-      fetchUsers();
+      // Refresh data
+      await Promise.all([fetchUserRoles(), fetchUsers()]);
     } catch (err) {
       console.error("Error deleting user:", err);
       alert(`Gagal menghapus user: ${err.message}`);
@@ -358,7 +518,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       });
 
       const data = await response.json();
-      console.log("Update status response:", data);
+      // console.log("Update status response:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengupdate status");
@@ -366,8 +526,8 @@ const UserManagementTab = ({ stats, setStats }) => {
 
       alert(`Status user berhasil diubah menjadi ${newStatus}`);
 
-      // Refresh users list
-      fetchUsers();
+      // Refresh data
+      await fetchUsers();
     } catch (err) {
       console.error("Error updating status:", err);
       alert(`Gagal mengupdate status: ${err.message}`);
@@ -379,14 +539,28 @@ const UserManagementTab = ({ stats, setStats }) => {
   // Handle edit button click
   const handleEditClick = (user) => {
     setSelectedUser(user);
+
+    // Cari role_id yang benar berdasarkan role_name user
+    let roleId = user.user_role_id;
+
+    // Jika tidak ada, cari dari roles list
+    if (!roleId && userRoles.length > 0) {
+      const userRoleName = user.role_name;
+      const role = userRoles.find(
+        (r) =>
+          r.role === userRoleName ||
+          (userRoleName === "juri" && r.role === "judge"),
+      );
+      roleId = role ? role.id : 1; // Default ke user
+    }
+
     setFormData({
       name: user.name,
       email: user.email,
       whatsapp: user.whatsapp,
       password: "",
       password_confirmation: "",
-      role: user.role,
-      user_role_id: user.user_role_id,
+      user_role_id: roleId || 1, // Pastikan ada nilai
       status: user.status,
     });
     setShowEditForm(true);
@@ -397,11 +571,7 @@ const UserManagementTab = ({ stats, setStats }) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
-      // Update user_role_id when role changes
-      ...(name === "role" && {
-        user_role_id: value === "admin" ? 1 : value === "juri" ? 2 : 3,
-      }),
+      [name]: name === "user_role_id" ? parseInt(value) : value,
     }));
   };
 
@@ -410,9 +580,10 @@ const UserManagementTab = ({ stats, setStats }) => {
     const matchesSearch =
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.whatsapp.includes(searchTerm);
+      (user.whatsapp && user.whatsapp.includes(searchTerm));
 
-    const matchesRole = filters.role === "all" || user.role === filters.role;
+    const matchesRole =
+      filters.role === "all" || user.role_name === filters.role;
     const matchesStatus =
       filters.status === "all" || user.status === filters.status;
 
@@ -444,10 +615,73 @@ const UserManagementTab = ({ stats, setStats }) => {
     linkElement.click();
   };
 
+  // Get color based on role
+  const getRoleColor = (roleName) => {
+    if (!roleName)
+      return {
+        bg: "bg-gray-100",
+        text: "text-gray-800",
+        icon: "text-gray-500",
+      };
+
+    switch (roleName.toLowerCase()) {
+      case "admin":
+        return { bg: "bg-red-100", text: "text-red-800", icon: "text-red-500" };
+      case "juri":
+        return {
+          bg: "bg-purple-100",
+          text: "text-purple-800",
+          icon: "text-purple-500",
+        };
+      case "user":
+        return {
+          bg: "bg-blue-100",
+          text: "text-blue-800",
+          icon: "text-blue-500",
+        };
+      default:
+        return {
+          bg: "bg-gray-100",
+          text: "text-gray-800",
+          icon: "text-gray-500",
+        };
+    }
+  };
+
   // Initialize on component mount
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    let isMounted = true;
+
+    const initializeData = async () => {
+      if (!isMounted) return;
+
+      // console.log("Initializing data...");
+
+      // Ambil roles dulu
+      await fetchUserRoles();
+
+      // Tunggu sebentar untuk memastikan state sudah update
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Baru ambil users
+      if (isMounted) {
+        await fetchUsers();
+      }
+    };
+
+    // Jalankan sekali
+    initializeData();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Empty dependency array
+
+  // Refresh all data
+  const refreshAllData = async () => {
+    await Promise.all([fetchUserRoles(), fetchUsers()]);
+  };
 
   if (loading) {
     return (
@@ -467,9 +701,8 @@ const UserManagementTab = ({ stats, setStats }) => {
         </h3>
         <p className="text-red-600 mb-4">{error}</p>
         <button
-          onClick={fetchUsers}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 mx-auto"
-        >
+          onClick={refreshAllData}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 mx-auto">
           <RefreshCw size={16} />
           Coba Lagi
         </button>
@@ -484,16 +717,14 @@ const UserManagementTab = ({ stats, setStats }) => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6"
-        >
+          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-gray-900">
               Tambah User Baru
             </h3>
             <button
               onClick={() => setShowAddForm(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-            >
+              className="p-2 hover:bg-gray-100 rounded-lg">
               <X size={20} />
             </button>
           </div>
@@ -549,16 +780,28 @@ const UserManagementTab = ({ stats, setStats }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Role *
                 </label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="user">User</option>
-                  <option value="juri">Juri</option>
-                  <option value="admin">Admin</option>
-                </select>
+                {loadingRoles ? (
+                  <div className="flex items-center space-x-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span className="text-sm text-gray-500">
+                      Memuat roles...
+                    </span>
+                  </div>
+                ) : (
+                  <select
+                    name="user_role_id"
+                    value={formData.user_role_id}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Pilih Role</option>
+                    {userRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.display_name || role.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -601,8 +844,7 @@ const UserManagementTab = ({ stats, setStats }) => {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -613,15 +855,13 @@ const UserManagementTab = ({ stats, setStats }) => {
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-              >
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
                 {actionLoading ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
@@ -644,8 +884,7 @@ const UserManagementTab = ({ stats, setStats }) => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6"
-        >
+          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-gray-900">Edit User</h3>
             <button
@@ -653,8 +892,7 @@ const UserManagementTab = ({ stats, setStats }) => {
                 setShowEditForm(false);
                 setSelectedUser(null);
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-            >
+              className="p-2 hover:bg-gray-100 rounded-lg">
               <X size={20} />
             </button>
           </div>
@@ -671,7 +909,7 @@ const UserManagementTab = ({ stats, setStats }) => {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -685,7 +923,7 @@ const UserManagementTab = ({ stats, setStats }) => {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -699,7 +937,7 @@ const UserManagementTab = ({ stats, setStats }) => {
                   value={formData.whatsapp}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -707,16 +945,37 @@ const UserManagementTab = ({ stats, setStats }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Role *
                 </label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="user">User</option>
-                  <option value="juri">Juri</option>
-                  <option value="admin">Admin</option>
-                </select>
+                {loadingRoles ? (
+                  <div className="flex items-center space-x-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span className="text-sm text-gray-500">
+                      Memuat roles...
+                    </span>
+                  </div>
+                ) : (
+                  <select
+                    name="user_role_id"
+                    value={formData.user_role_id}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Pilih Role</option>
+                    {userRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {/* Tampilkan 'judge' sebagai 'Juri' untuk user friendly */}
+                        {role.role === "judge"
+                          ? "Juri"
+                          : role.role === "organizer"
+                            ? "Organizer"
+                            : role.role === "admin"
+                              ? "Admin"
+                              : role.role === "user"
+                                ? "User"
+                                : role.role}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -728,7 +987,8 @@ const UserManagementTab = ({ stats, setStats }) => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Biarkan kosong untuk tidak mengubah"
                 />
               </div>
 
@@ -741,7 +1001,8 @@ const UserManagementTab = ({ stats, setStats }) => {
                   name="password_confirmation"
                   value={formData.password_confirmation}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Biarkan kosong untuk tidak mengubah"
                 />
               </div>
 
@@ -753,8 +1014,7 @@ const UserManagementTab = ({ stats, setStats }) => {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
+                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -768,15 +1028,13 @@ const UserManagementTab = ({ stats, setStats }) => {
                   setShowEditForm(false);
                   setSelectedUser(null);
                 }}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-              >
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
                 {actionLoading ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
@@ -822,12 +1080,13 @@ const UserManagementTab = ({ stats, setStats }) => {
                 onChange={(e) =>
                   setFilters({ ...filters, role: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg bg-white appearance-none"
-              >
+                className="pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg bg-white appearance-none">
                 <option value="all">Semua Role</option>
-                <option value="admin">Admin</option>
-                <option value="juri">Juri</option>
-                <option value="user">User</option>
+                {userRoles.map((role) => (
+                  <option key={role.id} value={role.name}>
+                    {role.display_name || role.name}
+                  </option>
+                ))}
               </select>
               <ChevronDown
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -841,8 +1100,7 @@ const UserManagementTab = ({ stats, setStats }) => {
                 onChange={(e) =>
                   setFilters({ ...filters, status: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg bg-white appearance-none"
-              >
+                className="pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg bg-white appearance-none">
                 <option value="all">Semua Status</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -855,25 +1113,22 @@ const UserManagementTab = ({ stats, setStats }) => {
 
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-            >
+              className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
               <UserPlus size={18} />
               Tambah User
             </button>
 
             <button
-              onClick={fetchUsers}
+              onClick={refreshAllData}
               className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              title="Refresh"
-            >
+              title="Refresh">
               <RefreshCw size={18} />
             </button>
 
             <button
               onClick={handleExportData}
               className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
-              title="Export Data"
-            >
+              title="Export Data">
               <Download size={18} />
             </button>
           </div>
@@ -884,8 +1139,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-      >
+        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {sortedUsers.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
@@ -901,8 +1155,7 @@ const UserManagementTab = ({ stats, setStats }) => {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto"
-            >
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto">
               <Plus size={18} />
               Tambah User Pertama
             </button>
@@ -937,131 +1190,124 @@ const UserManagementTab = ({ stats, setStats }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {sortedUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <span className="text-blue-600 font-semibold">
-                              {user.name.charAt(0).toUpperCase()}
+                  {sortedUsers.map((user) => {
+                    const roleColor = getRoleColor(user.role_name);
+
+                    return (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <span className="text-blue-600 font-semibold">
+                                {user.name?.charAt(0)?.toUpperCase() || "U"}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {user.name || "No Name"}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                ID: {user.id}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Mail size={14} className="text-gray-400" />
+                              <span className="text-sm">
+                                {user.email || "-"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Phone size={14} className="text-gray-400" />
+                              <span className="text-sm">
+                                {user.whatsapp || "-"}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Shield size={16} className={roleColor.icon} />
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${roleColor.bg} ${roleColor.text}`}>
+                              {user.role_display_name?.toUpperCase() || "USER"}
                             </span>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {user.name}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              ID: {user.id}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
+                        </td>
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <Mail size={14} className="text-gray-400" />
-                            <span className="text-sm">{user.email}</span>
+                            <Coins size={16} className="text-yellow-500" />
+                            <span className="font-bold">
+                              {user.coinBalance || 0}
+                            </span>
                           </div>
+                        </td>
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <Phone size={14} className="text-gray-400" />
-                            <span className="text-sm">{user.whatsapp}</span>
+                            {user.status === "active" ? (
+                              <CheckCircle
+                                size={16}
+                                className="text-green-500"
+                              />
+                            ) : (
+                              <XCircle size={16} className="text-red-500" />
+                            )}
+                            <button
+                              onClick={() =>
+                                handleUpdateStatus(user.id, user.status)
+                              }
+                              disabled={actionLoading}
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                user.status === "active"
+                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                  : "bg-red-100 text-red-800 hover:bg-red-200"
+                              }`}>
+                              {user.status === "active" ? "AKTIF" : "NONAKTIF"}
+                            </button>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Shield
-                            size={16}
-                            className={`
-                            ${
-                              user.role === "admin"
-                                ? "text-red-500"
-                                : user.role === "juri"
-                                  ? "text-purple-500"
-                                  : "text-blue-500"
-                            }
-                          `}
-                          />
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              user.role === "admin"
-                                ? "bg-red-100 text-red-800"
-                                : user.role === "juri"
-                                  ? "bg-purple-100 text-purple-800"
-                                  : "bg-blue-100 text-blue-800"
-                            }`}
-                          >
-                            {user.role.toUpperCase()}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Coins size={16} className="text-yellow-500" />
-                          <span className="font-bold">{user.coinBalance}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {user.status === "active" ? (
-                            <CheckCircle size={16} className="text-green-500" />
-                          ) : (
-                            <XCircle size={16} className="text-red-500" />
-                          )}
-                          <button
-                            onClick={() =>
-                              handleUpdateStatus(user.id, user.status)
-                            }
-                            disabled={actionLoading}
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              user.status === "active"
-                                ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                : "bg-red-100 text-red-800 hover:bg-red-200"
-                            }`}
-                          >
-                            {user.status === "active" ? "AKTIF" : "NONAKTIF"}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar size={14} className="text-gray-400" />
-                          <span className="text-sm">{user.joinDate}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {user.lastActivity}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleEditClick(user)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                            title="Edit"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            disabled={actionLoading}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                          <button
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                            title="View Details"
-                            onClick={() => {
-                              console.log("View user details:", user.id);
-                            }}
-                          >
-                            <Eye size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={14} className="text-gray-400" />
+                            <span className="text-sm">
+                              {user.joinDate || "-"}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {user.lastActivity || "Belum ada aktivitas"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleEditClick(user)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                              title="Edit">
+                              <Edit size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              disabled={actionLoading}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                              title="Delete">
+                              <Trash2 size={18} />
+                            </button>
+                            <button
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                              title="View Details"
+                              onClick={() => {
+                                // console.log("View user details:", user);
+                              }}>
+                              <Eye size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

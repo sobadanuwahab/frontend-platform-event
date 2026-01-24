@@ -79,8 +79,7 @@ const DashboardPage = () => {
           </p>
           <button
             onClick={() => navigate("/")}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Kembali ke Home
           </button>
         </div>
@@ -105,7 +104,7 @@ const DashboardPage = () => {
     },
     {
       id: "participants",
-      label: "Peserta",
+      label: "Event",
       icon: <Users size={18} />,
     },
     {
@@ -121,6 +120,11 @@ const DashboardPage = () => {
     {
       id: "tickets",
       label: "Data Tiket",
+      icon: <TicketIcon size={18} />,
+    },
+    {
+      id: "history",
+      label: "History Order",
       icon: <TicketIcon size={18} />,
     },
   ];
@@ -182,8 +186,7 @@ const DashboardPage = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 font-medium flex items-center gap-2 transition-colors ${activeTab === tab.id ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
-            >
+              className={`px-4 py-3 font-medium flex items-center gap-2 transition-colors ${activeTab === tab.id ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
               {tab.icon}
               {tab.label}
             </button>

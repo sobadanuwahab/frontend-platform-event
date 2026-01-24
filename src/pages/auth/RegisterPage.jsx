@@ -1,8 +1,18 @@
+// src/pages/auth/RegisterPage.jsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import AuthLayout from "./components/AuthLayout";
 import RegisterForm from "./components/RegisterForm";
-import { CheckCircle, Trophy, Users, Award } from "lucide-react";
+import {
+  CheckCircle,
+  Trophy,
+  Users,
+  Award,
+  Sparkles,
+  Rocket,
+  Star,
+} from "lucide-react";
+import { motion } from "framer-motion";
 
 const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -10,33 +20,6 @@ const RegisterPage = () => {
   const [step, setStep] = useState(1);
   const [userData, setUserData] = useState(null);
   const navigate = useNavigate();
-
-  // Animation effects
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = `
-      @keyframes confetti {
-        0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-        100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
-      }
-      @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
-      @keyframes slide-up {
-        from { transform: translateY(20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-      }
-      .animate-confetti { animation: confetti 2s ease-out forwards; }
-      .animate-bounce { animation: bounce 1s ease-in-out infinite; }
-      .animate-slide-up { animation: slide-up 0.5s ease-out; }
-    `;
-    document.head.appendChild(style);
-
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
 
   const handleRegister = async (formData) => {
     setIsLoading(true);
@@ -69,9 +52,6 @@ const RegisterPage = () => {
       // Tampilkan animasi success
       setShowSuccess(true);
 
-      // Tambahkan efek confetti
-      createConfetti();
-
       // Tunggu untuk animasi
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -88,112 +68,131 @@ const RegisterPage = () => {
     }
   };
 
-  const createConfetti = () => {
-    const colors = ["#ef4444", "#dc2626", "#f87171", "#fca5a5", "#fee2e2"];
-    const confettiContainer = document.getElementById("confetti-container");
-
-    for (let i = 0; i < 50; i++) {
-      const confetti = document.createElement("div");
-      confetti.className = "absolute w-3 h-3 rounded-full animate-confetti";
-      confetti.style.left = `${Math.random() * 100}%`;
-      confetti.style.top = `-20px`;
-      confetti.style.backgroundColor =
-        colors[Math.floor(Math.random() * colors.length)];
-      confetti.style.animationDelay = `${Math.random() * 1}s`;
-      confettiContainer.appendChild(confetti);
-
-      // Remove after animation
-      setTimeout(() => confetti.remove(), 2000);
-    }
-  };
-
   return (
     <AuthLayout
       title="Bergabung dengan Komunitas"
       subtitle="Daftar sekarang untuk mulai memberikan voting dan mendukung tim favorit Anda"
       type="register">
-      <div
-        id="confetti-container"
-        className="fixed inset-0 pointer-events-none z-50"></div>
-
       {showSuccess ? (
-        <div className="text-center py-12 animate-slide-up">
-          <div className="relative mb-8">
-            <div className="w-40 h-40 mx-auto bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center animate-bounce">
-              <CheckCircle className="w-20 h-20 text-white" />
-            </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-8">
+          <div className="relative mb-6">
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="w-32 h-32 mx-auto bg-gradient-to-br from-red-600 to-pink-600 rounded-full flex items-center justify-center shadow-2xl">
+              <CheckCircle className="w-16 h-16 text-white" />
+            </motion.div>
+            <div className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-pink-600/20 rounded-full blur-xl"></div>
           </div>
 
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">
+          <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300 mb-3">
             Selamat Bergabung!
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-400 mb-6">
             Akun Anda telah berhasil dibuat. Selamat datang di komunitas Lomba
             Paskibra 2026.
           </p>
 
           {userData && (
-            <div className="bg-gradient-to-r from-red-50 to-white p-6 rounded-2xl border border-red-100 mb-8">
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-2xl border border-gray-800 mb-8">
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-red-600">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-center">
+                  <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-400">
                     {userData.points}
                   </div>
-                  <div className="text-sm text-gray-600">Poin Bonus</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-red-600">Premium</div>
-                  <div className="text-sm text-gray-600">Status Member</div>
-                </div>
+                  <div className="text-sm text-gray-400">Poin Bonus</div>
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-center">
+                  <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-pink-400">
+                    Premium
+                  </div>
+                  <div className="text-sm text-gray-400">Status Member</div>
+                </motion.div>
               </div>
-              <div className="text-sm text-gray-600">
+              <p className="text-sm text-gray-400 text-center">
                 🎉 Selamat! Anda mendapatkan{" "}
-                <span className="font-bold text-red-600">100 poin bonus</span>{" "}
+                <span className="font-bold text-yellow-400">
+                  100 poin bonus
+                </span>{" "}
                 dan status{" "}
-                <span className="font-bold text-red-600">Anggota Premium</span>.
-              </div>
+                <span className="font-bold text-red-400">Anggota Premium</span>.
+              </p>
             </div>
           )}
 
           <div className="space-y-4 mb-8">
-            <h4 className="font-bold text-gray-900">Apa selanjutnya?</h4>
-            <div className="space-y-2">
+            <h4 className="font-bold text-white text-lg">Apa selanjutnya?</h4>
+            <div className="grid grid-cols-2 gap-3">
               {[
                 {
                   icon: "🏆",
-                  text: "Berikan voting pertama untuk tim favorit Anda",
+                  text: "Berikan voting pertama",
+                  color: "from-yellow-600/20 to-orange-600/20",
                 },
-                { icon: "👥", text: "Bergabung dengan komunitas diskusi" },
-                { icon: "🔔", text: "Dapatkan notifikasi hasil terkini" },
-                { icon: "📈", text: "Pantau perkembangan peringkat tim" },
+                {
+                  icon: "👥",
+                  text: "Bergabung dengan komunitas",
+                  color: "from-blue-600/20 to-cyan-600/20",
+                },
+                {
+                  icon: "🔔",
+                  text: "Dapatkan notifikasi",
+                  color: "from-emerald-600/20 to-green-600/20",
+                },
+                {
+                  icon: "📈",
+                  text: "Pantau perkembangan",
+                  color: "from-purple-600/20 to-pink-600/20",
+                },
               ].map((item, index) => (
-                <div
+                <motion.div
                   key={index}
-                  className="flex items-center gap-3 text-gray-600">
-                  <span className="text-xl">{item.icon}</span>
-                  <span>{item.text}</span>
-                </div>
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * index }}
+                  className={`bg-gradient-to-br ${item.color} p-3 rounded-xl border border-gray-800`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{item.icon}</span>
+                    <span className="text-gray-300 text-sm">{item.text}</span>
+                  </div>
+                </motion.div>
               ))}
             </div>
           </div>
 
-          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-red-500 via-red-600 to-red-500 rounded-full animate-progress"></div>
+          <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: "0%" }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 2 }}
+              className="h-full bg-gradient-to-r from-red-600 via-pink-600 to-purple-600 rounded-full"
+            />
           </div>
 
           <p className="text-sm text-gray-500 mt-4">
             Mengarahkan ke halaman utama...
           </p>
-        </div>
+        </motion.div>
       ) : (
         <>
           {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <div
-                className={`flex items-center gap-2 ${step >= 1 ? "text-red-600" : "text-gray-400"}`}>
+                className={`flex items-center gap-2 ${step >= 1 ? "text-red-400" : "text-gray-500"}`}>
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? "bg-red-600 text-white" : "bg-gray-100"}`}>
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? "bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg" : "bg-gray-800 text-gray-400"}`}>
                   1
                 </div>
                 <span className="text-sm font-medium hidden sm:inline">
@@ -201,11 +200,11 @@ const RegisterPage = () => {
                 </span>
               </div>
               <div
-                className={`flex-1 h-1 ${step >= 2 ? "bg-red-600" : "bg-gray-200"}`}></div>
+                className={`flex-1 h-1 ${step >= 2 ? "bg-gradient-to-r from-red-600 to-pink-600" : "bg-gray-800"}`}></div>
               <div
-                className={`flex items-center gap-2 ${step >= 2 ? "text-red-600" : "text-gray-400"}`}>
+                className={`flex items-center gap-2 ${step >= 2 ? "text-red-400" : "text-gray-500"}`}>
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? "bg-red-600 text-white" : "bg-gray-100"}`}>
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? "bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg" : "bg-gray-800 text-gray-400"}`}>
                   2
                 </div>
                 <span className="text-sm font-medium hidden sm:inline">
@@ -213,11 +212,11 @@ const RegisterPage = () => {
                 </span>
               </div>
               <div
-                className={`flex-1 h-1 ${step >= 3 ? "bg-red-600" : "bg-gray-200"}`}></div>
+                className={`flex-1 h-1 ${step >= 3 ? "bg-gradient-to-r from-red-600 to-pink-600" : "bg-gray-800"}`}></div>
               <div
-                className={`flex items-center gap-2 ${step >= 3 ? "text-red-600" : "text-gray-400"}`}>
+                className={`flex items-center gap-2 ${step >= 3 ? "text-red-400" : "text-gray-500"}`}>
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? "bg-red-600 text-white" : "bg-gray-100"}`}>
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? "bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg" : "bg-gray-800 text-gray-400"}`}>
                   3
                 </div>
                 <span className="text-sm font-medium hidden sm:inline">
@@ -225,7 +224,7 @@ const RegisterPage = () => {
                 </span>
               </div>
             </div>
-            <div className="text-center text-sm text-gray-600">
+            <div className="text-center text-sm text-gray-400">
               {step === 1 && "Mengisi data diri..."}
               {step === 2 && "Memverifikasi data..."}
               {step === 3 && "Membuat akun..."}
@@ -235,38 +234,49 @@ const RegisterPage = () => {
           <RegisterForm onSubmit={handleRegister} isLoading={isLoading} />
 
           {/* Registration Benefits */}
-          <div className="mt-8 p-6 bg-gradient-to-r from-red-50 to-white rounded-2xl border border-red-100">
-            <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Award className="text-red-600" size={20} />
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-8 p-6 bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border border-gray-800">
+            <h4 className="font-bold text-white mb-4 flex items-center gap-2">
+              <Award className="text-yellow-400" size={20} />
               Keuntungan Mendaftar
             </h4>
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-start gap-2">
-                <Trophy size={16} className="text-red-600 mt-1 flex-shrink-0" />
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-600/20 to-orange-600/20 flex items-center justify-center">
+                  <Trophy size={16} className="text-yellow-400" />
+                </div>
                 <div>
-                  <div className="font-medium text-gray-900 text-sm">
+                  <div className="font-medium text-white text-sm">
                     Voting Power
                   </div>
-                  <div className="text-xs text-gray-600">Vote setiap hari</div>
+                  <div className="text-xs text-gray-400">Vote setiap hari</div>
                 </div>
               </div>
-              <div className="flex items-start gap-2">
-                <Users size={16} className="text-red-600 mt-1 flex-shrink-0" />
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600/20 to-cyan-600/20 flex items-center justify-center">
+                  <Users size={16} className="text-blue-400" />
+                </div>
                 <div>
-                  <div className="font-medium text-gray-900 text-sm">
+                  <div className="font-medium text-white text-sm">
                     Komunitas
                   </div>
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-gray-400">
                     Akses grup eksklusif
                   </div>
                 </div>
               </div>
             </div>
-            <div className="mt-4 text-sm text-gray-600">
-              🎁 <span className="font-bold text-red-600">Bonus 100 poin</span>{" "}
+            <div className="mt-4 text-sm text-gray-400">
+              <Sparkles size={16} className="inline mr-2 text-yellow-400" />
+              <span className="font-bold text-yellow-400">
+                Bonus 100 poin
+              </span>{" "}
               untuk pendaftaran hari ini!
             </div>
-          </div>
+          </motion.div>
         </>
       )}
     </AuthLayout>

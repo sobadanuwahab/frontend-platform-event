@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 
-// Import icon dari lucide-react
 import {
   Trophy,
   Shield,
@@ -38,7 +37,9 @@ const Home = () => {
   const navigate = useNavigate();
   const containerRef = useRef(null);
   const statsRef = useRef(null);
-  const [isStatsVisible, setIsStatsVisible] = useState(false);
+  const featuresRef = useRef(null);
+  const topTeamsRef = useRef(null);
+  const ctaRef = useRef(null);
 
   // State untuk animasi statistik
   const [animatedStats, setAnimatedStats] = useState({
@@ -52,8 +53,8 @@ const Home = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
 
-  // Particle animation effect
-  const [particles, setParticles] = useState([]);
+  // State untuk memastikan animasi berjalan setelah mount
+  const [isMounted, setIsMounted] = useState(false);
 
   // Gambar untuk slider hero
   const heroSlides = [
@@ -95,59 +96,46 @@ const Home = () => {
     },
   ];
 
-  // Initialize particles
+  // Use InView untuk scroll-triggered animations
+  const isStatsInView = useInView(statsRef, {
+    once: true,
+    amount: 0.2,
+    margin: "0px 0px -50px 0px", // Trigger sedikit sebelum masuk viewport
+  });
+  const isFeaturesInView = useInView(featuresRef, {
+    once: true,
+    amount: 0.2,
+    margin: "0px 0px -50px 0px",
+  });
+  const isTopTeamsInView = useInView(topTeamsRef, {
+    once: true,
+    amount: 0.2,
+    margin: "0px 0px -50px 0px",
+  });
+  const isCTAInView = useInView(ctaRef, {
+    once: true,
+    amount: 0.2,
+    margin: "0px 0px -50px 0px",
+  });
+
+  // Set mounted state
   useEffect(() => {
-    const newParticles = Array.from({ length: 20 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 4 + 1,
-      speedX: (Math.random() - 0.5) * 0.15,
-      speedY: (Math.random() - 0.5) * 0.15,
-      color: "rgba(251, 113, 133, 0.1)",
-    }));
-    setParticles(newParticles);
-  }, []);
+    setIsMounted(true);
 
-  // Particle animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setParticles((prev) =>
-        prev.map((p) => ({
-          ...p,
-          x: (p.x + p.speedX) % 100,
-          y: (p.y + p.speedY) % 100,
-        })),
-      );
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Intersection Observer untuk animasi stats
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsStatsVisible(true);
-        }
-      },
-      { threshold: 0.5 },
-    );
-
-    if (statsRef.current) {
-      observer.observe(statsRef.current);
-    }
-
-    return () => {
+    // Force reflow untuk memastikan animasi berjalan
+    setTimeout(() => {
       if (statsRef.current) {
-        observer.unobserve(statsRef.current);
+        const event = new CustomEvent("forceCheckVisibility");
+        statsRef.current.dispatchEvent(event);
       }
-    };
+    }, 100);
+
+    return () => setIsMounted(false);
   }, []);
 
-  // Animasi angka statistik
+  // Animasi angka statistik - SIMPLIFIED
   useEffect(() => {
-    if (!isStatsVisible) return;
+    if (!isStatsInView && !isMounted) return;
 
     const targetStats = {
       totalVotes: 2548,
@@ -156,41 +144,51 @@ const Home = () => {
       daysLeft: 3,
     };
 
-    const duration = 2000;
-    const steps = 100;
-    const interval = duration / steps;
+    let animationFrameId;
+    let startTime = null;
+    const duration = 1500;
 
-    let currentStep = 0;
-    const timer = setInterval(() => {
-      currentStep++;
+    const animateCount = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Easing function untuk lebih smooth
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+
       setAnimatedStats({
-        totalVotes: Math.floor((targetStats.totalVotes / steps) * currentStep),
-        registeredTeams: Math.floor(
-          (targetStats.registeredTeams / steps) * currentStep,
-        ),
-        judges: Math.floor((targetStats.judges / steps) * currentStep),
-        daysLeft: Math.floor((targetStats.daysLeft / steps) * currentStep),
+        totalVotes: Math.floor(targetStats.totalVotes * easeOutQuart),
+        registeredTeams: Math.floor(targetStats.registeredTeams * easeOutQuart),
+        judges: Math.floor(targetStats.judges * easeOutQuart),
+        daysLeft: Math.floor(targetStats.daysLeft * easeOutQuart),
       });
 
-      if (currentStep >= steps) {
-        clearInterval(timer);
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(animateCount);
+      } else {
         setAnimatedStats(targetStats);
       }
-    }, interval);
+    };
 
-    return () => clearInterval(timer);
-  }, [isStatsVisible]);
+    animationFrameId = requestAnimationFrame(animateCount);
 
-  // Auto slide effect
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isStatsInView, isMounted]);
+
+  // Auto slide effect - OPTIMIZED
   useEffect(() => {
-    if (isHovering) return;
+    if (isHovering || !isMounted) return;
 
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 6000);
 
     return () => clearInterval(interval);
-  }, [isHovering]);
+  }, [isHovering, isMounted]);
 
   // Navigasi slide manual
   const nextSlide = () => {
@@ -372,6 +370,42 @@ const Home = () => {
     },
   ];
 
+  // Variants untuk animasi - SIMPLIFIED
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: "easeOut",
+      },
+    },
+  };
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.1,
+      },
+    },
+  };
+
+  const scaleIn = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.5,
+        ease: "backOut",
+      },
+    },
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
@@ -379,8 +413,7 @@ const Home = () => {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="relative"
-          >
+            className="relative">
             <div className="w-24 h-24 border-4 border-transparent border-t-red-600 rounded-full mx-auto" />
             <Trophy
               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-red-500"
@@ -400,42 +433,11 @@ const Home = () => {
 
   return (
     <div ref={containerRef} className="pb-8">
-      {/* Particle Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-50">
-        {particles.map((particle) => (
-          <motion.div
-            key={particle.id}
-            className="absolute rounded-full"
-            style={{
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-              width: `${particle.size}px`,
-              height: `${particle.size}px`,
-              backgroundColor: particle.color,
-            }}
-            animate={{
-              x: [0, particle.speedX * 100],
-              y: [0, particle.speedY * 100],
-            }}
-            transition={{
-              duration: 15,
-              repeat: Infinity,
-              repeatType: "reverse",
-              ease: "linear",
-            }}
-          />
-        ))}
-      </div>
-
       {/* Hero Section */}
       <section
         className="relative overflow-hidden px-4 md:px-8 pt-4 md:pt-6"
         onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
-      >
-        {/* Glow Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r blur-3xl opacity-50 rounded-2xl" />
-
+        onMouseLeave={() => setIsHovering(false)}>
         {/* Slider Container */}
         <div className="relative h-[65vh] md:h-[70vh] lg:h-[75vh] rounded-2xl overflow-hidden shadow-2xl">
           <AnimatePresence mode="wait">
@@ -448,14 +450,14 @@ const Home = () => {
                     initial={{ opacity: 0, scale: 1.1 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.8, ease: "easeInOut" }}
-                  >
+                    transition={{ duration: 0.6, ease: "easeInOut" }}>
                     {/* Background Image dengan Overlay Gradient */}
                     <div className="absolute inset-0">
                       <img
                         src={slide.image}
                         alt={slide.title}
                         className="absolute inset-0 w-full h-full object-cover opacity-40"
+                        loading="lazy"
                       />
                       <div
                         className={`absolute inset-0 bg-gradient-to-t ${slide.gradient} via-black/80 to-transparent`}
@@ -465,10 +467,9 @@ const Home = () => {
                     {/* Content dengan Animasi */}
                     <motion.div
                       className="relative h-full flex items-center"
-                      initial={{ y: 50, opacity: 0 }}
+                      initial={{ y: 30, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.3, duration: 0.6 }}
-                    >
+                      transition={{ delay: 0.2, duration: 0.5 }}>
                       <div className="container mx-auto px-4 md:px-8 lg:px-12">
                         <div className="max-w-2xl">
                           {/* Live Badge dengan Animasi */}
@@ -476,8 +477,7 @@ const Home = () => {
                             className={`inline-flex items-center gap-3 ${slide.badgeColor} text-white rounded-full px-5 py-2 mb-6 backdrop-blur-md border border-white/10`}
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            transition={{ delay: 0.4 }}
-                          >
+                            transition={{ delay: 0.3 }}>
                             <Circle
                               className="w-2 h-2 text-white animate-pulse"
                               fill="currentColor"
@@ -503,17 +503,15 @@ const Home = () => {
                           {/* CTA Buttons dengan Hover Effects */}
                           <motion.div
                             className="flex flex-col sm:flex-row gap-3"
-                            initial={{ y: 20, opacity: 0 }}
+                            initial={{ y: 10, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.5 }}
-                          >
+                            transition={{ delay: 0.4 }}>
                             {user ? (
                               <>
                                 {user.role === "user" && (
                                   <Link
                                     to="/voting"
-                                    className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-pink-700 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl border border-red-500/30"
-                                  >
+                                    className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-pink-700 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-xl border border-red-500/30">
                                     <Zap
                                       size={18}
                                       className="group-hover:animate-pulse"
@@ -523,8 +521,7 @@ const Home = () => {
                                 )}
                                 <Link
                                   to="/results"
-                                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm text-white font-bold rounded-lg border border-white/20 hover:bg-white/20 hover:border-white/30 transition-all duration-300 transform hover:-translate-y-0.5"
-                                >
+                                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm text-white font-bold rounded-lg border border-white/20 hover:bg-white/20 hover:border-white/30 transition-all duration-200 transform hover:-translate-y-0.5">
                                   <Trophy size={18} />
                                   <span>Lihat Hasil Live</span>
                                 </Link>
@@ -533,8 +530,7 @@ const Home = () => {
                               <>
                                 <Link
                                   to="/auth/login"
-                                  className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-orange-700 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl border border-orange-500/30"
-                                >
+                                  className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-orange-700 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-xl border border-orange-500/30">
                                   <Heart
                                     size={18}
                                     className="group-hover:rotate-12 transition-transform"
@@ -543,8 +539,7 @@ const Home = () => {
                                 </Link>
                                 <Link
                                   to="/auth/register"
-                                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:-translate-y-0.5 border border-purple-500/30"
-                                >
+                                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 transform hover:-translate-y-0.5 border border-purple-500/30">
                                   <span>Daftar Sekarang</span>
                                   <ChevronRight
                                     size={18}
@@ -555,13 +550,12 @@ const Home = () => {
                             )}
                           </motion.div>
 
-                          {/* Quick Stats dengan Lucide Icons */}
+                          {/* Quick Stats */}
                           <motion.div
                             className="mt-8 flex flex-wrap gap-4"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ delay: 0.7 }}
-                          >
+                            transition={{ delay: 0.6 }}>
                             <div className="flex items-center gap-2">
                               <Circle
                                 className="w-2 h-2 text-green-500 animate-pulse"
@@ -602,16 +596,14 @@ const Home = () => {
           {/* Navigation Buttons */}
           <button
             onClick={prevSlide}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 backdrop-blur-md text-white p-2 rounded-full hover:bg-black/70 transition-all duration-300 hover:scale-110 border border-white/10"
-            aria-label="Slide sebelumnya"
-          >
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 backdrop-blur-md text-white p-2 rounded-full hover:bg-black/70 transition-all duration-200 hover:scale-110 border border-white/10"
+            aria-label="Slide sebelumnya">
             <ChevronLeft size={20} />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 backdrop-blur-md text-white p-2 rounded-full hover:bg-black/70 transition-all duration-300 hover:scale-110 border border-white/10"
-            aria-label="Slide berikutnya"
-          >
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 backdrop-blur-md text-white p-2 rounded-full hover:bg-black/70 transition-all duration-200 hover:scale-110 border border-white/10"
+            aria-label="Slide berikutnya">
             <ChevronRight size={20} />
           </button>
 
@@ -621,7 +613,7 @@ const Home = () => {
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
-                className={`transition-all duration-300 ${
+                className={`transition-all duration-200 ${
                   index === currentSlide
                     ? "bg-white w-8 h-1.5 rounded-full"
                     : "bg-white/30 w-1.5 h-1.5 rounded-full hover:bg-white/60 hover:w-5"
@@ -634,9 +626,8 @@ const Home = () => {
           {/* Scroll Indicator */}
           <motion.div
             className="absolute bottom-3 left-1/2 transform -translate-x-1/2"
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          >
+            animate={{ y: [0, 5, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
             <ChevronDown className="text-white/70" size={20} />
           </motion.div>
         </div>
@@ -645,34 +636,24 @@ const Home = () => {
       {/* Container untuk konten lainnya */}
       <div className="container mx-auto px-4 md:px-8 mt-8 md:mt-12 space-y-8 md:space-y-12">
         {/* Stats Section */}
-        <section ref={statsRef} className="relative">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <section ref={statsRef}>
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate={isStatsInView || isMounted ? "visible" : "hidden"}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {stats.map((stat, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 30 }}
-                animate={isStatsVisible ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`${stat.bg} p-6 rounded-xl border-2 ${stat.border} hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden`}
-              >
-                {/* Gradient Background */}
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-                />
-
+                variants={scaleIn}
+                custom={index}
+                whileHover={{ y: -5 }}
+                className={`${stat.bg} p-6 rounded-xl border-2 ${stat.border} hover:shadow-xl transition-all duration-200 group relative overflow-hidden`}>
                 <div className="relative">
                   <div className="flex items-center justify-between mb-3">
-                    <motion.div
-                      animate={{ rotate: [0, 10, -10, 0] }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        repeatDelay: 3,
-                      }}
-                      className="p-2.5 rounded-lg bg-black/50 backdrop-blur-sm"
-                    >
+                    <div className="p-2.5 rounded-lg bg-black/50 backdrop-blur-sm">
                       {stat.icon}
-                    </motion.div>
+                    </div>
                     {stat.increment && (
                       <div className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded-full border border-emerald-800/30">
                         <TrendingUp size={10} />
@@ -680,14 +661,9 @@ const Home = () => {
                       </div>
                     )}
                   </div>
-                  <motion.div
-                    initial={{ scale: 0.9 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300 mb-1"
-                  >
+                  <div className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300 mb-1">
                     {stat.value}
-                  </motion.div>
+                  </div>
                   <div className={`text-base font-semibold ${stat.color} mb-1`}>
                     {stat.label}
                   </div>
@@ -697,17 +673,16 @@ const Home = () => {
                 </div>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
 
         {/* Features Section */}
-        <section>
+        <section ref={featuresRef}>
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-8 md:mb-12"
-          >
+            variants={fadeInUp}
+            initial="hidden"
+            animate={isFeaturesInView || isMounted ? "visible" : "hidden"}
+            className="text-center mb-8 md:mb-12">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-red-600 to-pink-600 text-white px-3 py-1.5 rounded-full mb-3 border border-red-500/30">
               <Sparkles size={14} />
               <span className="text-xs font-bold tracking-wider">
@@ -725,33 +700,26 @@ const Home = () => {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate={isFeaturesInView || isMounted ? "visible" : "hidden"}
+            className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: feature.delay }}
-                whileHover={{ scale: 1.03 }}
-              >
+                variants={fadeInUp}
+                custom={index}
+                whileHover={{ y: -3 }}>
                 <Link
                   to={feature.link}
-                  className={`group block ${feature.bg} p-5 rounded-xl border-2 border-gray-800 hover:border-transparent transition-all duration-300 shadow-lg hover:shadow-xl relative overflow-hidden`}
-                >
-                  {/* Hover Gradient */}
-                  <div
-                    className={`absolute inset-0 ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-                  />
-
+                  className={`group block ${feature.bg} p-5 rounded-xl border-2 border-gray-800 hover:border-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl relative overflow-hidden`}>
                   <div className="relative">
                     <div
-                      className={`${feature.gradient} w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:${feature.hoverGradient} transition-all duration-300 transform group-hover:rotate-6`}
-                    >
+                      className={`${feature.gradient} w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-all duration-200`}>
                       {feature.icon}
                     </div>
-                    <h3
-                      className={`text-lg font-bold mb-2 ${feature.color} group-hover:scale-105 transition-transform`}
-                    >
+                    <h3 className={`text-lg font-bold mb-2 ${feature.color}`}>
                       {feature.title}
                     </h3>
                     <p className="text-gray-400 text-sm mb-3">
@@ -761,10 +729,10 @@ const Home = () => {
                       <span className="text-xs font-medium text-gray-500 group-hover:text-gray-300">
                         Jelajahi →
                       </span>
-                      <div className="w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center group-hover:bg-gradient-to-r group-hover:from-red-900/50 group-hover:to-pink-900/50 transition-all">
+                      <div className="w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center group-hover:bg-gray-700 transition-all">
                         <ChevronRight
                           size={14}
-                          className="text-gray-400 group-hover:text-red-400"
+                          className="text-gray-400 group-hover:text-white"
                         />
                       </div>
                     </div>
@@ -772,18 +740,18 @@ const Home = () => {
                 </Link>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
 
         {/* Top Teams Section */}
-        <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl p-6 md:p-8 border border-gray-800">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-8 left-8 w-24 h-24 bg-gradient-to-r from-red-600 to-pink-600 rounded-full blur-2xl"></div>
-            <div className="absolute bottom-8 right-8 w-32 h-32 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full blur-2xl"></div>
-          </div>
-
-          <div className="relative mb-6 md:mb-8">
+        <section
+          ref={topTeamsRef}
+          className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl p-6 md:p-8 border border-gray-800">
+          <motion.div
+            variants={fadeInUp}
+            initial="hidden"
+            animate={isTopTeamsInView || isMounted ? "visible" : "hidden"}
+            className="relative mb-6 md:mb-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <div className="inline-flex items-center gap-2 bg-gradient-to-r from-red-600 to-orange-600 text-white px-3 py-1.5 rounded-full mb-2 border border-orange-500/30">
@@ -801,8 +769,7 @@ const Home = () => {
               </div>
               <Link
                 to="/results"
-                className="group inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-medium rounded-lg hover:from-gray-900 hover:to-black transition-all duration-300 transform hover:-translate-y-0.5 border border-gray-700"
-              >
+                className="group inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-medium rounded-lg hover:from-gray-900 hover:to-black transition-all duration-200 transform hover:-translate-y-0.5 border border-gray-700">
                 <span className="text-sm">Lihat Semua Peringkat</span>
                 <ChevronRight
                   size={16}
@@ -810,22 +777,30 @@ const Home = () => {
                 />
               </Link>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="relative grid md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {topTeams.map((team) => (
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate={isTopTeamsInView || isMounted ? "visible" : "hidden"}
+            className="relative grid md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {topTeams.map((team, index) => (
               <motion.div
                 key={team.id}
-                whileHover={{ y: -3 }}
-                className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl overflow-hidden border-2 border-gray-800 hover:border-transparent group relative"
-              >
+                variants={fadeInUp}
+                custom={index}
+                whileHover={{ y: -4 }}
+                className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl overflow-hidden border-2 border-gray-800 hover:border-gray-700 group relative shadow-lg hover:shadow-xl transition-all duration-200">
+                <div className="absolute -top-3 -right-3 w-16 h-16 bg-gradient-to-br from-gray-900 to-black rounded-full border-2 border-gray-700 flex items-center justify-center z-10">
+                  <div
+                    className={`${team.badgeColor} w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-lg border border-white/10`}>
+                    {team.rank}
+                  </div>
+                </div>
+
                 <div className="p-5 md:p-6 relative">
                   <div className="flex items-start justify-between mb-4">
-                    <div
-                      className={`${team.badgeColor} w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-lg border border-white/10`}
-                    >
-                      {team.rank}
-                    </div>
+                    <div className="pt-2">{team.icon}</div>
                     {team.trend === "up" && (
                       <div className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded-full border border-emerald-800/30">
                         <TrendingUp size={10} />
@@ -849,9 +824,15 @@ const Home = () => {
                       </span>
                     </div>
                     <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full bg-gradient-to-r ${team.color} rounded-full shadow-lg`}
-                        style={{ width: `${team.progress}%` }}
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={
+                          isTopTeamsInView || isMounted
+                            ? { width: `${team.progress}%` }
+                            : { width: 0 }
+                        }
+                        transition={{ duration: 1, delay: index * 0.1 }}
+                        className={`h-full bg-gradient-to-r ${team.color} rounded-full`}
                       />
                     </div>
                     <div className="text-xs text-gray-500 text-right mt-1">
@@ -867,16 +848,14 @@ const Home = () => {
                   {user ? (
                     <Link
                       to="/voting"
-                      className="w-full py-2.5 bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2 group border border-red-500/30 text-sm"
-                    >
-                      <Heart size={16} className="group-hover:animate-bounce" />
+                      className="w-full py-2.5 bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold rounded-lg hover:from-red-700 hover:to-pink-700 transition-all duration-200 flex items-center justify-center gap-2 group border border-red-500/30 text-sm">
+                      <Heart size={16} />
                       Vote Sekarang
                     </Link>
                   ) : (
                     <Link
                       to="/auth/login"
-                      className="w-full py-2.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-bold rounded-lg hover:from-gray-900 hover:to-black transition-all duration-300 flex items-center justify-center gap-2 group border border-gray-700 text-sm"
-                    >
+                      className="w-full py-2.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-bold rounded-lg hover:from-gray-900 hover:to-black transition-all duration-200 flex items-center justify-center gap-2 group border border-gray-700 text-sm">
                       <Heart size={16} />
                       Login untuk Vote
                     </Link>
@@ -884,17 +863,21 @@ const Home = () => {
                 </div>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
 
         {/* Final CTA Section */}
-        <section className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl p-6 md:p-8 text-white overflow-hidden border border-gray-800">
+        <motion.section
+          ref={ctaRef}
+          variants={fadeInUp}
+          initial="hidden"
+          animate={isCTAInView || isMounted ? "visible" : "hidden"}
+          className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl p-6 md:p-8 text-white overflow-hidden border border-gray-800">
           <div className="relative max-w-3xl mx-auto text-center">
             <motion.div
-              className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 mb-6 border border-white/10"
               animate={{ scale: [1, 1.03, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
+              transition={{ duration: 3, repeat: Infinity }}
+              className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 mb-6 border border-white/10">
               <Star className="text-yellow-400" size={16} />
               <span className="font-bold text-xs tracking-wider">
                 KESEMPATAN TERBATAS
@@ -921,34 +904,33 @@ const Home = () => {
             </p>
 
             <motion.div
-              className="flex flex-col sm:flex-row gap-3 justify-center mb-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Link
-                to="/ticket"
-                className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl border border-yellow-500/30"
-              >
-                <span>Daftar Tim Anda Sekarang</span>
-                <Rocket
-                  size={18}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
-              </Link>
-              <Link
-                to="/voting"
-                className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm text-white font-bold rounded-lg border border-white/20 hover:bg-white/20 hover:border-white/30 transition-all duration-300 transform hover:-translate-y-0.5"
-              >
-                <Trophy
-                  size={18}
-                  className="group-hover:rotate-12 transition-transform"
-                />
-                <span>Mulai Voting Live</span>
-              </Link>
+              variants={staggerContainer}
+              initial="hidden"
+              animate={isCTAInView || isMounted ? "visible" : "hidden"}
+              className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
+              <motion.div variants={fadeInUp}>
+                <Link
+                  to="/ticket"
+                  className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-xl border border-yellow-500/30">
+                  <Rocket size={18} />
+                  <span>Daftar Tim Anda Sekarang</span>
+                </Link>
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <Link
+                  to="/voting"
+                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm text-white font-bold rounded-lg border border-white/20 hover:bg-white/20 hover:border-white/30 transition-all duration-200 transform hover:-translate-y-0.5">
+                  <Trophy size={18} />
+                  <span>Mulai Voting Live</span>
+                </Link>
+              </motion.div>
             </motion.div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate={isCTAInView || isMounted ? "visible" : "hidden"}
+              className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
               {[
                 {
                   icon: <Calendar className="text-red-400 mx-auto" size={20} />,
@@ -973,11 +955,9 @@ const Home = () => {
               ].map((item, index) => (
                 <motion.div
                   key={index}
-                  className="bg-white/5 backdrop-blur-sm rounded-lg p-3 border border-white/10"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                >
+                  variants={fadeInUp}
+                  custom={index}
+                  className="bg-white/5 backdrop-blur-sm rounded-lg p-3 border border-white/10 hover:border-white/20 transition-all duration-200">
                   <div className="mb-1">{item.icon}</div>
                   <div className="text-xs text-gray-400 mb-1">{item.label}</div>
                   <div className="font-bold text-sm md:text-base text-white">
@@ -985,9 +965,9 @@ const Home = () => {
                   </div>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
-        </section>
+        </motion.section>
       </div>
     </div>
   );
