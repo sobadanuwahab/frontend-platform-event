@@ -15,7 +15,6 @@ export const AuthProvider = ({ children }) => {
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
 
-          // Validasi user data
           if (parsedUser && parsedUser.role) {
             setUser(parsedUser);
           } else {
@@ -57,45 +56,30 @@ export const AuthProvider = ({ children }) => {
 
       let userData;
 
-      // CASE 1: Data ada di responseData.data.user (structure dari backend)
+      // Process user data...
       if (responseData.data && responseData.data.user) {
         const apiUser = responseData.data.user;
         console.log("AuthContext - API User data:", apiUser);
 
-        // Mapping yang lebih komprehensif
         const roleMapping = {
-          // ID numeric
           1: "admin",
-          2: "juri", // ID 2 = juri
+          2: "juri",
           3: "user",
-
-          // String roles dari database
+          4: "organizer",
           admin: "admin",
           juri: "juri",
-          judge: "juri", // "judge" dari API -> "juri" di frontend
+          judge: "juri",
           user: "user",
+          organizer: "organizer",
         };
 
-        // Ambil role dengan prioritas:
-        // 1. Langsung dari apiUser.role jika ada
-        // 2. Dari mapping user_role_id jika ada
         let role;
-
         if (apiUser.role) {
-          // Mapping dari role string API ke frontend
           role = roleMapping[apiUser.role] || "user";
-          console.log(
-            `AuthContext - Role from apiUser.role: "${apiUser.role}" -> "${role}"`,
-          );
         } else if (apiUser.user_role_id) {
-          // Mapping dari user_role_id
           role = roleMapping[apiUser.user_role_id] || "user";
-          console.log(
-            `AuthContext - Role from user_role_id: ${apiUser.user_role_id} -> "${role}"`,
-          );
         } else {
           role = "user";
-          console.log("AuthContext - No role found, defaulting to 'user'");
         }
 
         userData = {
@@ -103,12 +87,9 @@ export const AuthProvider = ({ children }) => {
           name: apiUser.name || apiUser.username || "User",
           email: apiUser.email || email,
           role: role,
-          // Simpan juga role original dari API untuk debugging
           originalRole: apiUser.role,
           whatsapp: apiUser.whatsapp || null,
         };
-
-        console.log("AuthContext - Final user data:", userData);
       }
       // CASE 2: Data langsung di responseData.data
       else if (responseData.data) {
@@ -119,10 +100,12 @@ export const AuthProvider = ({ children }) => {
           1: "admin",
           2: "juri",
           3: "user",
+          4: "organizer",
           admin: "admin",
           juri: "juri",
           judge: "juri",
           user: "user",
+          organizer: "organizer",
         };
 
         let role;
@@ -159,6 +142,7 @@ export const AuthProvider = ({ children }) => {
           juri: "juri",
           judge: "juri",
           user: "user",
+          organizer: "organizer",
         };
 
         userData = {
@@ -191,14 +175,37 @@ export const AuthProvider = ({ children }) => {
         responseData.data?.token || responseData.token || "LOGIN_OK",
       );
 
-      // Update state
+      // **UPDATE STATE SYNCHRONOUSLY**
       setUser(userData);
-      console.log("AuthContext - User state updated successfully");
+      console.log("AuthContext - User state updated synchronously");
 
-      return userData;
+      const redirectPath = getRedirectPathByRole(userData.role);
+      console.log(`AuthContext - Immediate redirect to: ${redirectPath}`);
+
+      return {
+        success: true,
+        user: userData,
+        redirectPath: redirectPath,
+      };
     } catch (error) {
       console.error("AuthContext - Login error:", error);
       throw error;
+    }
+  };
+
+  // Helper function untuk menentukan redirect path berdasarkan role
+  const getRedirectPathByRole = (role) => {
+    switch (role) {
+      case "organizer":
+        return "/organizer";
+      case "admin":
+        return "/admin/dashboard";
+      case "juri":
+        return "/judging";
+      case "user":
+        return "/";
+      default:
+        return "/";
     }
   };
 
@@ -215,8 +222,8 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         logout,
-      }}
-    >
+        getRedirectPathByRole,
+      }}>
       {children}
     </AuthContext.Provider>
   );

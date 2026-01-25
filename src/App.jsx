@@ -12,6 +12,16 @@ import JudgingPage from "./pages/JudgingPage";
 import ResultsPage from "./pages/ResultsPage";
 import DashboardPage from "./pages/admin/DashboardPage";
 
+// Import Organizer Pages
+import OrganizerPage from "./pages/organizer/OrganizerPage";
+import Dashboard from "./pages/organizer/Dashboard";
+import ParticipantsList from "./pages/organizer/participants";
+import CreateParticipant from "./pages/organizer/participants/CreateParticipants";
+import EditParticipant from "./pages/organizer/participants/EditParticipants";
+import EventsList from "./pages/organizer/events";
+import CreateEvent from "./pages/organizer/events/CreateEvent";
+import EditEvent from "./pages/organizer/events/EditEvent";
+
 import ProtectedRoute from "./components/Common/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 
@@ -26,6 +36,7 @@ function App() {
 
           {/* MAIN ROUTES dengan Layout */}
           <Route path="/" element={<Layout />}>
+            {/* Home biasa - Layout akan handle auto-redirect */}
             <Route index element={<Home />} />
             <Route path="home" element={<Home />} />
             <Route path="results" element={<ResultsPage />} />
@@ -85,6 +96,23 @@ function App() {
                 </div>
               }
             />
+          </Route>
+
+          {/* ORGANIZER ROUTES dengan Layout Khusus */}
+          <Route
+            path="/organizer"
+            element={
+              <ProtectedRoute allowedRoles={["organizer"]}>
+                <OrganizerPage />
+              </ProtectedRoute>
+            }>
+            <Route index element={<Dashboard />} />
+            <Route path="participants" element={<ParticipantsList />} />
+            <Route path="participants/create" element={<CreateParticipant />} />
+            <Route path="participants/edit/:id" element={<EditParticipant />} />
+            <Route path="events" element={<EventsList />} />
+            <Route path="events/create" element={<CreateEvent />} />
+            <Route path="events/edit" element={<EditEvent />} />
           </Route>
         </Routes>
       </Router>
