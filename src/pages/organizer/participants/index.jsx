@@ -1,162 +1,148 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Search,
-  Filter,
   Plus,
   Edit,
   Trash2,
   Eye,
-  Download,
-  MoreVertical,
+  Filter,
   School,
   Phone,
   MapPin,
   Calendar,
   Award,
+  User,
   ChevronLeft,
   ChevronRight,
+  Loader,
+  AlertCircle,
+  CheckCircle,
+  Image as ImageIcon,
 } from "lucide-react";
-import axios from "axios";
+import api from "../../../services/api";
 
 const ParticipantsList = () => {
-  const API_URL = "https://apipaskibra.my.id/api";
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedEvent, setSelectedEvent] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [events, setEvents] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [deleteLoading, setDeleteLoading] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [filterApplied, setFilterApplied] = useState(false);
 
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    fetchParticipants();
-    fetchFilters();
-  }, [currentPage, selectedEvent, selectedCategory]);
+  /* =========================
+      FETCH CATEGORIES FROM API
+  ========================== */
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await api.get("/participant-categories");
+      if (response.data.success && response.data.data) {
+        setCategories(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }, []);
 
-  const fetchParticipants = async () => {
+  /* =========================
+      FETCH PARTICIPANTS - CORRECT ENDPOINT
+  ========================== */
+  const fetchParticipants = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("access_token");
-      const headers = {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      };
+      // Gunakan endpoint yang benar: /participant-lists/1
+      const response = await api.get("/participant-lists/1");
 
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
+      let data = response.data?.data || [];
 
-      // Gunakan endpoint yang benar
-      const response = await axios.get(`${API_URL}/participant-lists/1`, {
-        headers,
-        timeout: 5000,
-      });
-
-      console.log("Participants API response:", response.data);
-
-      let participants = [];
-      if (response.data.success) {
-        participants = response.data.data || [];
-      }
-
-      // Apply filters
-      let filteredParticipants = participants;
-
+      // SEARCH FILTER
       if (searchTerm) {
-        filteredParticipants = filteredParticipants.filter(
+        data = data.filter(
           (p) =>
             p.school_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.coach?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.school_address?.toLowerCase().includes(searchTerm.toLowerCase()),
+            p.school_address
+              ?.toLowerCase()
+              .includes(searchTerm.toLowerCase()) ||
+            p.coach_whatsapp?.includes(searchTerm),
         );
       }
 
-      if (selectedEvent) {
-        filteredParticipants = filteredParticipants.filter(
-          (p) => p.event_id == selectedEvent || p.event?.id == selectedEvent,
-        );
-      }
-
+      // CATEGORY FILTER
       if (selectedCategory) {
-        filteredParticipants = filteredParticipants.filter(
-          (p) =>
-            p.participant_category_id == selectedCategory ||
-            p.participant_category?.id == selectedCategory,
+        data = data.filter(
+          (p) => p.participant_category_id == selectedCategory,
         );
       }
 
-      // Pagination
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      const paginatedParticipants = filteredParticipants.slice(
-        startIndex,
-        endIndex,
-      );
+      // PAGINATION
+      const start = (currentPage - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      const paginatedData = data.slice(start, end);
 
-      setParticipants(paginatedParticipants);
-      setTotalPages(Math.ceil(filteredParticipants.length / itemsPerPage));
+      setTotalPages(Math.ceil(data.length / itemsPerPage));
+      setParticipants(paginatedData);
     } catch (error) {
       console.error("Error fetching participants:", error);
-      // Fallback data
-      setParticipants([
-        {
-          id: 1,
-          school_name: "SMAN 3 Cilegon",
-          school_address: "Cilegon Mancak, Banten",
-          coach: "Udin Coach",
-          coach_whatsapp: "081278523645",
-          event: { id: 1, name: "Event Paskibra SMAN 1 Cilegon" },
-          participant_category: { id: 3, name: "SMA" },
-          status: "active",
-          created_at: "2024-01-15T10:30:00Z",
-        },
-      ]);
+      setParticipants([]);
       setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, selectedCategory, currentPage]);
 
-  const fetchFilters = async () => {
-    try {
-      const [eventsRes, categoriesRes] = await Promise.all([
-        axios.get(`${API_URL}/events`),
-        axios.get(`${API_URL}/participant-categories`),
-      ]);
-
-      setEvents(eventsRes.data.data || []);
-      setCategories(categoriesRes.data.data || []);
-    } catch (error) {
-      console.error("Error fetching filters:", error);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus peserta ini?")) {
+  /* =========================
+      INITIAL FETCH
+  ========================== */
+  useEffect(() => {
+    const loadInitialData = async () => {
       try {
-        const token = localStorage.getItem("access_token");
-        await axios.delete(`${API_URL}/participants/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        fetchParticipants(); // Refresh list
+        await Promise.all([fetchCategories(), fetchParticipants()]);
       } catch (error) {
-        console.error("Error deleting participant:", error);
-        alert("Gagal menghapus peserta");
+        console.error("Error loading initial data:", error);
       }
+    };
+
+    loadInitialData();
+  }, [fetchCategories, fetchParticipants]);
+
+  /* =========================
+      DELETE PARTICIPANT
+  ========================== */
+  const handleDelete = async (id, schoolName) => {
+    if (!confirm(`Yakin ingin menghapus peserta "${schoolName}"?`)) return;
+
+    setDeleteLoading(id);
+    try {
+      const response = await api.delete(`/participants/${id}`);
+
+      if (response.data.success) {
+        setSuccessMessage(`Peserta "${schoolName}" berhasil dihapus`);
+        setTimeout(() => setSuccessMessage(""), 3000);
+        fetchParticipants();
+      }
+    } catch (error) {
+      console.error("Error deleting participant:", error);
+      alert(error.response?.data?.message || "Gagal menghapus peserta");
+    } finally {
+      setDeleteLoading(null);
     }
   };
 
+  /* =========================
+      FORMAT DATE
+  ========================== */
   const formatDate = (dateString) => {
+    if (!dateString) return "-";
     const date = new Date(dateString);
     return date.toLocaleDateString("id-ID", {
       day: "numeric",
@@ -165,247 +151,379 @@ const ParticipantsList = () => {
     });
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
+  /* =========================
+      FORMAT PHONE NUMBER
+  ========================== */
+  const formatPhone = (phone) => {
+    if (!phone) return "-";
+    return phone.replace(/(\d{4})(\d{4})(\d{4})/, "$1-$2-$3");
+  };
+
+  /* =========================
+      HANDLE SEARCH
+  ========================== */
+  const handleSearch = () => {
     setCurrentPage(1);
+    setFilterApplied(true);
     fetchParticipants();
   };
 
-  return (
-    <div>
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Daftar Peserta</h1>
-            <p className="text-gray-400">
-              Kelola semua peserta yang terdaftar dalam event Anda
-            </p>
-          </div>
+  /* =========================
+      HANDLE FILTER
+  ========================== */
+  const handleFilter = () => {
+    setCurrentPage(1);
+    setFilterApplied(true);
+    fetchParticipants();
+  };
 
-          <Link
-            to="/organizer/participants/create"
-            className="flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium whitespace-nowrap">
-            <Plus size={20} />
-            <span>Tambah Peserta Baru</span>
-          </Link>
+  /* =========================
+      CLEAR FILTERS
+  ========================== */
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("");
+    setCurrentPage(1);
+    setFilterApplied(false);
+    fetchParticipants();
+  };
+
+  /* =========================
+      PAGINATION HANDLERS
+  ========================== */
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  /* =========================
+      RENDER LOADING
+  ========================== */
+  if (loading && participants.length === 0) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="mb-4"
+        >
+          <Loader className="text-blue-500" size={48} />
+        </motion.div>
+        <p className="text-gray-400">Memuat data peserta...</p>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            Daftar Peserta
+          </h1>
+          <p className="text-gray-400">Kelola data peserta lomba Paskibra</p>
+        </div>
+        <Link
+          to="/organizer/participants/create"
+          className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all"
+        >
+          <Plus size={20} />
+          Tambah Peserta
+        </Link>
+      </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl"
+        >
+          <div className="flex items-start gap-3">
+            <CheckCircle className="text-green-400 mt-0.5" size={20} />
+            <p className="text-green-400">{successMessage}</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Filters */}
+      <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-6 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter size={18} className="text-gray-400" />
+          <h2 className="text-lg font-medium text-gray-300">
+            Filter & Pencarian
+          </h2>
         </div>
 
-        {/* Search and Filters */}
-        <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6 mb-6">
-          <form onSubmit={handleSearch} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Search Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Cari Peserta
+            </label>
             <div className="relative">
               <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                size={20}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={18}
               />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Cari nama sekolah, coach, atau alamat..."
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                placeholder="Cari nama sekolah, pelatih, atau alamat..."
+                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
               />
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Filter by Event
-                </label>
-                <div className="relative">
-                  <Calendar
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                    size={20}
-                  />
-                  <select
-                    value={selectedEvent}
-                    onChange={(e) => setSelectedEvent(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none">
-                    <option value="">Semua Event</option>
-                    {events.map((event) => (
-                      <option key={event.id} value={event.id}>
-                        {event.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Filter by Category
-                </label>
-                <div className="relative">
-                  <Award
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                    size={20}
-                  />
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none">
-                    <option value="">Semua Kategori</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
-                  Terapkan Filter
-                </button>
-              </div>
+          {/* Category Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Filter Kategori
+            </label>
+            <div className="relative">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all appearance-none"
+              >
+                <option value="">Semua Kategori</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
             </div>
-          </form>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-end gap-2">
+            <button
+              onClick={handleFilter}
+              className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Terapkan Filter
+            </button>
+            {(searchTerm || selectedCategory || filterApplied) && (
+              <button
+                onClick={clearFilters}
+                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium rounded-lg transition-colors"
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
+      {/* Participants Count */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-gray-400">
+          Menampilkan{" "}
+          <span className="text-white font-medium">{participants.length}</span>{" "}
+          peserta
+          {(searchTerm || selectedCategory) && " (setelah filter)"}
+        </p>
+        {totalPages > 1 && (
+          <p className="text-gray-400">
+            Halaman{" "}
+            <span className="text-white font-medium">{currentPage}</span> dari{" "}
+            <span className="text-white font-medium">{totalPages}</span>
+          </p>
+        )}
+      </div>
+
       {/* Participants Table */}
-      <div className="bg-gray-800/50 rounded-2xl border border-gray-700 overflow-hidden">
+      <div className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="p-8 text-center">
+            <Loader
+              className="animate-spin text-blue-500 mx-auto mb-2"
+              size={24}
+            />
+            <p className="text-gray-400">Memuat data...</p>
           </div>
         ) : participants.length === 0 ? (
-          <div className="p-12 text-center">
-            <School size={48} className="mx-auto mb-4 text-gray-500" />
-            <h3 className="text-xl font-bold mb-2">Tidak ada peserta</h3>
-            <p className="text-gray-400 mb-6">
-              {searchTerm || selectedEvent || selectedCategory
-                ? "Tidak ditemukan peserta dengan filter yang dipilih"
-                : "Belum ada peserta yang terdaftar"}
+          <div className="p-8 text-center">
+            <AlertCircle className="text-gray-500 mx-auto mb-3" size={48} />
+            <h3 className="text-lg font-medium text-gray-300 mb-2">
+              {searchTerm || selectedCategory
+                ? "Tidak ada peserta yang sesuai"
+                : "Belum ada peserta"}
+            </h3>
+            <p className="text-gray-500 mb-4">
+              {searchTerm || selectedCategory
+                ? "Tidak ada peserta yang sesuai dengan filter Anda"
+                : "Belum ada peserta yang terdaftar. Tambahkan peserta pertama Anda!"}
             </p>
-            <Link
-              to="/organizer/participants/create"
-              className="inline-flex items-center space-x-2 px-6 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium">
-              <Plus size={20} />
-              <span>Tambah Peserta Pertama</span>
-            </Link>
+            {searchTerm || selectedCategory ? (
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+              >
+                Reset Filter
+              </button>
+            ) : (
+              <Link
+                to="/organizer/participants/create"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                <Plus size={16} />
+                Tambah Peserta Pertama
+              </Link>
+            )}
           </div>
         ) : (
           <>
+            {/* Desktop Table */}
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-900/50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
+                <thead>
+                  <tr className="bg-gray-900 border-b border-gray-800">
+                    <th className="text-left p-4 text-gray-400 font-medium">
                       Sekolah
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
-                      Event
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
+                    <th className="text-left p-4 text-gray-400 font-medium">
                       Kategori
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
-                      Coach
+                    <th className="text-left p-4 text-gray-400 font-medium">
+                      Pelatih
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
+                    <th className="text-left p-4 text-gray-400 font-medium">
+                      WhatsApp
+                    </th>
+                    <th className="text-left p-4 text-gray-400 font-medium">
                       Tanggal
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
+                    <th className="text-left p-4 text-gray-400 font-medium">
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700">
+                <tbody>
                   {participants.map((participant) => (
                     <tr
                       key={participant.id}
-                      className="hover:bg-gray-800/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-600/20 to-cyan-600/20 flex items-center justify-center flex-shrink-0">
-                            <School size={20} className="text-blue-400" />
-                          </div>
+                      className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors"
+                    >
+                      {/* School */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          {participant.image ? (
+                            <img
+                              src={participant.image}
+                              alt={participant.school_name}
+                              className="w-10 h-10 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center">
+                              <School size={18} className="text-gray-400" />
+                            </div>
+                          )}
                           <div>
-                            <p className="font-medium">
+                            <p className="font-medium text-white">
                               {participant.school_name}
                             </p>
-                            <p className="text-sm text-gray-400 flex items-center gap-1">
-                              <MapPin size={12} />
+                            <p className="text-sm text-gray-500 truncate max-w-xs">
                               {participant.school_address}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm">
-                          {participant.event?.name}
+
+                      {/* Category */}
+                      <td className="p-4">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-sm">
+                          <Award size={12} />
+                          {participant.participant_category?.name || "-"}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm">
-                          {participant.participant_category?.name}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm">{participant.coach}</p>
-                          <p className="text-xs text-gray-400 flex items-center gap-1">
-                            <Phone size={12} />
-                            {participant.coach_whatsapp}
-                          </p>
+
+                      {/* Coach */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <User size={16} className="text-gray-500" />
+                          <span className="text-gray-300">
+                            {participant.coach}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-400">
-                          {formatDate(participant.created_at)}
-                        </span>
+
+                      {/* WhatsApp */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Phone size={16} className="text-gray-500" />
+                          <span className="text-gray-300">
+                            {formatPhone(participant.coach_whatsapp)}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            participant.status === "active"
-                              ? "bg-green-500/20 text-green-400"
-                              : participant.status === "pending"
-                                ? "bg-yellow-500/20 text-yellow-400"
-                                : "bg-red-500/20 text-red-400"
-                          }`}>
-                          {participant.status === "active"
-                            ? "Aktif"
-                            : participant.status === "pending"
-                              ? "Pending"
-                              : "Tidak Aktif"}
-                        </span>
+
+                      {/* Date */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={16} className="text-gray-500" />
+                          <span className="text-gray-300">
+                            {formatDate(participant.created_at)}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() =>
-                              navigate(
-                                `/organizer/participants/edit/${participant.id}`,
-                              )
-                            }
-                            className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
-                            title="Edit">
-                            <Edit size={16} />
-                          </button>
+
+                      {/* Actions */}
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
                           <button
                             onClick={() =>
                               navigate(
                                 `/organizer/participants/${participant.id}`,
                               )
                             }
-                            className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-                            title="Detail">
-                            <Eye size={16} />
+                            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                            title="Lihat Detail"
+                          >
+                            <Eye size={18} />
                           </button>
                           <button
-                            onClick={() => handleDelete(participant.id)}
-                            className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
-                            title="Hapus">
-                            <Trash2 size={16} />
+                            onClick={() =>
+                              navigate(
+                                `/organizer/participants/edit/${participant.id}`,
+                              )
+                            }
+                            className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDelete(
+                                participant.id,
+                                participant.school_name,
+                              )
+                            }
+                            disabled={deleteLoading === participant.id}
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                            title="Hapus"
+                          >
+                            {deleteLoading === participant.id ? (
+                              <Loader size={18} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={18} />
+                            )}
                           </button>
                         </div>
                       </td>
@@ -415,78 +533,156 @@ const ParticipantsList = () => {
               </table>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-400">
-                    Menampilkan {participants.length} peserta
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(prev - 1, 1))
-                      }
-                      disabled={currentPage === 1}
-                      className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                      <ChevronLeft size={20} />
-                    </button>
-
-                    <div className="flex items-center space-x-1">
-                      {Array.from(
-                        { length: Math.min(5, totalPages) },
-                        (_, i) => {
-                          let pageNum;
-                          if (totalPages <= 5) {
-                            pageNum = i + 1;
-                          } else if (currentPage <= 3) {
-                            pageNum = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            pageNum = totalPages - 4 + i;
-                          } else {
-                            pageNum = currentPage - 2 + i;
-                          }
-
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => setCurrentPage(pageNum)}
-                              className={`w-10 h-10 rounded-lg transition-colors ${
-                                currentPage === pageNum
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-gray-800 hover:bg-gray-700 text-gray-300"
-                              }`}>
-                              {pageNum}
-                            </button>
-                          );
-                        },
-                      )}
+            {/* Mobile Cards */}
+            <div className="md:hidden">
+              {participants.map((participant) => (
+                <div
+                  key={participant.id}
+                  className="p-4 border-b border-gray-800 hover:bg-gray-900/50"
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    {participant.image ? (
+                      <img
+                        src={participant.image}
+                        alt={participant.school_name}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center">
+                        <School size={20} className="text-gray-400" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-medium text-white mb-1">
+                        {participant.school_name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-2">
+                        {participant.school_address}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs">
+                          <Award size={10} />
+                          {participant.participant_category?.name || "-"}
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">
+                          <User size={10} />
+                          {participant.coach}
+                        </span>
+                      </div>
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Phone size={14} className="text-gray-500" />
+                      <span className="text-sm text-gray-300">
+                        {formatPhone(participant.coach_whatsapp)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="text-gray-500" />
+                      <span className="text-sm text-gray-300">
+                        {formatDate(participant.created_at)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
                     <button
                       onClick={() =>
-                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                        navigate(`/organizer/participants/${participant.id}`)
                       }
-                      disabled={currentPage === totalPages}
-                      className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                      <ChevronRight size={20} />
+                      className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                      title="Lihat Detail"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button
+                      onClick={() =>
+                        navigate(
+                          `/organizer/participants/edit/${participant.id}`,
+                        )
+                      }
+                      className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleDelete(participant.id, participant.school_name)
+                      }
+                      disabled={deleteLoading === participant.id}
+                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                      title="Hapus"
+                    >
+                      {deleteLoading === participant.id ? (
+                        <Loader size={18} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={18} />
+                      )}
                     </button>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-4 border-t border-gray-800">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={18} />
+                  Sebelumnya
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let page;
+                    if (totalPages <= 5) {
+                      page = i + 1;
+                    } else if (currentPage <= 3) {
+                      page = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      page = totalPages - 4 + i;
+                    } else {
+                      page = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                  {totalPages > 5 && <span className="text-gray-400">...</span>}
+                </div>
+
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Selanjutnya
+                  <ChevronRight size={18} />
+                </button>
               </div>
             )}
           </>
         )}
       </div>
-
-      {/* Export Button */}
-      <div className="mt-6 flex justify-end">
-        <button className="flex items-center space-x-2 px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium">
-          <Download size={20} />
-          <span>Export Data (Excel)</span>
-        </button>
-      </div>
-    </div>
+    </motion.div>
   );
 };
 

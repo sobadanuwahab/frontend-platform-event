@@ -89,7 +89,8 @@ function App() {
                     </p>
                     <a
                       href="/"
-                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
                       Kembali ke Beranda
                     </a>
                   </div>
@@ -105,14 +106,15 @@ function App() {
               <ProtectedRoute allowedRoles={["organizer"]}>
                 <OrganizerPage />
               </ProtectedRoute>
-            }>
+            }
+          >
             <Route index element={<Dashboard />} />
             <Route path="participants" element={<ParticipantsList />} />
             <Route path="participants/create" element={<CreateParticipant />} />
             <Route path="participants/edit/:id" element={<EditParticipant />} />
             <Route path="events" element={<EventsList />} />
             <Route path="events/create" element={<CreateEvent />} />
-            <Route path="events/edit" element={<EditEvent />} />
+            <Route path="events/edit/:id" element={<EditEvent />} />
           </Route>
         </Routes>
       </Router>

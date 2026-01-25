@@ -8,73 +8,50 @@ import {
   AlertCircle,
   CheckCircle,
   Calendar,
-  Users,
+  Building,
   MapPin,
   Info,
   FileText,
-  Building,
   ArrowLeft,
   Loader,
-  Key,
   Image as ImageIcon,
-  Globe,
-  Phone,
-  Mail,
 } from "lucide-react";
-import axios from "axios";
+import api from "../../../services/api";
+import { useAuth } from "../../../context/AuthContext";
 
 const CreateEvent = () => {
-  const API_URL = "https://apipaskibra.my.id/api";
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [apiToken, setApiToken] = useState("");
 
+  // Hanya field yang diperlukan sesuai API
   const [formData, setFormData] = useState({
     name: "",
     organized_by: "",
     location: "",
-    info: "",
+    event_info: "", // Nama field sesuai backend
     term_condition: "",
-    image: null,
-    website: "",
-    contact_phone: "",
-    contact_email: "",
     start_date: "",
     end_date: "",
-    status: "active", // Tambahkan field status default
+    image: null, // Opsional
+    user_id: user?.id || "", // Untuk referensi user pembuat
   });
 
   const [imagePreview, setImagePreview] = useState("");
 
+  // Set user_id saat user data tersedia
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      setApiToken(token);
-    } else {
-      setError("Token tidak ditemukan. Silakan login kembali.");
+    if (user?.id) {
+      setFormData((prev) => ({
+        ...prev,
+        user_id: user.id,
+      }));
     }
-  }, []);
-
-  // Fungsi untuk check token validity
-  const checkToken = () => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setError("Token tidak ditemukan. Silakan login kembali.");
-      return null;
-    }
-
-    // Basic token validation
-    if (token.length < 10) {
-      setError("Token tidak valid. Silakan login kembali.");
-      return null;
-    }
-
-    return token;
-  };
+  }, [user]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -93,7 +70,7 @@ const CreateEvent = () => {
       }
 
       setFormData((prev) => ({ ...prev, image: file }));
-      setError(""); // Clear error jika ada
+      setError("");
 
       // Create preview
       const reader = new FileReader();
@@ -107,9 +84,9 @@ const CreateEvent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Check token sebelum submit
-    const token = checkToken();
-    if (!token) {
+    // Check user authentication
+    if (!user) {
+      setError("Anda harus login untuk membuat event");
       return;
     }
 
@@ -153,120 +130,208 @@ const CreateEvent = () => {
       // Prepare form data for multipart upload
       const submitData = new FormData();
 
-      // Required fields
+      // Hanya field yang diperlukan sesuai backend
       submitData.append("name", formData.name.trim());
       submitData.append("organized_by", formData.organized_by.trim());
       submitData.append("location", formData.location.trim());
+      submitData.append("event_info", formData.event_info.trim());
+      submitData.append("term_condition", formData.term_condition.trim());
       submitData.append("start_date", formData.start_date);
       submitData.append("end_date", formData.end_date);
-      submitData.append("status", formData.status); // Tambahkan status
-
-      // Optional fields - hanya append jika ada nilai
-      if (formData.info && formData.info.trim()) {
-        submitData.append("info", formData.info.trim());
-      }
-
-      if (formData.term_condition && formData.term_condition.trim()) {
-        submitData.append("term_condition", formData.term_condition.trim());
-      }
-
-      if (formData.website && formData.website.trim()) {
-        submitData.append("website", formData.website.trim());
-      }
-
-      if (formData.contact_phone && formData.contact_phone.trim()) {
-        submitData.append("contact_phone", formData.contact_phone.trim());
-      }
-
-      if (formData.contact_email && formData.contact_email.trim()) {
-        submitData.append("contact_email", formData.contact_email.trim());
-      }
+      submitData.append("user_id", user.id); // Untuk tracking pembuat event
 
       if (formData.image) {
         submitData.append("image", formData.image);
       }
 
-      // Debug: Log semua data yang akan dikirim
-      console.log("📤 Submitting event data to:", `${API_URL}/create-event`);
-      console.log("📋 Form Data (before FormData):", formData);
-      console.log("📦 FormData entries:");
-      for (let [key, value] of submitData.entries()) {
-        if (key === "image") {
-          console.log(`  ${key}:`, {
-            name: value.name,
-            type: value.type,
-            size: `${(value.size / 1024 / 1024).toFixed(2)} MB`,
-          });
-        } else {
-          console.log(`  ${key}:`, value);
-        }
-      }
+      console.log("📤 Submitting event data...");
+      console.log("📋 Required fields:", {
+        name: formData.name,
+        organized_by: formData.organized_by,
+        location: formData.location,
+        event_info: formData.event_info.substring(0, 100) + "...",
+        term_condition: formData.term_condition.substring(0, 100) + "...",
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        user_id: user.id,
+        has_image: !!formData.image,
+      });
 
-      // Submit to API dengan endpoint yang benar
-      console.log(
-        "🔐 Using token for submission:",
-        token.substring(0, 20) + "...",
-      );
-
-      // Coba POST ke endpoint yang benar
-      const response = await axios.post(`${API_URL}/create-event`, submitData, {
+      // Submit to API
+      const response = await api.post("/create-event", submitData, {
         headers: {
           "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-        timeout: 30000, // 30 detik timeout
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total,
-            );
-            console.log(`📤 Upload progress: ${percentCompleted}%`);
-          }
         },
       });
 
       console.log("✅ API Response:", response.data);
-      console.log("📊 Response status:", response.status);
-      console.log("🔗 Response headers:", response.headers);
 
       if (response.data.success) {
-        console.log("🎉 Event created successfully!");
+        const eventId = response.data.data?.id || response.data.data?.event_id;
+        console.log("🎉 Event created successfully! Event ID:", eventId);
         setSuccess(true);
+
+        // ========== SIMPAN KE LOCALSTORAGE DENGAN SISTEM PESERTA ==========
+        if (eventId) {
+          // Simpan event ID untuk auto-select di halaman peserta
+          localStorage.setItem("last_created_event_id", eventId.toString());
+
+          // Buat objek event untuk disimpan
+          const newEvent = {
+            id: eventId,
+            name: formData.name,
+            organized_by: formData.organized_by,
+            location: formData.location,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            event_info: formData.event_info,
+            term_condition: formData.term_condition,
+            user_id: user.id,
+            user_name: user.name,
+            created_at: new Date().toISOString(),
+            from_api: true,
+            participants_count: 0, // Inisialisasi dengan 0 peserta
+            api_response: response.data,
+            // Field untuk tracking peserta
+            participant_ids: [], // Array untuk menyimpan ID peserta
+            total_participants: 0, // Jumlah total peserta
+          };
+
+          // Ambil existing events dari localStorage
+          let existingEvents = [];
+          try {
+            const storedEvents = localStorage.getItem("user_created_events");
+            if (storedEvents) {
+              existingEvents = JSON.parse(storedEvents);
+            }
+          } catch (err) {
+            console.error("Error parsing stored events:", err);
+            existingEvents = [];
+          }
+
+          // Cek apakah event dengan ID yang sama sudah ada
+          const existingIndex = existingEvents.findIndex(
+            (e) => e.id == eventId,
+          );
+          if (existingIndex !== -1) {
+            // Update event yang sudah ada
+            existingEvents[existingIndex] = {
+              ...existingEvents[existingIndex],
+              ...newEvent,
+              // Pertahankan data peserta yang sudah ada
+              participant_ids:
+                existingEvents[existingIndex].participant_ids || [],
+              total_participants:
+                existingEvents[existingIndex].total_participants || 0,
+            };
+            console.log("🔄 Updated existing event in localStorage");
+          } else {
+            // Tambahkan event baru
+            existingEvents.push(newEvent);
+            console.log("➕ Added new event to localStorage");
+          }
+
+          // Simpan kembali ke localStorage
+          localStorage.setItem(
+            "user_created_events",
+            JSON.stringify(existingEvents),
+          );
+
+          // Simpan sebagai event data terbaru
+          localStorage.setItem(
+            "last_created_event_data",
+            JSON.stringify(newEvent),
+          );
+
+          // ========== INISIALISASI SISTEM PESERTA ==========
+          // Buat array kosong untuk peserta event ini
+          localStorage.setItem(
+            `event_participants_${eventId}`,
+            JSON.stringify([]),
+          );
+
+          // Tambahkan ke daftar mapping event-peserta
+          const eventParticipantsMap = JSON.parse(
+            localStorage.getItem("event_participants_map") || "{}",
+          );
+          eventParticipantsMap[eventId] = [];
+          localStorage.setItem(
+            "event_participants_map",
+            JSON.stringify(eventParticipantsMap),
+          );
+
+          console.log(
+            "💾 Event saved to localStorage with participant system:",
+            {
+              total_events: existingEvents.length,
+              event_id: eventId,
+              participant_storage_key: `event_participants_${eventId}`,
+            },
+          );
+
+          // ========== SIMPAN IMAGE PREVIEW ==========
+          if (imagePreview) {
+            try {
+              // Simpan image preview ke localStorage
+              if (imagePreview.length < 1000000) {
+                // 1MB limit
+                localStorage.setItem(`event_image_${eventId}`, imagePreview);
+                console.log("🖼️ Saved image preview to localStorage");
+              } else {
+                console.log("⚠️ Image too large for localStorage, skipping");
+              }
+            } catch (err) {
+              console.error("Error saving image to localStorage:", err);
+            }
+          }
+
+          // ========== UPDATE STATISTIK PESERTA ==========
+          // Inisialisasi statistik peserta jika belum ada
+          const participantStats = JSON.parse(
+            localStorage.getItem("participant_stats") || "{}",
+          );
+          participantStats[eventId] = {
+            event_name: formData.name,
+            total_participants: 0,
+            last_updated: new Date().toISOString(),
+          };
+          localStorage.setItem(
+            "participant_stats",
+            JSON.stringify(participantStats),
+          );
+        }
+
+        // Reset form setelah berhasil
         setTimeout(() => {
-          navigate("/organizer/events");
-        }, 2000);
+          setFormData({
+            name: "",
+            organized_by: "",
+            location: "",
+            event_info: "",
+            term_condition: "",
+            start_date: "",
+            end_date: "",
+            image: null,
+            user_id: user.id,
+          });
+          setImagePreview("");
+
+          // Navigasi ke halaman events setelah 2 detik
+          setTimeout(() => {
+            navigate("/organizer/events");
+          }, 2000);
+        }, 1500);
       } else {
-        console.log("⚠️ API returned success: false");
         throw new Error(response.data.message || "Gagal membuat event");
       }
     } catch (error) {
       console.error("❌ Error creating event:", error);
 
-      // Debug detailed error info
-      if (error.response) {
-        console.error("📋 Error Response Status:", error.response.status);
-        console.error("📋 Error Response Data:", error.response.data);
-        console.error("📋 Error Response Headers:", error.response.headers);
-        console.error("📋 Request Config:", {
-          url: error.config?.url,
-          method: error.config?.method,
-          headers: error.config?.headers,
-          data: error.config?.data,
-        });
-      } else if (error.request) {
-        console.error("📋 No response received:", error.request);
-      } else {
-        console.error("📋 Request setup error:", error.message);
-      }
-      console.error("📋 Full error object:", error);
-
       // Handle specific error cases
       if (error.response?.status === 401) {
         setError("Sesi Anda telah berakhir. Silakan login kembali.");
-        localStorage.removeItem("access_token");
         setTimeout(() => {
-          navigate("/login");
+          navigate("/auth/login");
         }, 2000);
       } else if (error.response?.status === 422) {
         // Validation errors from Laravel
@@ -278,24 +343,131 @@ const CreateEvent = () => {
         }
 
         setError(`Validasi gagal: ${errorMessages.join("; ")}`);
-      } else if (error.response?.status === 404) {
-        setError(
-          "Endpoint /api/create-event tidak ditemukan. Periksa URL API.",
-        );
-      } else if (error.response?.status === 405) {
-        setError("Method POST tidak diizinkan untuk endpoint ini.");
-      } else if (error.response?.status === 500) {
-        setError("Server error. Silakan coba lagi nanti.");
       } else if (error.response?.data?.message) {
         setError(error.response.data.message);
       } else if (error.message) {
         setError(error.message);
-      } else if (error.code === "ECONNABORTED") {
-        setError("Koneksi timeout. Silakan coba lagi.");
-      } else if (error.code === "NETWORK_ERROR") {
-        setError("Tidak dapat terhubung ke server. Periksa koneksi internet.");
       } else {
         setError("Terjadi kesalahan saat membuat event. Silakan coba lagi.");
+      }
+
+      // ========== FALLBACK: SIMPAN KE LOCALSTORAGE MESKI API GAGAL ==========
+      const fallbackEventId = Date.now();
+      const fallbackEvent = {
+        id: fallbackEventId,
+        name: formData.name,
+        organized_by: formData.organized_by,
+        location: formData.location,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        event_info: formData.event_info,
+        term_condition: formData.term_condition,
+        user_id: user.id,
+        user_name: user.name,
+        created_at: new Date().toISOString(),
+        from_api: false,
+        participants_count: 0,
+        participant_ids: [],
+        total_participants: 0,
+        api_error: error.message,
+      };
+
+      try {
+        // Ambil existing events dari localStorage
+        let existingEvents = [];
+        try {
+          const storedEvents = localStorage.getItem("user_created_events");
+          if (storedEvents) {
+            existingEvents = JSON.parse(storedEvents);
+          }
+        } catch (err) {
+          console.error("Error parsing stored events:", err);
+          existingEvents = [];
+        }
+
+        // Tambahkan event fallback
+        existingEvents.push(fallbackEvent);
+
+        // Simpan ke localStorage
+        localStorage.setItem(
+          "user_created_events",
+          JSON.stringify(existingEvents),
+        );
+        localStorage.setItem(
+          "last_created_event_id",
+          fallbackEventId.toString(),
+        );
+        localStorage.setItem(
+          "last_created_event_data",
+          JSON.stringify(fallbackEvent),
+        );
+
+        // Inisialisasi sistem peserta untuk fallback event
+        localStorage.setItem(
+          `event_participants_${fallbackEventId}`,
+          JSON.stringify([]),
+        );
+
+        // Update mapping event-peserta
+        const eventParticipantsMap = JSON.parse(
+          localStorage.getItem("event_participants_map") || "{}",
+        );
+        eventParticipantsMap[fallbackEventId] = [];
+        localStorage.setItem(
+          "event_participants_map",
+          JSON.stringify(eventParticipantsMap),
+        );
+
+        // Update statistik peserta
+        const participantStats = JSON.parse(
+          localStorage.getItem("participant_stats") || "{}",
+        );
+        participantStats[fallbackEventId] = {
+          event_name: formData.name,
+          total_participants: 0,
+          last_updated: new Date().toISOString(),
+        };
+        localStorage.setItem(
+          "participant_stats",
+          JSON.stringify(participantStats),
+        );
+
+        console.log(
+          "🔄 Saved fallback event to localStorage with participant system:",
+          {
+            event_id: fallbackEventId,
+            event_name: formData.name,
+            storage_key: `event_participants_${fallbackEventId}`,
+          },
+        );
+
+        // Simpan image preview jika ada
+        if (imagePreview && imagePreview.length < 1000000) {
+          try {
+            localStorage.setItem(
+              `event_image_${fallbackEventId}`,
+              imagePreview,
+            );
+          } catch (err) {
+            console.error("Error saving fallback image:", err);
+          }
+        }
+
+        // Pesan error dengan info bahwa event tetap disimpan
+        const fallbackMessage =
+          error.message +
+          "\n\n✅ Event telah disimpan secara lokal." +
+          "\n\nAnda dapat:" +
+          "\n• Menambahkan peserta ke event ini" +
+          "\n• Mengelola event dari halaman events" +
+          "\n• Data akan tetap tersimpan di browser Anda";
+
+        setError(fallbackMessage);
+      } catch (storageError) {
+        console.error("❌ Error saving to localStorage:", storageError);
+        setError(
+          `${error.message}\n\n⚠️ Juga gagal menyimpan ke penyimpanan lokal.`,
+        );
       }
     } finally {
       setSubmitting(false);
@@ -327,31 +499,6 @@ const CreateEvent = () => {
     e.target.style.height = e.target.scrollHeight + "px";
   };
 
-  // Test API endpoint function
-  const testApiEndpoint = async () => {
-    const token = checkToken();
-    if (!token) return;
-
-    try {
-      console.log("🧪 Testing API endpoint...");
-      const testResponse = await axios.get(`${API_URL}/events`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-        timeout: 5000,
-      });
-      console.log("✅ Test response:", testResponse.data);
-      alert(
-        "API endpoint test: SUCCESS\nEvents count: " +
-          (testResponse.data.data?.length || testResponse.data.length || "N/A"),
-      );
-    } catch (testError) {
-      console.error("❌ API test failed:", testError);
-      alert("API test FAILED: " + testError.message);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -367,63 +514,53 @@ const CreateEvent = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto">
+      className="max-w-4xl mx-auto"
+    >
       {/* Header */}
       <div className="mb-8">
         <button
           onClick={() => navigate("/organizer/events")}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6">
+          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6"
+        >
           <ArrowLeft size={20} />
           <span>Kembali ke Daftar Event</span>
         </button>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Buat Event Baru</h1>
-            <p className="text-gray-400">
-              Buat event Paskibra Championship baru untuk diikuti peserta
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Token info */}
-            {apiToken && (
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <Key size={14} />
-                <span>Token: {apiToken.substring(0, 10)}...</span>
-              </div>
-            )}
-
-            {/* Test API Button */}
-            <button
-              onClick={testApiEndpoint}
-              className="px-4 py-2 text-sm rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 text-yellow-400 transition-colors">
-              Test API
-            </button>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Buat Event Baru</h1>
+          <p className="text-gray-400">
+            Buat event Paskibra Championship baru untuk diikuti peserta
+          </p>
+          {user && (
+            <div className="mt-2 text-sm text-gray-500">
+              Dibuat oleh: <span className="text-blue-400">{user.name}</span>{" "}
+              (ID: {user.id})
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Jika tidak ada token */}
-      {!apiToken && (
+      {/* Jika user tidak login */}
+      {!user && (
         <div className="mb-6 p-6 rounded-xl bg-red-500/10 border border-red-500/30">
           <div className="flex items-center gap-3 mb-4">
             <AlertCircle size={24} className="text-red-400" />
             <h3 className="text-lg font-bold text-red-400">Akses Ditolak</h3>
           </div>
           <p className="text-gray-300 mb-4">
-            Anda tidak memiliki akses. Silakan login terlebih dahulu.
+            Anda harus login untuk membuat event.
           </p>
           <button
-            onClick={() => (window.location.href = "/login")}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
+            onClick={() => navigate("/auth/login")}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
+          >
             Login Sekarang
           </button>
         </div>
       )}
 
-      {/* Konten form hanya ditampilkan jika ada token */}
-      {apiToken && (
+      {/* Konten form hanya ditampilkan jika user login */}
+      {user && (
         <>
           {/* Form */}
           <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
@@ -439,11 +576,6 @@ const CreateEvent = () => {
                       Gagal membuat event
                     </p>
                     <p className="text-red-300 text-sm mt-1">{error}</p>
-                    <button
-                      onClick={() => setError("")}
-                      className="mt-2 text-xs text-gray-400 hover:text-gray-300">
-                      Clear error
-                    </button>
                   </div>
                 </div>
               </div>
@@ -603,77 +735,6 @@ const CreateEvent = () => {
                 </div>
               </div>
 
-              {/* Contact Information */}
-              <div>
-                <h3 className="text-lg font-bold mb-4 text-gray-300 border-b border-gray-700 pb-2">
-                  Kontak & Website
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Website
-                    </label>
-                    <div className="relative">
-                      <Globe
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                        size={20}
-                      />
-                      <input
-                        type="url"
-                        name="website"
-                        value={formData.website}
-                        onChange={handleChange}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="https://example.com"
-                        maxLength={200}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Telepon Kontak
-                    </label>
-                    <div className="relative">
-                      <Phone
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                        size={20}
-                      />
-                      <input
-                        type="tel"
-                        name="contact_phone"
-                        value={formData.contact_phone}
-                        onChange={handleChange}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="081234567890"
-                        maxLength={20}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Email Kontak
-                    </label>
-                    <div className="relative">
-                      <Mail
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                        size={20}
-                      />
-                      <input
-                        type="email"
-                        name="contact_email"
-                        value={formData.contact_email}
-                        onChange={handleChange}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="contact@example.com"
-                        maxLength={100}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Event Information */}
               <div>
                 <h3 className="text-lg font-bold mb-4 text-gray-300 border-b border-gray-700 pb-2">
@@ -682,7 +743,7 @@ const CreateEvent = () => {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Deskripsi Event
+                      Deskripsi Event (event_info)
                     </label>
                     <div className="relative">
                       <Info
@@ -690,8 +751,8 @@ const CreateEvent = () => {
                         size={20}
                       />
                       <textarea
-                        name="info"
-                        value={formData.info}
+                        name="event_info"
+                        value={formData.event_info}
                         onChange={handleTextAreaChange}
                         rows="4"
                         className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -700,13 +761,13 @@ const CreateEvent = () => {
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      {formData.info.length}/2000 karakter
+                      {formData.event_info.length}/2000 karakter
                     </p>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Syarat & Ketentuan
+                      Syarat & Ketentuan (term_condition)
                     </label>
                     <div className="relative">
                       <FileText
@@ -753,7 +814,8 @@ const CreateEvent = () => {
                     {/* Upload Area */}
                     <label
                       htmlFor="event-image-upload"
-                      className="flex-1 cursor-pointer group">
+                      className="flex-1 cursor-pointer group"
+                    >
                       <div className="border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors h-full">
                         <div className="flex flex-col items-center space-y-4">
                           <div className="p-4 rounded-xl bg-gray-900 group-hover:bg-gray-800 transition-colors">
@@ -794,7 +856,8 @@ const CreateEvent = () => {
                                   image: null,
                                 }));
                               }}
-                              className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white">
+                              className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white"
+                            >
                               <X size={16} />
                             </button>
                           </div>
@@ -812,12 +875,16 @@ const CreateEvent = () => {
                 </div>
               </div>
 
+              {/* Hidden user_id field */}
+              <input type="hidden" name="user_id" value={user.id} />
+
               {/* Form Actions */}
               <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6 border-t border-gray-700">
                 <button
                   type="button"
                   onClick={() => navigate("/organizer/events")}
-                  className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium">
+                  className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium"
+                >
                   Batal
                 </button>
 
@@ -829,27 +896,26 @@ const CreateEvent = () => {
                         name: "",
                         organized_by: "",
                         location: "",
-                        info: "",
+                        event_info: "",
                         term_condition: "",
-                        image: null,
-                        website: "",
-                        contact_phone: "",
-                        contact_email: "",
                         start_date: "",
                         end_date: "",
-                        status: "active",
+                        image: null,
+                        user_id: user.id,
                       });
                       setImagePreview("");
                       setError("");
                     }}
-                    className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium">
+                    className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium"
+                  >
                     Reset Form
                   </button>
 
                   <button
                     type="submit"
-                    disabled={submitting || success || !apiToken}
-                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                    disabled={submitting || success}
+                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
                     {submitting ? (
                       <>
                         <Loader className="animate-spin h-5 w-5 border-t-2 border-b-2 border-white" />
@@ -866,37 +932,49 @@ const CreateEvent = () => {
               </div>
             </form>
           </div>
+
+          {/* Field Information */}
+          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Info size={20} className="text-blue-400 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-blue-300 mb-2">
+                  Field yang dibutuhkan oleh backend:
+                </h4>
+                <ul className="text-sm text-gray-400 space-y-1">
+                  <li>
+                    • <strong>name</strong>: Nama event (required)
+                  </li>
+                  <li>
+                    • <strong>organized_by</strong>: Penyelenggara (required)
+                  </li>
+                  <li>
+                    • <strong>location</strong>: Lokasi (required)
+                  </li>
+                  <li>
+                    • <strong>event_info</strong>: Deskripsi event
+                  </li>
+                  <li>
+                    • <strong>term_condition</strong>: Syarat & ketentuan
+                  </li>
+                  <li>
+                    • <strong>start_date</strong>: Tanggal mulai (required)
+                  </li>
+                  <li>
+                    • <strong>end_date</strong>: Tanggal selesai (required)
+                  </li>
+                  <li>
+                    • <strong>image</strong>: Poster event (optional)
+                  </li>
+                  <li>
+                    • <strong>user_id</strong>: ID pembuat (auto from auth)
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </>
       )}
-
-      {/* Debug Info (Hanya di development) */}
-      <div className="mt-8 p-4 bg-gray-900/50 rounded-xl border border-gray-700">
-        <h4 className="font-bold mb-2 text-sm text-gray-400">Debug Info</h4>
-        <div className="text-xs text-gray-500 space-y-1">
-          <p>
-            API Token:{" "}
-            {apiToken ? `${apiToken.substring(0, 20)}...` : "No token"}
-          </p>
-          <p>Endpoint: {API_URL}/create-event</p>
-          <p>Method: POST (multipart/form-data)</p>
-          <p>Submitting: {submitting ? "true" : "false"}</p>
-          <p>Success: {success ? "true" : "false"}</p>
-          <p>Error: {error || "none"}</p>
-          <div className="mt-2">
-            <p className="font-medium">Form Data Preview:</p>
-            <pre className="text-xs bg-gray-900 p-2 rounded mt-1 overflow-auto max-h-32">
-              {JSON.stringify(
-                {
-                  ...formData,
-                  image: formData.image ? `FILE: ${formData.image.name}` : null,
-                },
-                null,
-                2,
-              )}
-            </pre>
-          </div>
-        </div>
-      </div>
     </motion.div>
   );
 };
