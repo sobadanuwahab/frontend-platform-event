@@ -10,6 +10,12 @@ import {
   Sparkles,
   Zap,
   ArrowLeft,
+  Home,
+  Vote,
+  Ticket,
+  Gavel,
+  BarChart3,
+  LayoutDashboard,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -28,36 +34,54 @@ const Header = () => {
   // Cek apakah di halaman auth
   const isAuthPage = location.pathname.includes("/auth");
 
+  // DEBUG: Log user data untuk troubleshooting
+  useEffect(() => {
+    if (user) {
+      console.log("=== DEBUG USER DATA ===");
+      console.log("Full user object:", user);
+      console.log("User role from API:", user.role);
+      console.log("User role type:", typeof user.role);
+    }
+  }, [user]);
+
+  // Nav items dengan icon - SESUAI DENGAN UserManagementTab.jsx
+  // Di UserManagementTab.jsx, "judge" dari database di-mapping ke "juri" di frontend
   const navItems = [
     {
       to: "/",
       label: "Home",
-      roles: ["user", "juri"],
+      roles: ["user", "juri", "admin"], // "juri" bukan "judge"
+      icon: Home,
     },
     {
       to: "/voting",
       label: "Voting",
-      roles: ["user"],
+      roles: ["user"], // Hanya user biasa
+      icon: Vote,
     },
     {
       to: "/ticket",
       label: "Ticket",
-      roles: ["user"],
+      roles: ["user"], // Hanya user biasa
+      icon: Ticket,
     },
     {
       to: "/judging",
       label: "Penjurian",
-      roles: ["juri"],
+      roles: ["juri", "admin"], // "juri" bukan "judge"
+      icon: Gavel,
     },
     {
       to: "/results",
       label: "Hasil",
-      roles: ["user", "juri"],
+      roles: ["user", "juri", "admin"], // "juri" bukan "judge"
+      icon: BarChart3,
     },
     {
       to: "/admin/dashboard",
       label: "Dashboard",
-      roles: ["admin"],
+      roles: ["admin"], // Hanya admin
+      icon: LayoutDashboard,
     },
   ];
 
@@ -92,7 +116,49 @@ const Header = () => {
     };
   }, [isMobileMenuOpen]);
 
-  const currentRole = user?.role ?? "guest";
+  // Normalize role - MAPPING SESUAI UserManagementTab.jsx
+  const normalizeRole = (role) => {
+    if (!role) return "guest";
+
+    const roleLower = role.toLowerCase().trim();
+
+    // Mapping yang konsisten dengan AuthContext
+    const roleMap = {
+      judge: "juri", // "judge" dari AuthContext -> "juri"
+      juri: "juri",
+      admin: "admin",
+      user: "user",
+    };
+
+    return roleMap[roleLower] || "user";
+  };
+
+  const currentRole = normalizeRole(user?.role);
+
+  // DEBUG: Log filtered nav items
+  useEffect(() => {
+    if (user && currentRole) {
+      console.log("=== NAVIGATION DEBUG ===");
+      console.log("Current normalized role:", currentRole);
+      console.log(
+        "All nav items:",
+        navItems.map((item) => ({
+          label: item.label,
+          to: item.to,
+          roles: item.roles,
+        })),
+      );
+
+      const filtered = navItems.filter((item) =>
+        item.roles.includes(currentRole),
+      );
+      console.log(
+        "Filtered nav items:",
+        filtered.map((item) => item.label),
+      );
+      console.log("=== END NAVIGATION DEBUG ===");
+    }
+  }, [user, currentRole]);
 
   const handleNavigation = (to) => {
     if (location.pathname === to) {
@@ -135,6 +201,11 @@ const Header = () => {
     visible: { opacity: 1, y: 0 },
   };
 
+  // Filter nav items berdasarkan role user
+  const filteredNavItems = navItems.filter((item) =>
+    item.roles.includes(currentRole),
+  );
+
   // Jika masih loading, tampilkan header sederhana
   if (loading) {
     return (
@@ -166,6 +237,44 @@ const Header = () => {
     );
   }
 
+  // Function untuk display role yang user-friendly
+  const getDisplayRole = (role) => {
+    switch (role) {
+      case "juri":
+        return "Juri";
+      case "admin":
+        return "Admin";
+      case "user":
+        return "User";
+      default:
+        return role.charAt(0).toUpperCase() + role.slice(1);
+    }
+  };
+
+  // Function untuk mendapatkan warna berdasarkan role
+  const getRoleColor = (role) => {
+    switch (role) {
+      case "admin":
+        return {
+          bg: "bg-gradient-to-r from-red-600 to-pink-600",
+          dot: "bg-red-500",
+        };
+      case "juri":
+        return {
+          bg: "bg-gradient-to-r from-purple-600 to-violet-600",
+          dot: "bg-purple-500",
+        };
+      case "user":
+      default:
+        return {
+          bg: "bg-gradient-to-r from-teal-600 to-cyan-600",
+          dot: "bg-orange-500",
+        };
+    }
+  };
+
+  const roleColors = getRoleColor(currentRole);
+
   return (
     <>
       <header
@@ -173,7 +282,8 @@ const Header = () => {
           sticky top-0 z-50 transition-all duration-300 w-full
           ${isAuthPage ? "bg-black" : "bg-black"}
           ${scrolled ? "bg-black backdrop-blur-md border-b border-black" : "border-b border-black"}
-        `}>
+        `}
+      >
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between py-3">
             {/* Logo & Brand */}
@@ -183,7 +293,8 @@ const Header = () => {
               onClick={
                 isAuthPage ? handleBackToHome : () => handleNavigation("/")
               }
-              className="flex items-center gap-2 sm:gap-3 cursor-pointer group">
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer group"
+            >
               {/* Logo Container - dengan height yang match text */}
               <div className="relative flex items-center">
                 <img
@@ -202,7 +313,8 @@ const Header = () => {
                     tracking-wide leading-none
                     group-hover:scale-105 transition-transform duration-300
                     flex items-center
-                  `}>
+                  `}
+                >
                   <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-100 to-gray-200">
                     Vo
                   </span>
@@ -222,7 +334,8 @@ const Header = () => {
                     ${isAuthPage ? "text-gray-400" : "text-gray-300"}
                     transition-colors duration-300
                     leading-tight font-medium tracking-wide
-                  `}>
+                  `}
+                >
                   One Platform for Voting & Event Tickets
                 </p>
               </div>
@@ -238,7 +351,8 @@ const Header = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleBackToHome}
-                  className="group relative overflow-hidden rounded-lg lg:rounded-xl px-3 py-2 lg:px-4 lg:py-2.5 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-medium hover:from-orange-700 hover:to-orange-700 hover:shadow-lg transition-all duration-300 text-xs lg:text-sm">
+                  className="group relative overflow-hidden rounded-lg lg:rounded-xl px-3 py-2 lg:px-4 lg:py-2.5 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-medium hover:from-orange-700 hover:to-orange-700 hover:shadow-lg transition-all duration-300 text-xs lg:text-sm"
+                >
                   <span className="relative flex items-center space-x-1 lg:space-x-2">
                     <ArrowLeft size={14} className="lg:size-4" />
                     <span>Kembali ke Home</span>
@@ -246,75 +360,107 @@ const Header = () => {
                 </motion.button>
               ) : (
                 <>
-                  {/* Navigation */}
-                  <nav className="flex items-center space-x-1">
-                    {navItems
-                      .filter((item) => item.roles.includes(currentRole))
-                      .map((item, index) => (
-                        <motion.div key={item.to} whileHover={{ scale: 1.05 }}>
-                          <div className="relative">
-                            <NavLink
-                              to={item.to}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleNavigation(item.to);
-                              }}
-                              className={({ isActive }) => `
-                                relative px-3 lg:px-4 py-2 font-medium transition-all duration-300 rounded-lg
-                                ${
-                                  isActive
-                                    ? "text-teal-600 from-teal-600"
-                                    : "text-gray-400 hover:text-teal-700"
-                                }
-                                group
-                              `}>
-                              {({ isActive }) => (
-                                <>
-                                  {item.label}
-                                  {isActive && (
-                                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-gradient-to-r from-teal-400 to-cyan-400"></div>
-                                  )}
-                                </>
-                              )}
-                            </NavLink>
-                          </div>
-                        </motion.div>
-                      ))}
-                  </nav>
+                  {/* Navigation untuk user yang sudah login */}
+                  {user && filteredNavItems.length > 0 && (
+                    <nav className="flex items-center space-x-1">
+                      {filteredNavItems.map((item) => {
+                        const IconComponent = item.icon;
+                        return (
+                          <motion.div
+                            key={item.to}
+                            whileHover={{ scale: 1.05 }}
+                          >
+                            <div className="relative">
+                              <NavLink
+                                to={item.to}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleNavigation(item.to);
+                                }}
+                                className={({ isActive }) => `
+                                  relative px-3 lg:px-4 py-2 font-medium transition-all duration-300 rounded-lg
+                                  flex items-center gap-2
+                                  ${
+                                    isActive
+                                      ? "text-teal-400"
+                                      : "text-gray-300 hover:text-teal-300"
+                                  }
+                                  group
+                                `}
+                              >
+                                {({ isActive }) => (
+                                  <>
+                                    <IconComponent
+                                      size={16}
+                                      className={
+                                        isActive
+                                          ? "text-teal-400"
+                                          : "text-gray-400 group-hover:text-teal-300"
+                                      }
+                                    />
+                                    <span className="text-sm">
+                                      {item.label}
+                                    </span>
+                                    {isActive && (
+                                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-4 h-0.5 from-teal-400 to-cyan-400 rounded-full"></div>
+                                    )}
+                                  </>
+                                )}
+                              </NavLink>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </nav>
+                  )}
+
+                  {/* Separator hanya jika ada user dan ada nav items */}
+                  {user && filteredNavItems.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="h-6 lg:h-8 w-px bg-gray-700"
+                    ></motion.div>
+                  )}
 
                   {/* User Section */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="h-6 lg:h-8 w-px bg-gray-700"></motion.div>
-
                   {user ? (
                     <motion.div
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.4 }}
-                      className="flex items-center space-x-2 lg:space-x-3">
+                      className="flex items-center space-x-2 lg:space-x-3"
+                    >
                       <div className="text-right hidden lg:block">
                         <p className="font-medium text-white text-xs lg:text-sm">
                           {user.name}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {getDisplayRole(currentRole)}
                         </p>
                       </div>
                       <motion.div
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="relative group">
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 flex items-center justify-center text-white font-semibold shadow-md text-xs lg:text-sm">
+                        className="relative group"
+                      >
+                        <div
+                          className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl flex items-center justify-center text-white font-semibold shadow-md text-xs lg:text-sm ${roleColors.bg}`}
+                        >
                           <User size={14} className="lg:size-5" />
                         </div>
-                        <div className="absolute -bottom-1 -right-1 w-2 h-2 lg:w-3 lg:h-3 bg-orange-500 rounded-full border-2 border-gray-900 group-hover:border-orange-500 transition-colors"></div>
+                        <div
+                          className={`absolute -bottom-1 -right-1 w-2 h-2 lg:w-3 lg:h-3 rounded-full border-2 border-gray-900 group-hover:border-orange-500 transition-colors ${roleColors.dot}`}
+                        ></div>
                       </motion.div>
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleLogout}
                         className="group relative overflow-hidden rounded-lg lg:rounded-xl px-2 py-2 lg:px-3 lg:py-2 bg-orange-600 hover:bg-orange-700 transition-all duration-300"
-                        title="Logout">
+                        title="Logout"
+                      >
                         <LogOut size={14} className="text-white lg:size-5" />
                       </motion.button>
                     </motion.div>
@@ -323,23 +469,24 @@ const Header = () => {
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.4 }}
-                      className="flex items-center space-x-2">
+                      className="flex items-center space-x-2"
+                    >
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleLogin}
-                        className="group relative overflow-hidden rounded-lg lg:rounded-xl px-3 py-2 lg:px-4 lg:py-2.5 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-medium hover:from-orange-700 hover:to-orange-700 hover:shadow-lg transition-all duration-300 text-xs lg:text-sm">
+                        className="group relative overflow-hidden rounded-lg lg:rounded-xl px-3 py-2 lg:px-4 lg:py-2.5 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-medium hover:from-orange-700 hover:to-orange-700 hover:shadow-lg transition-all duration-300 text-xs lg:text-sm"
+                      >
                         <span className="relative flex items-center space-x-1 lg:space-x-2">
-                          {/* <Zap size={14} className="lg:size-4" /> */}
                           <span>Login</span>
                         </span>
-                        {/* <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-amber-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div> */}
                       </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleRegister}
-                        className="group relative overflow-hidden rounded-lg lg:rounded-xl px-3 py-2 lg:px-4 lg:py-2.5 bg-gradient-to-r from-teal-600 to-teal-600 text-white font-medium hover:from-teal-700 hover:to-teal-700 hover:shadow-lg transition-all duration-300 text-xs lg:text-sm">
+                        className="group relative overflow-hidden rounded-lg lg:rounded-xl px-3 py-2 lg:px-4 lg:py-2.5 bg-gradient-to-r from-teal-600 to-teal-600 text-white font-medium hover:from-teal-700 hover:to-teal-700 hover:shadow-lg transition-all duration-300 text-xs lg:text-sm"
+                      >
                         <span className="relative flex items-center space-x-1 lg:space-x-2">
                           <span>Register</span>
                         </span>
@@ -360,7 +507,8 @@ const Header = () => {
                 ${isMobileMenuOpen ? "bg-gray-700" : ""}
               `}
               aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={isMobileMenuOpen}>
+              aria-expanded={isMobileMenuOpen}
+            >
               {isMobileMenuOpen ? (
                 <X size={20} className="text-gray-300" />
               ) : (
@@ -389,7 +537,8 @@ const Header = () => {
                   initial="hidden"
                   animate="visible"
                   exit="hidden"
-                  className="fixed top-16 left-0 right-0 bg-gray-900 border-t border-gray-800 shadow-2xl md:hidden z-50 max-h-[calc(100vh-4rem)] overflow-y-auto">
+                  className="fixed top-16 left-0 right-0 bg-gray-900 border-t border-gray-800 shadow-2xl md:hidden z-50 max-h-[calc(100vh-4rem)] overflow-y-auto"
+                >
                   <div className="px-4 py-6">
                     {/* Jika di halaman auth, tampilkan tombol kembali */}
                     {isAuthPage ? (
@@ -400,50 +549,75 @@ const Header = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleBackToHome}
-                        className="w-full py-4 px-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-semibold rounded-xl hover:from-gray-700 hover:to-gray-800 hover:shadow-xl transition-all duration-300 mb-4 flex items-center justify-center space-x-3">
+                        className="w-full py-4 px-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-semibold rounded-xl hover:from-gray-700 hover:to-gray-800 hover:shadow-xl transition-all duration-300 mb-4 flex items-center justify-center space-x-3"
+                      >
                         <ArrowLeft size={20} />
                         <span>Kembali ke Home</span>
                       </motion.button>
                     ) : (
                       <>
-                        {/* Mobile Navigation Items */}
-                        <nav className="space-y-2 mb-8">
-                          {navItems
-                            .filter((item) => item.roles.includes(currentRole))
-                            .map((item) => (
-                              <motion.div
-                                key={item.to}
-                                whileHover={{ x: 5 }}
-                                transition={{ duration: 0.2 }}>
-                                <NavLink
-                                  to={item.to}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    handleNavigation(item.to);
-                                  }}
-                                  className={({ isActive }) => `
-                                    flex items-center justify-between p-4 rounded-xl transition-all duration-300 font-medium
-                                    ${
-                                      isActive
-                                        ? "bg-gradient-to-r from-teal-600/30 to-cyan-600/30 text-white border border-teal-500/30"
-                                        : "text-gray-300 hover:text-white hover:bg-gray-800"
-                                    }
-                                  `}>
-                                  {({ isActive }) => (
-                                    <>
-                                      <span>{item.label}</span>
-                                      {isActive && (
-                                        <Sparkles
-                                          size={16}
-                                          className="text-orange-400"
-                                        />
-                                      )}
-                                    </>
-                                  )}
-                                </NavLink>
-                              </motion.div>
-                            ))}
-                        </nav>
+                        {/* Mobile Navigation Items - hanya tampil jika user login dan ada items */}
+                        {user && filteredNavItems.length > 0 && (
+                          <>
+                            <div className="mb-4">
+                              <p className="text-gray-400 text-sm font-medium mb-2">
+                                Navigasi
+                              </p>
+                              <nav className="space-y-2">
+                                {filteredNavItems.map((item) => {
+                                  const IconComponent = item.icon;
+                                  return (
+                                    <motion.div
+                                      key={item.to}
+                                      whileHover={{ x: 5 }}
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      <NavLink
+                                        to={item.to}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          handleNavigation(item.to);
+                                        }}
+                                        className={({ isActive }) => `
+                                          flex items-center gap-3 p-4 rounded-xl transition-all duration-300 font-medium
+                                          ${
+                                            isActive
+                                              ? "bg-gradient-to-r from-teal-600/30 to-cyan-600/30 text-white border border-teal-500/30"
+                                              : "text-gray-300 hover:text-white hover:bg-gray-800"
+                                          }
+                                        `}
+                                      >
+                                        {({ isActive }) => (
+                                          <>
+                                            <IconComponent
+                                              size={20}
+                                              className={
+                                                isActive
+                                                  ? "text-teal-400"
+                                                  : "text-gray-400"
+                                              }
+                                            />
+                                            <span className="flex-1">
+                                              {item.label}
+                                            </span>
+                                            {isActive && (
+                                              <Sparkles
+                                                size={16}
+                                                className="text-orange-400"
+                                              />
+                                            )}
+                                          </>
+                                        )}
+                                      </NavLink>
+                                    </motion.div>
+                                  );
+                                })}
+                              </nav>
+                            </div>
+
+                            <div className="border-t border-gray-800 my-4"></div>
+                          </>
+                        )}
 
                         {/* Mobile User Section */}
                         {user ? (
@@ -451,37 +625,41 @@ const Header = () => {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: 0.2 }}
-                            className="p-4 rounded-xl bg-gray-800/50 border border-gray-700">
-                            <div className="flex items-center space-x-4">
+                            className="p-4 rounded-xl bg-gray-800/50 border border-gray-700"
+                          >
+                            <div className="flex items-center space-x-4 mb-4">
                               <motion.div
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                className="relative">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 flex items-center justify-center text-white font-semibold shadow-lg">
+                                className="relative"
+                              >
+                                <div
+                                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold shadow-lg ${roleColors.bg}`}
+                                >
                                   <User size={24} />
                                 </div>
-                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-gray-900"></div>
+                                <div
+                                  className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-900 ${roleColors.dot}`}
+                                ></div>
                               </motion.div>
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-white text-lg">
                                   {user.name}
                                 </p>
                                 <p className="text-gray-400 text-sm">
-                                  {user.role}
+                                  {getDisplayRole(currentRole)}
                                 </p>
                               </div>
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={handleLogout}
-                                className="p-3 rounded-xl bg-gray-700 hover:bg-orange-600/20 transition-colors border border-gray-600 hover:border-orange-500"
-                                title="Logout">
-                                <LogOut
-                                  size={20}
-                                  className="text-gray-300 hover:text-orange-400"
-                                />
-                              </motion.button>
                             </div>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={handleLogout}
+                              className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-600 to-orange-700 text-white font-medium hover:from-orange-700 hover:to-orange-800 transition-all duration-300 flex items-center justify-center space-x-2"
+                            >
+                              <LogOut size={20} />
+                              <span>Logout</span>
+                            </motion.button>
                           </motion.div>
                         ) : (
                           <div className="space-y-3">
@@ -492,7 +670,8 @@ const Header = () => {
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
                               onClick={handleLogin}
-                              className="w-full py-4 px-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold rounded-xl hover:from-teal-700 hover:to-cyan-700 hover:shadow-xl transition-all duration-300 group">
+                              className="w-full py-4 px-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold rounded-xl hover:from-teal-700 hover:to-cyan-700 hover:shadow-xl transition-all duration-300 group"
+                            >
                               <div className="flex items-center justify-center space-x-3 text-lg">
                                 <Zap
                                   size={24}
@@ -508,7 +687,8 @@ const Header = () => {
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
                               onClick={handleRegister}
-                              className="w-full py-4 px-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-semibold rounded-xl hover:from-gray-700 hover:to-gray-800 hover:shadow-xl transition-all duration-300">
+                              className="w-full py-4 px-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-semibold rounded-xl hover:from-gray-700 hover:to-gray-800 hover:shadow-xl transition-all duration-300"
+                            >
                               <div className="flex items-center justify-center space-x-3 text-lg">
                                 <span>Register</span>
                               </div>

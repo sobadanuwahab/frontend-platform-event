@@ -1,1294 +1,1926 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
-  Award,
-  Target,
-  AlertTriangle,
-  CheckCircle,
   Save,
-  Star,
-  Percent,
-  TrendingUp,
-  Medal,
-  Users,
-  Flag,
-  Volume2,
-  Info,
-  Palette,
-  Smile,
   RefreshCw,
-  Calculator,
   FileText,
+  ChevronDown,
+  ChevronRight,
+  Zap,
+  Info,
+  AlertCircle,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
-// Data dari PDF yang telah distrukturisasi
-const FORMS = {
-  PBB: {
-    id: "pbb",
-    title: "A. FORM PENILAIAN PERATURAN BARIS BERBARIS (PBB)",
-    icon: <Target size={20} />,
-    color: "bg-blue-500",
-    total: 700,
-    categories: [
+// Data PBB dengan nilai yang sudah ditentukan berdasarkan kualitas
+const PBB_SCORING_DATA = [
+  {
+    category: "GERAKAN TAMBAHAN",
+    items: [
       {
-        name: "GERAKAN TAMBAHAN",
-        items: [
-          { key: "bersaf_kumpul", label: "Bersaf Kumpul", max: 35, bobot: 1 },
-        ],
-      },
-      {
-        name: "GERAKAN DI TEMPAT DAN BERPINDAH TEMPAT",
-        items: [
-          { key: "sikap_sempurna", label: "Sikap Sempurna", max: 11, bobot: 1 },
-          { key: "hormat", label: "Hormat", max: 20, bobot: 2 },
-          { key: "istirahat", label: "Istirahat (Parade)", max: 11, bobot: 1 },
-          { key: "berhitung", label: "Berhitung", max: 11, bobot: 1 },
-          {
-            key: "setengah_lengan",
-            label: "Setengah Lengan Lencang Kanan",
-            max: 20,
-            bobot: 2,
-          },
-          { key: "hadap_kanan", label: "Hadap Kanan", max: 19, bobot: 1 },
-          { key: "lencang_depan", label: "Lencang Depan", max: 11, bobot: 1 },
-          {
-            key: "hadap_serong_kiri",
-            label: "Hadap Serong Kiri",
-            max: 19,
-            bobot: 1,
-          },
-          {
-            key: "periksa_kerapihan",
-            label: "Periksa Kerapihan (Parade)",
-            max: 30,
-            bobot: 3,
-          },
-          {
-            key: "hadap_serong_kanan",
-            label: "Hadap Serong Kanan",
-            max: 19,
-            bobot: 1,
-          },
-          {
-            key: "hadap_kiri_jalan",
-            label: "Hadap Kiri Jalan Di Tempat",
-            max: 21,
-            bobot: 2,
-          },
-        ],
-      },
-      {
-        name: "GERAKAN BERPINDAH TEMPAT",
-        items: [
-          {
-            key: "tiga_langkah_belakang",
-            label: "3 Langkah Ke Belakang",
-            max: 24,
-            bobot: 2,
-          },
-          {
-            key: "tiga_langkah_kiri",
-            label: "3 Langkah Ke Kiri",
-            max: 24,
-            bobot: 2,
-          },
-          {
-            key: "empat_langkah_depan",
-            label: "4 Langkah Ke Depan",
-            max: 24,
-            bobot: 2,
-          },
-        ],
-      },
-      {
-        name: "GERAKAN BERJALAN KE BERHENTI",
-        items: [
-          { key: "langkah_tegap", label: "Langkah Tegap", max: 23, bobot: 2 },
-          {
-            key: "langkah_perlahan",
-            label: "Langkah Perlahan",
-            max: 23,
-            bobot: 2,
-          },
-          {
-            key: "langkah_berlari",
-            label: "Langkah Berlari",
-            max: 23,
-            bobot: 2,
-          },
-        ],
-      },
-      {
-        name: "GERAKAN BERJALAN KE BERJALAN",
-        items: [
-          {
-            key: "biasa_ke_tegap",
-            label: "Langkah Biasa ke Langkah Tegap",
-            max: 23,
-            bobot: 2,
-          },
-          { key: "ganti_langkah", label: "Ganti Langkah", max: 22, bobot: 2 },
-          {
-            key: "dua_kali_belok_kanan",
-            label: "2 Kali Belok Kanan",
-            max: 30,
-            bobot: 3,
-          },
-          {
-            key: "hormat_kiri_kanan",
-            label: "Hormat Kiri/Kanan",
-            max: 25,
-            bobot: 2,
-          },
-          {
-            key: "tiap_banjar_belok_kanan",
-            label: "Tiap-tiap Banjar 2 Kali Belok Kanan",
-            max: 30,
-            bobot: 3,
-          },
-          {
-            key: "dua_kali_belok_kiri",
-            label: "2 Kali Belok Kiri",
-            max: 30,
-            bobot: 3,
-          },
-          { key: "melintang_kiri", label: "Melintang Kiri", max: 35, bobot: 3 },
-          { key: "haluan_kiri", label: "Haluan Kiri", max: 32, bobot: 3 },
-          {
-            key: "hadap_kanan_maju",
-            label: "Hadap Kanan Maju",
-            max: 20,
-            bobot: 2,
-          },
-          {
-            key: "tiap_banjar_belok_kiri",
-            label: "Tiap-tiap Banjar 2 Kali Belok Kiri",
-            max: 30,
-            bobot: 3,
-          },
-          {
-            key: "hadap_kiri_henti",
-            label: "Hadap Kiri Henti",
-            max: 20,
-            bobot: 2,
-          },
-        ],
-      },
-      {
-        name: "GERAKAN TAMBAHAN",
-        items: [
-          { key: "bubar_jalan", label: "Bubar Jalan", max: 35, bobot: 3 },
-        ],
+        id: "bersaf_kumpul",
+        label: "Bersaf Kumpul",
+        max: 35,
+        values: {
+          "Kurang (6)": 6,
+          "Kurang (7)": 7,
+          "Cukup (11)": 11,
+          "Cukup (14)": 14,
+          "Baik (18)": 18,
+          "Baik (21)": 21,
+          "Baik Sekali (25)": 25,
+          "Baik Sekali (28)": 28,
+          "Baik Sekali (32)": 32,
+          "Baik Sekali (35)": 35,
+        },
       },
     ],
   },
-
-  DANTON: {
-    id: "danton",
-    title: "B. FORM PENILAIAN KOMANDAN PELETON (DANTON)",
-    icon: <Users size={20} />,
-    color: "bg-purple-500",
-    total: 100,
-    categories: [
+  {
+    category: "GERAKAN DI TEMPAT DAN BERPINDAH TEMPAT",
+    items: [
       {
-        name: "PENILAIAN UTAMA",
-        items: [
-          { key: "danton_sikap", label: "Sikap", max: 15, bobot: 1 },
-          { key: "danton_volume", label: "Volume Suara", max: 20, bobot: 2 },
-          {
-            key: "danton_artikulasi",
-            label: "Artikulasi Suara",
-            max: 20,
-            bobot: 2,
-          },
-          {
-            key: "danton_penguasaan_materi",
-            label: "Penguasaan Materi",
-            max: 20,
-            bobot: 2,
-          },
-          {
-            key: "danton_penguasaan_lapangan",
-            label: "Penguasaan Lapangan dan Pasukan",
-            max: 25,
-            bobot: 2,
-          },
-        ],
+        id: "sikap_sempurna",
+        label: "Sikap Sempurna",
+        max: 11,
+        values: {
+          "Kurang (2)": 2,
+          "Kurang (3)": 3,
+          "Cukup (4)": 4,
+          "Cukup (5)": 5,
+          "Baik (6)": 6,
+          "Baik (7)": 7,
+          "Baik Sekali (8)": 8,
+          "Baik Sekali (9)": 9,
+          "Baik Sekali (10)": 10,
+          "Baik Sekali (11)": 11,
+        },
+      },
+      {
+        id: "hormat",
+        label: "Hormat",
+        max: 20,
+        values: {
+          "Kurang (3)": 3,
+          "Kurang (4)": 4,
+          "Cukup (6)": 6,
+          "Cukup (8)": 8,
+          "Baik (10)": 10,
+          "Baik (12)": 12,
+          "Baik Sekali (14)": 14,
+          "Baik Sekali (16)": 16,
+          "Baik Sekali (18)": 18,
+          "Baik Sekali (20)": 20,
+        },
+      },
+      {
+        id: "istirahat",
+        label: "Istirahat (Parade)",
+        max: 11,
+        values: {
+          "Kurang (2)": 2,
+          "Kurang (3)": 3,
+          "Cukup (4)": 4,
+          "Cukup (5)": 5,
+          "Baik (6)": 6,
+          "Baik (7)": 7,
+          "Baik Sekali (8)": 8,
+          "Baik Sekali (9)": 9,
+          "Baik Sekali (10)": 10,
+          "Baik Sekali (11)": 11,
+        },
+      },
+      {
+        id: "berhitung",
+        label: "Berhitung",
+        max: 11,
+        values: {
+          "Kurang (2)": 2,
+          "Kurang (3)": 3,
+          "Cukup (4)": 4,
+          "Cukup (5)": 5,
+          "Baik (6)": 6,
+          "Baik (7)": 7,
+          "Baik Sekali (8)": 8,
+          "Baik Sekali (9)": 9,
+          "Baik Sekali (10)": 10,
+          "Baik Sekali (11)": 11,
+        },
+      },
+      {
+        id: "setengah_lengan",
+        label: "Setengah Lengan Lencang Kanan",
+        max: 20,
+        values: {
+          "Kurang (3)": 3,
+          "Kurang (4)": 4,
+          "Cukup (6)": 6,
+          "Cukup (8)": 8,
+          "Baik (10)": 10,
+          "Baik (12)": 12,
+          "Baik Sekali (14)": 14,
+          "Baik Sekali (16)": 16,
+          "Baik Sekali (18)": 18,
+          "Baik Sekali (20)": 20,
+        },
+      },
+      {
+        id: "hadap_kanan",
+        label: "Hadap Kanan",
+        max: 19,
+        values: {
+          "Kurang (3)": 3,
+          "Kurang (4)": 4,
+          "Cukup (6)": 6,
+          "Cukup (8)": 8,
+          "Baik (10)": 10,
+          "Baik (12)": 12,
+          "Baik Sekali (14)": 14,
+          "Baik Sekali (16)": 16,
+          "Baik Sekali (18)": 18,
+          "Baik Sekali (19)": 19,
+        },
+      },
+      {
+        id: "lencang_depan",
+        label: "Lencang Depan",
+        max: 11,
+        values: {
+          "Kurang (2)": 2,
+          "Kurang (3)": 3,
+          "Cukup (4)": 4,
+          "Cukup (5)": 5,
+          "Baik (6)": 6,
+          "Baik (7)": 7,
+          "Baik Sekali (8)": 8,
+          "Baik Sekali (9)": 9,
+          "Baik Sekali (10)": 10,
+          "Baik Sekali (11)": 11,
+        },
+      },
+      {
+        id: "hadap_serong_kiri",
+        label: "Hadap Serong Kiri",
+        max: 19,
+        values: {
+          "Kurang (3)": 3,
+          "Kurang (4)": 4,
+          "Cukup (6)": 6,
+          "Cukup (8)": 8,
+          "Baik (10)": 10,
+          "Baik (12)": 12,
+          "Baik Sekali (14)": 14,
+          "Baik Sekali (16)": 16,
+          "Baik Sekali (18)": 18,
+          "Baik Sekali (19)": 19,
+        },
+      },
+      {
+        id: "periksa_kerapihan",
+        label: "Periksa Kerapihan (Parade)",
+        max: 30,
+        values: {
+          "Kurang (5)": 5,
+          "Kurang (6)": 6,
+          "Cukup (9)": 9,
+          "Cukup (12)": 12,
+          "Baik (15)": 15,
+          "Baik (18)": 18,
+          "Baik Sekali (21)": 21,
+          "Baik Sekali (24)": 24,
+          "Baik Sekali (27)": 27,
+          "Baik Sekali (30)": 30,
+        },
+      },
+      {
+        id: "hadap_serong_kanan",
+        label: "Hadap Serong Kanan",
+        max: 19,
+        values: {
+          "Kurang (3)": 3,
+          "Kurang (4)": 4,
+          "Cukup (6)": 6,
+          "Cukup (8)": 8,
+          "Baik (10)": 10,
+          "Baik (12)": 12,
+          "Baik Sekali (14)": 14,
+          "Baik Sekali (16)": 16,
+          "Baik Sekali (18)": 18,
+          "Baik Sekali (19)": 19,
+        },
+      },
+      {
+        id: "hadap_kiri_jalan",
+        label: "Hadap Kiri Jalan Di Tempat",
+        max: 21,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (7)": 7,
+          "Cukup (9)": 9,
+          "Baik (11)": 11,
+          "Baik (13)": 13,
+          "Baik Sekali (15)": 15,
+          "Baik Sekali (17)": 17,
+          "Baik Sekali (19)": 19,
+          "Baik Sekali (21)": 21,
+        },
       },
     ],
   },
-
-  VARIASI: {
-    id: "variasi",
-    title: "C. FORM PENILAIAN VARIASI DAN FORMASI",
-    icon: <Flag size={20} />,
-    color: "bg-green-500",
-    total: 225,
-    categories: [
+  {
+    category: "GERAKAN BERPINDAH TEMPAT",
+    items: [
       {
-        name: "VARIASI - KREATIFITAS",
+        id: "tiga_langkah_belakang",
+        label: "3 Langkah Ke Belakang",
+        max: 24,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (8)": 8,
+          "Cukup (10)": 10,
+          "Baik (12)": 12,
+          "Baik (15)": 15,
+          "Baik Sekali (17)": 17,
+          "Baik Sekali (20)": 20,
+          "Baik Sekali (22)": 22,
+          "Baik Sekali (24)": 24,
+        },
+      },
+      {
+        id: "tiga_langkah_kiri",
+        label: "3 Langkah Ke Kiri",
+        max: 24,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (8)": 8,
+          "Cukup (10)": 10,
+          "Baik (12)": 12,
+          "Baik (15)": 15,
+          "Baik Sekali (17)": 17,
+          "Baik Sekali (20)": 20,
+          "Baik Sekali (22)": 22,
+          "Baik Sekali (24)": 24,
+        },
+      },
+      {
+        id: "empat_langkah_depan",
+        label: "4 Langkah Ke Depan",
+        max: 24,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (8)": 8,
+          "Cukup (10)": 10,
+          "Baik (12)": 12,
+          "Baik (15)": 15,
+          "Baik Sekali (17)": 17,
+          "Baik Sekali (20)": 20,
+          "Baik Sekali (22)": 22,
+          "Baik Sekali (24)": 24,
+        },
+      },
+    ],
+  },
+  {
+    category: "GERAKAN BERJALAN KE BERHENTI",
+    items: [
+      {
+        id: "langkah_tegap",
+        label: "Langkah Tegap",
+        max: 23,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (7)": 7,
+          "Cukup (10)": 10,
+          "Baik (12)": 12,
+          "Baik (14)": 14,
+          "Baik Sekali (17)": 17,
+          "Baik Sekali (19)": 19,
+          "Baik Sekali (21)": 21,
+          "Baik Sekali (23)": 23,
+        },
+      },
+      {
+        id: "langkah_perlahan",
+        label: "Langkah Perlahan",
+        max: 23,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (7)": 7,
+          "Cukup (10)": 10,
+          "Baik (12)": 12,
+          "Baik (14)": 14,
+          "Baik Sekali (17)": 17,
+          "Baik Sekali (19)": 19,
+          "Baik Sekali (21)": 21,
+          "Baik Sekali (23)": 23,
+        },
+      },
+      {
+        id: "langkah_berlari",
+        label: "Langkah Berlari",
+        max: 23,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (7)": 7,
+          "Cukup (10)": 10,
+          "Baik (12)": 12,
+          "Baik (14)": 14,
+          "Baik Sekali (17)": 17,
+          "Baik Sekali (19)": 19,
+          "Baik Sekali (21)": 21,
+          "Baik Sekali (23)": 23,
+        },
+      },
+    ],
+  },
+  {
+    category: "GERAKAN BERJALAN KE BERJALAN",
+    items: [
+      {
+        id: "biasa_ke_tegap",
+        label: "Langkah Biasa ke Langkah Tegap",
+        max: 23,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (7)": 7,
+          "Cukup (10)": 10,
+          "Baik (12)": 12,
+          "Baik (14)": 14,
+          "Baik Sekali (17)": 17,
+          "Baik Sekali (19)": 19,
+          "Baik Sekali (21)": 21,
+          "Baik Sekali (23)": 23,
+        },
+      },
+      {
+        id: "ganti_langkah",
+        label: "Ganti Langkah",
+        max: 22,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (7)": 7,
+          "Cukup (9)": 9,
+          "Baik (11)": 11,
+          "Baik (14)": 14,
+          "Baik Sekali (16)": 16,
+          "Baik Sekali (18)": 18,
+          "Baik Sekali (20)": 20,
+          "Baik Sekali (22)": 22,
+        },
+      },
+      {
+        id: "dua_kali_belok_kanan",
+        label: "2 Kali Belok Kanan",
+        max: 30,
+        values: {
+          "Kurang (5)": 5,
+          "Kurang (6)": 6,
+          "Cukup (9)": 9,
+          "Cukup (12)": 12,
+          "Baik (15)": 15,
+          "Baik (18)": 18,
+          "Baik Sekali (21)": 21,
+          "Baik Sekali (24)": 24,
+          "Baik Sekali (27)": 27,
+          "Baik Sekali (30)": 30,
+        },
+      },
+      {
+        id: "hormat_kiri_kanan",
+        label: "Hormat Kiri/Kanan",
+        max: 25,
+        values: {
+          "Kurang (4)": 4,
+          "Kurang (5)": 5,
+          "Cukup (8)": 8,
+          "Cukup (10)": 10,
+          "Baik (13)": 13,
+          "Baik (15)": 15,
+          "Baik Sekali (18)": 18,
+          "Baik Sekali (20)": 20,
+          "Baik Sekali (23)": 23,
+          "Baik Sekali (25)": 25,
+        },
+      },
+      {
+        id: "tiap_banjar_belok_kanan",
+        label: "Tiap-tiap Banjar 2 Kali Belok Kanan",
+        max: 30,
+        values: {
+          "Kurang (5)": 5,
+          "Kurang (6)": 6,
+          "Cukup (9)": 9,
+          "Cukup (12)": 12,
+          "Baik (15)": 15,
+          "Baik (18)": 18,
+          "Baik Sekali (21)": 21,
+          "Baik Sekali (24)": 24,
+          "Baik Sekali (27)": 27,
+          "Baik Sekali (30)": 30,
+        },
+      },
+      {
+        id: "dua_kali_belok_kiri",
+        label: "2 Kali Belok Kiri",
+        max: 30,
+        values: {
+          "Kurang (5)": 5,
+          "Kurang (6)": 6,
+          "Cukup (9)": 9,
+          "Cukup (12)": 12,
+          "Baik (15)": 15,
+          "Baik (18)": 18,
+          "Baik Sekali (21)": 21,
+          "Baik Sekali (24)": 24,
+          "Baik Sekali (27)": 27,
+          "Baik Sekali (30)": 30,
+        },
+      },
+      {
+        id: "melintang_kiri",
+        label: "Melintang Kiri",
+        max: 35,
+        values: {
+          "Kurang (6)": 6,
+          "Kurang (7)": 7,
+          "Cukup (11)": 11,
+          "Cukup (14)": 14,
+          "Baik (18)": 18,
+          "Baik (21)": 21,
+          "Baik Sekali (25)": 25,
+          "Baik Sekali (28)": 28,
+          "Baik Sekali (32)": 32,
+          "Baik Sekali (35)": 35,
+        },
+      },
+      {
+        id: "haluan_kiri",
+        label: "Haluan Kiri",
+        max: 32,
+        values: {
+          "Kurang (5)": 5,
+          "Kurang (7)": 7,
+          "Cukup (10)": 10,
+          "Cukup (13)": 13,
+          "Baik (16)": 16,
+          "Baik (20)": 20,
+          "Baik Sekali (23)": 23,
+          "Baik Sekali (26)": 26,
+          "Baik Sekali (29)": 29,
+          "Baik Sekali (32)": 32,
+        },
+      },
+      {
+        id: "hadap_kanan_maju",
+        label: "Hadap Kanan Maju",
+        max: 20,
+        values: {
+          "Kurang (3)": 3,
+          "Kurang (4)": 4,
+          "Cukup (6)": 6,
+          "Cukup (8)": 8,
+          "Baik (10)": 10,
+          "Baik (12)": 12,
+          "Baik Sekali (14)": 14,
+          "Baik Sekali (16)": 16,
+          "Baik Sekali (18)": 18,
+          "Baik Sekali (20)": 20,
+        },
+      },
+      {
+        id: "tiap_banjar_belok_kiri",
+        label: "Tiap-tiap Banjar 2 Kali Belok Kiri",
+        max: 30,
+        values: {
+          "Kurang (5)": 5,
+          "Kurang (6)": 6,
+          "Cukup (9)": 9,
+          "Cukup (12)": 12,
+          "Baik (15)": 15,
+          "Baik (18)": 18,
+          "Baik Sekali (21)": 21,
+          "Baik Sekali (24)": 24,
+          "Baik Sekali (27)": 27,
+          "Baik Sekali (30)": 30,
+        },
+      },
+      {
+        id: "hadap_kiri_henti",
+        label: "Hadap Kiri Henti",
+        max: 20,
+        values: {
+          "Kurang (3)": 3,
+          "Kurang (4)": 4,
+          "Cukup (6)": 6,
+          "Cukup (8)": 8,
+          "Baik (10)": 10,
+          "Baik (12)": 12,
+          "Baik Sekali (14)": 14,
+          "Baik Sekali (16)": 16,
+          "Baik Sekali (18)": 18,
+          "Baik Sekali (20)": 20,
+        },
+      },
+    ],
+  },
+  {
+    category: "GERAKAN TAMBAHAN",
+    items: [
+      {
+        id: "bubar_jalan",
+        label: "Bubar Jalan",
+        max: 35,
+        values: {
+          "Kurang (6)": 6,
+          "Kurang (7)": 7,
+          "Cukup (11)": 11,
+          "Cukup (14)": 14,
+          "Baik (18)": 18,
+          "Baik (21)": 21,
+          "Baik Sekali (25)": 25,
+          "Baik Sekali (28)": 28,
+          "Baik Sekali (32)": 32,
+          "Baik Sekali (35)": 35,
+        },
+      },
+    ],
+  },
+];
+
+// Data VARIASI dan KREATIFITAS berdasarkan upload - STRUKTUR SAMA PERSIS
+const VARIASI_SCORING_DATA = [
+  {
+    category: "VARIASI",
+    subCategories: [
+      {
+        subCategory: "KREATIFITAS",
         items: [
           {
-            key: "opening_variasi",
+            id: "opening_variasi",
             label: "Opening Variasi",
             max: 8,
-            bobot: 1,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Cukup)": 5,
+              "0.8 (Baik)": 7,
+              "1.0 (Baik Sekali)": 8,
+            },
           },
           {
-            key: "pembukaan_materi",
+            id: "pembukaan_materi_dan_isi_Pesan",
             label: "Pembukaan Materi dan Isi Pesan",
             max: 8,
-            bobot: 1,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Cukup)": 5,
+              "0.8 (Baik)": 7,
+              "1.0 (Baik Sekali)": 8,
+            },
           },
           {
-            key: "kolaborasi_gerakan",
-            label: "Kolaborasi Gerakan & Display/Tampilan",
+            id: "kolaborasi_gerakan_dan_display",
+            label: "Kolaborasi Gerakan & Display/Tampilan (Alat Pendukung)",
             max: 8,
-            bobot: 1,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Cukup)": 5,
+              "0.8 (Baik)": 7,
+              "1.0 (Baik Sekali)": 8,
+            },
           },
         ],
       },
       {
-        name: "VARIASI - DINAMIKA & STRUKTUR GERAKAN",
+        subCategory: "DINAMIKA & STRUKTUR GERAKAN",
         items: [
           {
-            key: "kesesuaian_gerakan",
-            label: "Kesesuaian Gerakan dengan Isi Pesan",
+            id: "kesesuaian_gerakan_dengan_isi_pesan",
+            label: "Kesesuaian Gerakan Dengan Isi Pesan",
             max: 7,
-            bobot: 1,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Cukup)": 5,
+              "0.8 (Baik)": 6,
+              "1.0 (Baik Sekali)": 7,
+            },
           },
           {
-            key: "etika_gerakan",
-            label: "Etika, Kesopanan, dan Keamanan Gerakan",
+            id: "etika_kesopanan_dan_keamanan_gerakan",
+            label: "Etika Kesopanan dan Keamanan Gerakan",
             max: 7,
-            bobot: 1,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Cukup)": 5,
+              "0.8 (Baik)": 6,
+              "1.0 (Baik Sekali)": 7,
+            },
           },
           {
-            key: "tingkat_kesulitan",
+            id: "tingkat_kesulitan_dan_detail_gerakan",
             label: "Tingkat Kesulitan & Detail Gerakan",
             max: 8,
-            bobot: 1,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Cukup)": 5,
+              "0.8 (Baik)": 7,
+              "1.0 (Baik Sekali)": 8,
+            },
           },
           {
-            key: "kerapihan_shaf",
-            label: "Kerapihan Shaf, Banjar, dan Kelompokan Gerakan",
+            id: "kerapihan_shaf_banjar_dan_kekompakan_gerakan",
+            label: "Kerapihan Shaf Banjar dan Kekompakan Gerakan",
             max: 8,
-            bobot: 1,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Cukup)": 5,
+              "0.8 (Baik)": 7,
+              "1.0 (Baik Sekali)": 8,
+            },
           },
           {
-            key: "kesesuaian_format",
-            label: "Kesesuaian Format Barisan & Penguasaan Lapangan",
+            id: "Kesesuaian_format_barisan_dan_penguasaan_lapangan",
+            label: "Kesesuaian Format Barisan dan Penguasaan Lapangan",
             max: 8,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "VARIASI - PASUKAN",
-        items: [
-          {
-            key: "penjiwaan_pasukan",
-            label: "Penjiwaan, Artikulasi & Intonasi",
-            max: 8,
-            bobot: 1,
-          },
-          {
-            key: "penguasaan_semangat",
-            label: "Penguasaan Materi & Semangat Kestabilan Penampilan",
-            max: 8,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "VARIASI - KOMANDAN",
-        items: [
-          {
-            key: "penjiwaan_komandan",
-            label: "Penjiwaan, Artikulasi & Intonasi",
-            max: 8,
-            bobot: 1,
-          },
-          {
-            key: "semangat_komandan",
-            label: "Semangat dan Kestabilan Penampilan",
-            max: 8,
-            bobot: 1,
-          },
-          {
-            key: "penguasaan_komandan",
-            label: "Penguasaan Lapangan, Materi & Aba-Aba",
-            max: 9,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "FORMASI - KREATIFITAS",
-        items: [
-          {
-            key: "pengembangan_pesan",
-            label: "Pengembangan Isi Pesan",
-            max: 9,
-            bobot: 1,
-          },
-          {
-            key: "kolaborasi_formasi",
-            label: "Kolaborasi Gerakan & Display/Tampilan",
-            max: 8,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "FORMASI - DINAMIKA & STRUKTUR GERAKAN",
-        items: [
-          {
-            key: "kesesuaian_formasi",
-            label: "Kesesuaian Gerakan dengan Isi Pesan",
-            max: 7,
-            bobot: 1,
-          },
-          {
-            key: "etika_formasi",
-            label: "Etika, Kesopanan, dan Keamanan Gerakan",
-            max: 7,
-            bobot: 1,
-          },
-          {
-            key: "detail_kerapihan",
-            label: "Detail, Kerapihan & Kelompokan Gerakan",
-            max: 11,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "FORMASI - PROSES BUKA TUTUP & BENTUK AKHIR FORMASI",
-        items: [
-          {
-            key: "kelurusan_barisan",
-            label:
-              "Kelurusan Barisan, Shaf, Banjar, Simetris pada Bentuk Akhir",
-            max: 10,
-            bobot: 1,
-          },
-          {
-            key: "penggunaan_lapangan",
-            label: "Tingkat Kesulitan & Penguasaan Penggunaan Lapangan",
-            max: 10,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "FORMASI - PASUKAN",
-        items: [
-          {
-            key: "semangat_pasukan",
-            label: "Semangat, Penjiwaan, Artikulasi & Intonasi",
-            max: 8,
-            bobot: 1,
-          },
-          {
-            key: "kestabilan_pasukan",
-            label: "Penguasaan Materi & Semangat Kestabilan Penampilan",
-            max: 8,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "FORMASI - KOMANDAN",
-        items: [
-          {
-            key: "semangat_komandan_formasi",
-            label: "Semangat, Penjiwaan, Artikulasi & Intonasi",
-            max: 8,
-            bobot: 1,
-          },
-          {
-            key: "sikap_olah_gerak",
-            label: "Sikap & Olah Gerak",
-            max: 9,
-            bobot: 1,
-          },
-          {
-            key: "penguasaan_aba_aba",
-            label: "Penguasaan Lapangan, Materi & Aba-Aba",
-            max: 9,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "ALL PERFORMANCE VAFOR",
-        items: [
-          {
-            key: "semangat_kestabilan",
-            label: "Semangat & Kestabilan",
-            max: 9,
-            bobot: 1,
-          },
-          {
-            key: "ending_celebration",
-            label: "Ending Celebration",
-            max: 9,
-            bobot: 1,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Cukup)": 5,
+              "0.8 (Baik)": 7,
+              "1.0 (Baik Sekali)": 8,
+            },
           },
         ],
       },
     ],
   },
+  {
+    category: "KREATIFITAS",
+    subCategories: [
+      {
+        subCategory: "2. Pembukaan Materi dan Isi Pesan",
+        items: [
+          {
+            id: "pembukaan_materi_bebas",
+            label: "BEBAS",
+            max: 8,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Baik)": 5,
+              "0.8 (Baik)": 6,
+              "1.0 (Baik Sekali)": 7,
+              "1.0 (Baik Sekali)": 8,
+            },
+          },
+          {
+            id: "pembukaan_materi_total",
+            label: "TOTAL",
+            max: 8,
+            values: {
+              "0.1 (Kurang)": 1,
+              "0.2 (Kurang)": 2,
+              "0.35 (Kurang)": 3,
+              "0.50 (Cukup)": 4,
+              "0.6 (Baik)": 5,
+              "0.8 (Baik)": 6,
+              "1.0 (Baik Sekali)": 7,
+              "1.0 (Baik Sekali)": 8,
+            },
+          },
+        ],
+      },
+    ],
+  },
+];
 
-  KOSTUM: {
-    id: "kostum",
-    title: "D. FORM PENILAIAN KOSTUM TERBAIK",
-    icon: <Palette size={20} />,
-    color: "bg-amber-500",
-    total: 75,
-    categories: [
-      {
-        name: "TUTUP KEPALA",
-        items: [
-          {
-            key: "kesesuaian_gender",
-            label: "Kesesuaian Gender/Konsep",
-            max: 5,
-            bobot: 1,
-          },
-          {
-            key: "keselarasan_penutup",
-            label: "Keselarasan Penutup Kepala dengan Kostum",
-            max: 4,
-            bobot: 1,
-          },
-          {
-            key: "kesesuaian_atribut",
-            label: "Kesesuaian Atribut dengan Design Penutup Kepala",
-            max: 4,
-            bobot: 1,
-          },
-          {
-            key: "kerapihan_penutup",
-            label: "Kerapihan & Kebersihan Penggunaan Penutup Kepala",
-            max: 4,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "BAJU/CELANA/ROK",
-        items: [
-          {
-            key: "kesesuaian_bahan",
-            label: "Kesesuaian Bahan dengan Model Baju dan Celana",
-            max: 5,
-            bobot: 1,
-          },
-          {
-            key: "cuttingan_body",
-            label: "Cuttingan & Body Fitting / Ukuran Baju",
-            max: 5,
-            bobot: 1,
-          },
-          {
-            key: "design_kostum",
-            label: "Design Kostum dengan Konsep Performance",
-            max: 5,
-            bobot: 1,
-          },
-          {
-            key: "paduan_warna",
-            label: "Keselarasan / Paduan Warna",
-            max: 4,
-            bobot: 1,
-          },
-          {
-            key: "kharisma_kostum",
-            label: "Kharisma Pembawaan Kostum",
-            max: 4,
-            bobot: 1,
-          },
-          {
-            key: "kesopanan_kerapihan",
-            label: "Kesopanan, Kerapihan & Kebersihan",
-            max: 4,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "SEPATU / ALASAN KAKI",
-        items: [
-          {
-            key: "kesesuaian_sepatu",
-            label: "Kesesuaian Sepatu dengan Design Seragam",
-            max: 4,
-            bobot: 1,
-          },
-          { key: "ukuran_sepatu", label: "Ukuran Sepatu", max: 4, bobot: 1 },
-          {
-            key: "kerapihan_sepatu",
-            label: "Kerapihan & Kebersihan Penggunaan",
-            max: 4,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "KREATIFITAS KOSTUM & ATRIBUT",
-        items: [
-          {
-            key: "kesesuaian_atribut_design",
-            label: "Kesesuaian Atribut dengan Design Kostum",
-            max: 5,
-            bobot: 1,
-          },
-          {
-            key: "kerapihan_atribut",
-            label: "Kerapihan & Kebersihan",
-            max: 5,
-            bobot: 1,
-          },
-        ],
-      },
-      {
-        name: "TOTAL DESIGN",
-        items: [{ key: "total_look", label: "Total Look", max: 9, bobot: 1 }],
-      },
-    ],
-  },
-
-  MAKEUP: {
-    id: "makeup",
-    title: "E. FORM PENILAIAN MAKE UP TERBAIK",
-    icon: <Smile size={20} />,
-    color: "bg-pink-500",
-    total: 150,
-    categories: [
-      {
-        name: "TEKNIK MAKEUP",
-        items: [
-          {
-            key: "kesesuaian_makeup",
-            label: "Kesesuaian Makeup",
-            max: 26,
-            bobot: 2,
-          },
-          {
-            key: "kerapihan_makeup",
-            label: "Kerapihan Makeup",
-            max: 25,
-            bobot: 2,
-          },
-          { key: "complexion", label: "Complexion", max: 20, bobot: 2 },
-          {
-            key: "shading_contour",
-            label: "Shading, Contour & Highlight",
-            max: 22,
-            bobot: 2,
-          },
-          {
-            key: "rias_mata",
-            label: "Riasan Mata & Bentuk Alis",
-            max: 19,
-            bobot: 1,
-          },
-          { key: "blush_on", label: "Aplikasi Blush on", max: 19, bobot: 1 },
-          {
-            key: "warna_bibir",
-            label: "Aplikasi Warna Bibir",
-            max: 19,
-            bobot: 1,
-          },
-        ],
-      },
-    ],
-  },
+// Helper function to get quality label based on value
+const getQualityLabel = (value, max) => {
+  if (value <= 3) return { label: "Kurang", color: "red" };
+  if (value === 4) return { label: "Cukup", color: "yellow" };
+  if (value >= 5 && value <= 6) return { label: "Baik", color: "blue" };
+  return { label: "Baik Sekali", color: "green" };
 };
 
-const ScoreForm = () => {
+const ScoreForm = ({ teams = [], userData = null }) => {
   const [scores, setScores] = useState({});
-  const [activeForm, setActiveForm] = useState("pbb");
-  const [showSuccess, setShowSuccess] = useState(false);
   const [teamName, setTeamName] = useState("");
-  const [judgeName, setJudgeName] = useState("");
   const [teamCode, setTeamCode] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const saveTimeoutRef = useRef(null);
+  const [selectedTeam, setSelectedTeam] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [expandedSubCategories, setExpandedSubCategories] = useState({});
+  const [allExpanded, setAllExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState("pbb");
 
   // Initialize from localStorage
   useEffect(() => {
-    const savedData = localStorage.getItem("lkbb_full_scores");
+    const savedData = localStorage.getItem("pbb_scores");
     if (savedData) {
       const data = JSON.parse(savedData);
       setScores(data.scores || {});
       setTeamName(data.teamName || "");
-      setJudgeName(data.judgeName || "");
       setTeamCode(data.teamCode || "");
     }
   }, []);
 
-  // Debounced save function
-  const debouncedSave = (newScores) => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      setIsSaving(true);
-
-      const saveData = {
-        scores: newScores,
-        teamName,
-        judgeName,
-        teamCode,
-        timestamp: new Date().toISOString(),
-      };
-
-      localStorage.setItem("lkbb_full_scores", JSON.stringify(saveData));
-
-      setIsSaving(false);
-    }, 300);
+  // Save to localStorage
+  const saveToStorage = (newScores, additionalData = {}) => {
+    const data = {
+      scores: newScores,
+      teamName,
+      teamCode,
+      ...additionalData,
+      lastUpdated: new Date().toISOString(),
+    };
+    localStorage.setItem("pbb_scores", JSON.stringify(data));
   };
 
-  const handleScoreChange = (key, value) => {
-    if (value === "" || value === null || value === undefined) {
-      const newScores = { ...scores };
-      delete newScores[key];
-      setScores(newScores);
-      debouncedSave(newScores);
-      return;
+  // Handle score change
+  const handleScoreChange = (itemId, value) => {
+    const newScores = { ...scores, [itemId]: value };
+    setScores(newScores);
+    saveToStorage(newScores);
+  };
+
+  // Toggle expanded category
+  const toggleCategory = (category) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [category]: !prev[category],
+    }));
+  };
+
+  // Toggle expanded subcategory
+  const toggleSubCategory = (category, subCategory) => {
+    const key = `${category}-${subCategory}`;
+    setExpandedSubCategories((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  // Toggle all categories for active tab
+  const toggleAllCategories = () => {
+    if (allExpanded) {
+      setExpandedCategories({});
+      setExpandedSubCategories({});
+    } else {
+      const allExpandedState = {};
+      const allSubExpandedState = {};
+
+      if (activeTab === "pbb") {
+        PBB_SCORING_DATA.forEach((cat) => {
+          allExpandedState[cat.category] = true;
+        });
+      } else {
+        VARIASI_SCORING_DATA.forEach((cat) => {
+          allExpandedState[cat.category] = true;
+          cat.subCategories?.forEach((subCat) => {
+            const key = `${cat.category}-${subCat.subCategory}`;
+            allSubExpandedState[key] = true;
+          });
+        });
+      }
+
+      setExpandedCategories(allExpandedState);
+      setExpandedSubCategories(allSubExpandedState);
+    }
+    setAllExpanded(!allExpanded);
+  };
+
+  // Quick fill category with specific quality
+  const quickFillCategory = (category, quality) => {
+    const dataToUse =
+      activeTab === "pbb" ? PBB_SCORING_DATA : VARIASI_SCORING_DATA;
+    const categoryData = dataToUse.find((cat) => cat.category === category);
+    if (!categoryData) return;
+
+    const newScores = { ...scores };
+
+    if (activeTab === "pbb") {
+      categoryData.items.forEach((item) => {
+        const values = Object.values(item.values);
+        let targetValue = 0;
+
+        switch (quality) {
+          case "kurang":
+            targetValue = Math.min(...values);
+            break;
+          case "cukup":
+            const sorted = values.sort((a, b) => a - b);
+            targetValue = sorted[Math.floor(sorted.length / 2)];
+            break;
+          case "baik":
+            targetValue = Math.max(...values.filter((v) => v < item.max));
+            break;
+          case "baikSekali":
+            targetValue = item.max;
+            break;
+        }
+
+        newScores[item.id] = targetValue;
+      });
+    } else {
+      // Untuk Variasi, isi semua item dalam kategori
+      categoryData.subCategories?.forEach((subCat) => {
+        subCat.items.forEach((item) => {
+          let targetValue = 0;
+          switch (quality) {
+            case "kurang":
+              targetValue = 2; // nilai tengah dari range 1-3
+              break;
+            case "cukup":
+              targetValue = 4; // nilai tunggal untuk Cukup
+              break;
+            case "baik":
+              targetValue = 6; // nilai maksimum dari range Baik
+              break;
+            case "baikSekali":
+              targetValue = 8; // nilai maksimum
+              break;
+          }
+          newScores[item.id] = targetValue;
+        });
+      });
     }
 
-    const numValue = Number(value);
-    if (isNaN(numValue)) return;
+    setScores(newScores);
+    saveToStorage(newScores);
+  };
 
-    // Temukan maksimum untuk item ini
-    let max = 0;
-    Object.values(FORMS).forEach((form) => {
-      form.categories.forEach((category) => {
+  // Get total score for active tab
+  const getTotalScore = () => {
+    const dataToUse =
+      activeTab === "pbb" ? PBB_SCORING_DATA : VARIASI_SCORING_DATA;
+    let total = 0;
+
+    if (activeTab === "pbb") {
+      dataToUse.forEach((category) => {
         category.items.forEach((item) => {
-          if (item.key === key) {
-            max = item.max;
+          if (scores[item.id]) {
+            total += scores[item.id];
           }
         });
       });
-    });
-
-    // Validasi nilai
-    const validatedValue = Math.min(Math.max(numValue, 0), max);
-
-    const newScores = { ...scores, [key]: validatedValue };
-    setScores(newScores);
-    debouncedSave(newScores);
-  };
-
-  const getScoreColor = (percentage) => {
-    if (percentage >= 90) return "text-green-600 bg-green-50 border-green-200";
-    if (percentage >= 80) return "text-blue-600 bg-blue-50 border-blue-200";
-    if (percentage >= 70)
-      return "text-yellow-600 bg-yellow-50 border-yellow-200";
-    if (percentage >= 60)
-      return "text-orange-600 bg-orange-50 border-orange-200";
-    return "text-red-600 bg-red-50 border-red-200";
-  };
-
-  const getFormScore = (formId) => {
-    const form = FORMS[formId.toUpperCase()];
-    if (!form) return { score: 0, max: 0, percentage: 0 };
-
-    let totalScore = 0;
-    let totalMax = 0;
-
-    form.categories.forEach((category) => {
-      category.items.forEach((item) => {
-        totalScore += scores[item.key] || 0;
-        totalMax += item.max;
+    } else {
+      dataToUse.forEach((category) => {
+        category.subCategories?.forEach((subCat) => {
+          subCat.items.forEach((item) => {
+            if (scores[item.id]) {
+              total += scores[item.id];
+            }
+          });
+        });
       });
-    });
-
-    const percentage =
-      totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
-    return { score: totalScore, max: totalMax, percentage };
-  };
-
-  const getAllScores = () => {
-    const result = {};
-    Object.keys(FORMS).forEach((formKey) => {
-      result[formKey] = getFormScore(formKey);
-    });
-    return result;
-  };
-
-  const getOverallScore = () => {
-    const allScores = getAllScores();
-    let totalScore = 0;
-    let totalMax = 0;
-
-    Object.values(allScores).forEach((formScore) => {
-      totalScore += formScore.score;
-      totalMax += formScore.max;
-    });
-
-    const percentage =
-      totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
-    return { score: totalScore, max: totalMax, percentage };
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!teamName || !judgeName || !teamCode) {
-      alert("Harap isi data tim dan juri terlebih dahulu!");
-      return;
     }
-
-    const allScores = getAllScores();
-    const overall = getOverallScore();
-
-    const payload = {
-      teamName,
-      teamCode,
-      judgeName,
-      scores,
-      formScores: allScores,
-      overallScore: overall,
-      timestamp: new Date().toISOString(),
-    };
-
-    console.log("DATA NILAI LENGKAP:", payload);
-
-    // Save to localStorage
-    localStorage.setItem(
-      "lkbb_final_submission_" + Date.now(),
-      JSON.stringify(payload),
-    );
-
-    // Show success
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-    }, 3000);
+    return total;
   };
 
-  const handleReset = () => {
-    if (
-      window.confirm(
-        "Reset semua nilai ke 0? Data akan dihapus dari localStorage.",
-      )
-    ) {
-      setScores({});
-      localStorage.removeItem("lkbb_full_scores");
+  // Get max score for active tab
+  const getTotalMaxScore = () => {
+    const dataToUse =
+      activeTab === "pbb" ? PBB_SCORING_DATA : VARIASI_SCORING_DATA;
+    let total = 0;
+
+    if (activeTab === "pbb") {
+      dataToUse.forEach((category) => {
+        category.items.forEach((item) => {
+          total += item.max;
+        });
+      });
+    } else {
+      dataToUse.forEach((category) => {
+        category.subCategories?.forEach((subCat) => {
+          subCat.items.forEach((item) => {
+            total += item.max;
+          });
+        });
+      });
     }
+    return total;
   };
 
-  const ScoreInput = ({ item, formId }) => {
-    const currentScore = scores[item.key] || "";
-    const max = item.max;
-    const percentage = Math.round(((scores[item.key] || 0) / max) * 100);
+  // Get percentage for active tab
+  const getPercentage = () => {
+    const totalMax = getTotalMaxScore();
+    const totalScore = getTotalScore();
+    return totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+  };
 
-    const handleChange = (e) => {
-      handleScoreChange(item.key, e.target.value);
-    };
+  // Get score by category
+  const getCategoryScore = (category) => {
+    const dataToUse =
+      activeTab === "pbb" ? PBB_SCORING_DATA : VARIASI_SCORING_DATA;
+    const categoryData = dataToUse.find((cat) => cat.category === category);
+    if (!categoryData) return 0;
 
-    const handleKeyDown = (e) => {
-      if (e.key === "Enter") {
-        e.target.blur();
-      }
-    };
+    let total = 0;
+    if (activeTab === "pbb") {
+      categoryData.items.forEach((item) => {
+        total += scores[item.id] || 0;
+      });
+    } else {
+      categoryData.subCategories?.forEach((subCat) => {
+        subCat.items.forEach((item) => {
+          total += scores[item.id] || 0;
+        });
+      });
+    }
+    return total;
+  };
+
+  // Get max by category
+  const getCategoryMax = (category) => {
+    const dataToUse =
+      activeTab === "pbb" ? PBB_SCORING_DATA : VARIASI_SCORING_DATA;
+    const categoryData = dataToUse.find((cat) => cat.category === category);
+    if (!categoryData) return 0;
+
+    let total = 0;
+    if (activeTab === "pbb") {
+      categoryData.items.forEach((item) => {
+        total += item.max;
+      });
+    } else {
+      categoryData.subCategories?.forEach((subCat) => {
+        subCat.items.forEach((item) => {
+          total += item.max;
+        });
+      });
+    }
+    return total;
+  };
+
+  // Get average quality for category
+  const getCategoryQuality = (category) => {
+    const catScore = getCategoryScore(category);
+    const catMax = getCategoryMax(category);
+    return getQualityLabel(Math.round(catScore / 4), 8); // Normalisasi untuk kategori
+  };
+
+  // Render scoring form based on active tab
+  const renderScoringForm = () => {
+    const dataToUse =
+      activeTab === "pbb" ? PBB_SCORING_DATA : VARIASI_SCORING_DATA;
 
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-all">
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 text-sm">
-              {item.label}
-            </h4>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-gray-500">Bobot: {item.bobot}</span>
-              <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-              <span className="text-xs text-gray-500">Maks: {max}</span>
+      <div className="bg-white rounded-lg border border-gray-200 mb-6 shadow-sm overflow-hidden">
+        <div className="p-6 border-b bg-gray-50">
+          <h2 className="text-xl font-bold text-gray-900">
+            {activeTab === "pbb"
+              ? "A. FORM PENILAIAN PERATURAN BARIS BERBARIS (PBB)"
+              : "B. FORM PENILAIAN VARIASI & KREATIFITAS"}
+          </h2>
+          <div className="text-sm text-gray-600 mt-2">
+            {activeTab === "pbb"
+              ? "Total 30 item penilaian • 700 poin maksimum"
+              : "Total 4 item penilaian • 32 poin maksimum"}
+          </div>
+        </div>
+
+        {/* Categories List */}
+        {dataToUse.map((category, catIndex) => {
+          const catScore = getCategoryScore(category.category);
+          const catMax = getCategoryMax(category.category);
+          const catPercentage =
+            catMax > 0 ? Math.round((catScore / catMax) * 100) : 0;
+          const catQuality = getCategoryQuality(category.category);
+          const isCategoryExpanded =
+            expandedCategories[category.category] || false;
+
+          return (
+            <div key={catIndex} className="border-b last:border-b-0">
+              {/* Category Header */}
+              <div
+                onClick={() => toggleCategory(category.category)}
+                className="w-full p-6 text-left hover:bg-gray-50 transition-colors flex justify-between items-center cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-gray-500">
+                    {isCategoryExpanded ? (
+                      <ChevronDown size={20} />
+                    ) : (
+                      <ChevronRight size={20} />
+                    )}
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-gray-800 text-lg">
+                      {category.category}
+                    </h3>
+                    <div className="text-sm text-gray-600 mt-1">
+                      {activeTab === "pbb"
+                        ? `${category.items.length} item penilaian`
+                        : `${category.subCategories?.reduce((sum, sub) => sum + sub.items.length, 0)} item penilaian`}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  {/* Quality Indicator */}
+                  <div
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      catQuality.color === "red"
+                        ? "bg-red-100 text-red-700"
+                        : catQuality.color === "yellow"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : catQuality.color === "blue"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-green-100 text-green-700"
+                    }`}
+                  >
+                    {catQuality.label}
+                  </div>
+
+                  {/* Score Display */}
+                  <div className="text-right">
+                    <div className="font-bold text-lg text-gray-900">
+                      {catScore} / {catMax}
+                    </div>
+                    <div
+                      className={`text-sm font-medium ${
+                        catPercentage >= 80
+                          ? "text-green-600"
+                          : catPercentage >= 70
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                      }`}
+                    >
+                      {catPercentage}%
+                    </div>
+                  </div>
+
+                  {/* Quick Action Buttons for Category */}
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        quickFillCategory(category.category, "kurang");
+                      }}
+                      className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded-md hover:bg-red-100 font-medium"
+                      title="Set semua ke Kurang"
+                    >
+                      Kurang
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        quickFillCategory(category.category, "cukup");
+                      }}
+                      className="px-3 py-1 text-xs bg-yellow-50 text-yellow-700 rounded-md hover:bg-yellow-100 font-medium"
+                      title="Set semua ke Cukup"
+                    >
+                      Cukup
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        quickFillCategory(category.category, "baik");
+                      }}
+                      className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 font-medium"
+                      title="Set semua ke Baik"
+                    >
+                      Baik
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        quickFillCategory(category.category, "baikSekali");
+                      }}
+                      className="px-3 py-1 text-xs bg-green-50 text-green-700 rounded-md hover:bg-green-100 font-medium"
+                      title="Set semua ke Baik Sekali"
+                    >
+                      Baik Sekali
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Content */}
+              {isCategoryExpanded && (
+                <div className="px-6 pb-6 bg-gray-50">
+                  <div className="pt-4">
+                    {/* Untuk PBB */}
+                    {activeTab === "pbb" && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {category.items.map((item) => renderItem(item))}
+                      </div>
+                    )}
+
+                    {/* Untuk Variasi & Kreatifitas */}
+                    {activeTab === "variasi" &&
+                      category.subCategories?.map((subCat, subIndex) => {
+                        const subKey = `${category.category}-${subCat.subCategory}`;
+                        const isSubExpanded =
+                          expandedSubCategories[subKey] || false;
+
+                        return (
+                          <div key={subIndex} className="mb-4 last:mb-0">
+                            {/* Sub Category Header */}
+                            <div
+                              onClick={() =>
+                                toggleSubCategory(
+                                  category.category,
+                                  subCat.subCategory,
+                                )
+                              }
+                              className="w-full p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex justify-between items-center cursor-pointer mb-2"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="text-gray-500">
+                                  {isSubExpanded ? (
+                                    <ChevronDown size={18} />
+                                  ) : (
+                                    <ChevronRight size={18} />
+                                  )}
+                                </div>
+                                <div className="text-left">
+                                  <h4 className="font-medium text-gray-700">
+                                    {subCat.subCategory}
+                                  </h4>
+                                </div>
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {subCat.items.length} item
+                              </div>
+                            </div>
+
+                            {/* Sub Category Content */}
+                            {isSubExpanded && (
+                              <div className="mt-2">
+                                <div className="grid grid-cols-1 gap-4">
+                                  {subCat.items.map((item) => renderItem(item))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Helper function to render item
+  const renderItem = (item) => {
+    const currentValue = scores[item.id] || 0;
+    const itemQuality = getQualityLabel(currentValue, item.max);
+    const valueEntries = Object.entries(item.values);
+
+    return (
+      <div
+        key={item.id}
+        className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
+      >
+        {/* Item Header */}
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h4 className="font-medium text-gray-800">{item.label}</h4>
+            <div className="text-xs text-gray-500 mt-1">
+              Maksimum: {item.max} poin
             </div>
           </div>
-          <div className="text-right ml-4">
+          <div className="text-right">
             <div
-              className={`text-lg font-bold ${
-                formId === "kostum"
-                  ? "text-amber-600"
-                  : formId === "makeup"
-                    ? "text-pink-600"
-                    : formId === "danton"
-                      ? "text-purple-600"
-                      : formId === "variasi"
-                        ? "text-green-600"
-                        : "text-blue-600"
-              }`}>
-              {scores[item.key] || 0}
+              className={`text-center px-3 py-1 rounded-lg font-bold ${
+                currentValue === 0
+                  ? "bg-gray-100 text-gray-700"
+                  : itemQuality.color === "red"
+                    ? "bg-red-100 text-red-700"
+                    : itemQuality.color === "yellow"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : itemQuality.color === "blue"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-green-100 text-green-700"
+              }`}
+            >
+              <div className="text-xl">{currentValue}</div>
+              <div className="text-xs">poin</div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">dari {max}</div>
           </div>
         </div>
 
-        {/* Input dengan tombol plus/minus */}
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min="0"
-            max={max}
-            value={currentScore}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
-            placeholder="Masukkan nilai..."
-          />
+        {/* Quality Label */}
+        <div className="mb-4">
           <div
-            className={`px-3 py-2 rounded-lg border ${getScoreColor(percentage)} text-sm font-medium min-w-[60px] text-center transition-colors`}>
-            {percentage}%
+            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+              itemQuality.color === "red"
+                ? "bg-red-50 text-red-700"
+                : itemQuality.color === "yellow"
+                  ? "bg-yellow-50 text-yellow-700"
+                  : itemQuality.color === "blue"
+                    ? "bg-blue-50 text-blue-700"
+                    : "bg-green-50 text-green-700"
+            }`}
+          >
+            <div
+              className={`w-2 h-2 rounded-full ${
+                itemQuality.color === "red"
+                  ? "bg-red-500"
+                  : itemQuality.color === "yellow"
+                    ? "bg-yellow-500"
+                    : itemQuality.color === "blue"
+                      ? "bg-blue-500"
+                      : "bg-green-500"
+              }`}
+            ></div>
+            {itemQuality.label} ({Math.round((currentValue / item.max) * 100)}%)
           </div>
         </div>
 
-        {/* Tombol quick input */}
-        <div className="flex gap-1 mt-2">
-          {[0, 5, 10, 15, 20].map((quickValue) => (
-            <button
-              key={quickValue}
-              type="button"
-              onClick={() => handleScoreChange(item.key, quickValue)}
-              className={`flex-1 py-1 text-xs rounded ${
-                scores[item.key] === quickValue
-                  ? "bg-blue-100 text-blue-600 border border-blue-300"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}>
-              {quickValue}
-            </button>
-          ))}
+        {/* Quick Action Buttons */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => {
+              const kurangValues = valueEntries.filter(([label]) =>
+                label.includes("Kurang"),
+              );
+              if (kurangValues.length > 0) {
+                const middleIndex = Math.floor(kurangValues.length / 2);
+                handleScoreChange(item.id, kurangValues[middleIndex][1]);
+              }
+            }}
+            className="px-2 py-2 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium"
+          >
+            Kurang
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const cukupValues = valueEntries.filter(([label]) =>
+                label.includes("Cukup"),
+              );
+              if (cukupValues.length > 0) {
+                const middleIndex = Math.floor(cukupValues.length / 2);
+                handleScoreChange(item.id, cukupValues[middleIndex][1]);
+              }
+            }}
+            className="px-2 py-2 text-xs bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors font-medium"
+          >
+            Cukup
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const baikValues = valueEntries.filter(
+                ([label]) =>
+                  label.includes("Baik") && !label.includes("Baik Sekali"),
+              );
+              if (baikValues.length > 0) {
+                const middleIndex = Math.floor(baikValues.length / 2);
+                handleScoreChange(item.id, baikValues[middleIndex][1]);
+              }
+            }}
+            className="px-2 py-2 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+          >
+            Baik
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScoreChange(item.id, item.max)}
+            className="px-2 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors font-medium"
+          >
+            Baik Sekali
+          </button>
+        </div>
+
+        {/* Detailed Number Buttons */}
+        <div className="pt-3 border-t border-gray-200">
+          <div className="grid grid-cols-8 gap-2">
+            {valueEntries.map(([label, value]) => {
+              const valueQuality = getQualityLabel(value, item.max);
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => handleScoreChange(item.id, value)}
+                  className={`px-2 py-2 text-sm rounded-lg transition-all ${
+                    currentValue === value
+                      ? "ring-2 ring-offset-1 font-bold"
+                      : ""
+                  } ${
+                    valueQuality.color === "red"
+                      ? currentValue === value
+                        ? "bg-red-600 text-white ring-red-300"
+                        : "bg-red-50 text-red-700 hover:bg-red-100"
+                      : valueQuality.color === "yellow"
+                        ? currentValue === value
+                          ? "bg-yellow-600 text-white ring-yellow-300"
+                          : "bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
+                        : valueQuality.color === "blue"
+                          ? currentValue === value
+                            ? "bg-blue-600 text-white ring-blue-300"
+                            : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          : currentValue === value
+                            ? "bg-green-600 text-white ring-green-300"
+                            : "bg-green-50 text-green-700 hover:bg-green-100"
+                  }`}
+                  title={label}
+                >
+                  {value}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
   };
 
-  const FormSection = ({ form }) => {
-    const formScore = getFormScore(form.id);
+  // Calculate total score for PBB
+  const getTotalPBBScore = () => {
+    let total = 0;
+    PBB_SCORING_DATA.forEach((category) => {
+      category.items.forEach((item) => {
+        if (scores[item.id]) {
+          total += scores[item.id];
+        }
+      });
+    });
+    return total;
+  };
 
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden ${
-          activeForm !== form.id ? "opacity-50" : ""
-        }`}>
-        <div className={`${form.color} p-4 md:p-6`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-lg">{form.icon}</div>
-              <div>
-                <h2 className="text-xl font-bold text-white">{form.title}</h2>
-                <p className="text-white/90 text-sm">
-                  Total maksimal: {form.total} poin
-                </p>
-              </div>
+  // Calculate total score for Variasi
+  const getTotalVariasiScore = () => {
+    let total = 0;
+    VARIASI_SCORING_DATA.forEach((category) => {
+      category.subCategories?.forEach((subCat) => {
+        subCat.items.forEach((item) => {
+          if (scores[item.id]) {
+            total += scores[item.id];
+          }
+        });
+      });
+    });
+    return total;
+  };
+
+  // Get total items filled
+  const getTotalItemsFilled = () => {
+    return Object.keys(scores).length;
+  };
+
+  // Get total items count
+  const getTotalItemsCount = () => {
+    const pbbItems = PBB_SCORING_DATA.reduce(
+      (sum, cat) => sum + cat.items.length,
+      0,
+    );
+    const variasiItems = VARIASI_SCORING_DATA.reduce(
+      (sum, cat) =>
+        sum +
+        (cat.subCategories?.reduce(
+          (subSum, sub) => subSum + sub.items.length,
+          0,
+        ) || 0),
+      0,
+    );
+    return pbbItems + variasiItems;
+  };
+
+  // Handle submit
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!teamName || !teamCode) {
+      alert("Harap isi data tim terlebih dahulu!");
+      return;
+    }
+
+    const totalPBBScore = getTotalPBBScore();
+    const totalVariasiScore = getTotalVariasiScore();
+    const totalScore = totalPBBScore + totalVariasiScore;
+    const totalMaxScore = 700 + 32;
+    const percentage = Math.round((totalScore / totalMaxScore) * 100);
+
+    const payload = {
+      teamName,
+      teamCode,
+      scores,
+      pbbScore: totalPBBScore,
+      variasiScore: totalVariasiScore,
+      totalScore: totalScore,
+      percentage: percentage,
+      totalMaxScore: totalMaxScore,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log("DATA NILAI LKBB:", payload);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
+  };
+
+  // Handle reset
+  const handleReset = () => {
+    if (window.confirm("Reset semua nilai?")) {
+      setScores({});
+      localStorage.removeItem("pbb_scores");
+    }
+  };
+
+  // Calculate progress percentage
+  const getProgressPercentage = () => {
+    return Math.round((getTotalItemsFilled() / getTotalItemsCount()) * 100);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                🏆 Form Penilaian LKBB (Lomba Ketangkasan Baris Berbaris)
+              </h1>
+              <p className="text-gray-600">
+                Sistem penilaian PBB, Variasi, dan Kreatifitas untuk LKBB
+              </p>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-white">
-                {formScore.score}
-              </div>
-              <div className="text-white/80 text-sm">
-                dari {formScore.max} ({formScore.percentage}%)
-              </div>
-            </div>
+            <button
+              onClick={toggleAllCategories}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium"
+            >
+              {allExpanded ? (
+                <>
+                  <ChevronDown size={16} />
+                  Tutup Semua
+                </>
+              ) : (
+                <>
+                  <ChevronRight size={16} />
+                  Buka Semua
+                </>
+              )}
+            </button>
           </div>
+        </div>
 
-          {/* Progress bar */}
-          <div className="mt-4">
-            <div className="flex justify-between text-sm text-white/90 mb-1">
-              <span>Progress penilaian</span>
-              <span>{formScore.percentage}%</span>
+        {/* Team Information */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <FileText size={18} />
+            Informasi Tim
+          </h3>
+
+          {teams.length > 0 && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Pilih Tim yang Dinilai *
+              </label>
+              <select
+                value={selectedTeam}
+                onChange={(e) => {
+                  setSelectedTeam(e.target.value);
+                  const team = teams.find(
+                    (t) => t.id === parseInt(e.target.value),
+                  );
+                  if (team) {
+                    setTeamName(team.name);
+                    setTeamCode(
+                      team.code || `TM-${team.id.toString().padStart(3, "0")}`,
+                    );
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                required
+              >
+                <option value="">-- Pilih Tim --</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="h-2 bg-white/30 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-white rounded-full transition-all duration-300"
-                style={{ width: `${formScore.percentage}%` }}
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Kode Tim *
+              </label>
+              <input
+                type="text"
+                value={teamCode}
+                onChange={(e) => setTeamCode(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                placeholder="TM-001"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nama Tim *
+              </label>
+              <input
+                type="text"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                placeholder="Nama tim"
+                required
               />
             </div>
           </div>
         </div>
 
-        <div className="p-4 md:p-6">
-          {form.categories.map((category, catIndex) => (
-            <div key={catIndex} className="mb-6 last:mb-0">
-              <h3 className="font-bold text-gray-900 mb-3 text-lg border-b pb-2">
-                {category.name}
-              </h3>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {category.items.map((item) => (
-                  <ScoreInput key={item.key} item={item} formId={form.id} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-    );
-  };
-
-  const overallScore = getOverallScore();
-  const allFormScores = getAllScores();
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-6">
-      <AnimatePresence>
-        {showSuccess && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="fixed inset-0 flex items-center justify-center z-50">
-            <div className="absolute inset-0 bg-black/50" />
-            <div className="relative bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
-              <div className="text-center">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle size={48} className="text-green-600" />
-                </motion.div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  Nilai Tersimpan!
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Penilaian lengkap untuk tim{" "}
-                  <span className="font-semibold">{teamName}</span> telah
-                  berhasil disimpan.
-                </p>
-                <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                  <div className="text-center mb-4">
-                    <div className="text-4xl font-bold text-blue-600">
-                      {overallScore.score}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Total Poin Keseluruhan
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {Object.entries(allFormScores).map(([key, score]) => (
-                      <div key={key} className="bg-white p-2 rounded">
-                        <div className="font-medium">{key}</div>
-                        <div className="text-blue-600">
-                          {score.score}/{score.max}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowSuccess(false)}
-                  className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors w-full">
-                  Oke, Mengerti
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-red-600 to-red-700 rounded-xl text-white">
-                <Award size={28} />
-              </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                  SISTEM PENILAIAN LKBB LENGKAP
-                </h1>
-                <p className="text-gray-600">
-                  Form penilaian digital berdasarkan standar LKBB XI
-                </p>
-              </div>
-            </div>
-            {isSaving && (
-              <div className="flex items-center gap-2 text-sm text-blue-600">
-                <RefreshCw size={16} className="animate-spin" />
-                <span>Menyimpan...</span>
-              </div>
-            )}
-          </div>
-
-          {/* Team Info */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText size={20} />
-              Informasi Tim & Juri
-            </h3>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Kode Tim *
-                </label>
-                <input
-                  type="text"
-                  value={teamCode}
-                  onChange={(e) => setTeamCode(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Contoh: PBB-001"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Tim *
-                </label>
-                <input
-                  type="text"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Nama lengkap tim"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Juri *
-                </label>
-                <input
-                  type="text"
-                  value={judgeName}
-                  onChange={(e) => setJudgeName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Nama lengkap juri"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Form Score Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            {Object.values(FORMS).map((form) => {
-              const score = getFormScore(form.id);
-              return (
-                <div
-                  key={form.id}
-                  className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-all">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={`p-2 ${form.color} rounded-lg text-white`}>
-                      {form.icon}
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-900">
-                        {form.id}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {form.total} poin
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-center mt-2">
-                    <div className="text-xl font-bold text-gray-900">
-                      {score.score}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {score.percentage}%
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setActiveForm(form.id)}
-                    className={`w-full mt-3 py-1.5 text-xs rounded-lg transition-colors ${
-                      activeForm === form.id
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}>
-                    {activeForm === form.id ? "✓ Aktif" : "Lihat"}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Overall Score Card */}
-          <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl shadow-lg p-5 mb-6 text-white">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
-                  <Calculator size={20} />
-                  Total Keseluruhan
-                </h3>
-                <p className="text-gray-300 text-sm">
-                  Akumulasi semua form penilaian
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl md:text-5xl font-bold mb-1">
-                  {overallScore.score}
-                </div>
-                <div className="text-gray-300">
-                  dari {overallScore.max} poin
-                </div>
-              </div>
-              <div className="text-center">
-                <div
-                  className={`text-3xl md:text-4xl font-bold mb-1 ${getScoreColor(overallScore.percentage)}`}>
-                  {overallScore.percentage}%
-                </div>
-                <div className="text-gray-300">Persentase Akhir</div>
-              </div>
-            </div>
-            <div className="mt-4">
-              <div className="flex justify-between text-sm text-gray-300 mb-1">
-                <span>Progress Keseluruhan</span>
-                <span>{overallScore.percentage}%</span>
-              </div>
-              <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    overallScore.percentage >= 90
-                      ? "bg-gradient-to-r from-green-500 to-emerald-600"
-                      : overallScore.percentage >= 80
-                        ? "bg-gradient-to-r from-blue-500 to-blue-600"
-                        : overallScore.percentage >= 70
-                          ? "bg-gradient-to-r from-yellow-500 to-yellow-600"
-                          : overallScore.percentage >= 60
-                            ? "bg-gradient-to-r from-orange-500 to-orange-600"
-                            : "bg-gradient-to-r from-red-500 to-red-600"
-                  }`}
-                  style={{ width: `${overallScore.percentage}%` }}
-                />
-              </div>
-            </div>
+        {/* Tabs Navigation */}
+        <div className="mb-6">
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab("pbb")}
+              className={`flex-1 px-4 py-3 text-center font-medium text-sm ${
+                activeTab === "pbb"
+                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              🎖️ PERATURAN BARIS BERBARIS (PBB)
+            </button>
+            <button
+              onClick={() => setActiveTab("variasi")}
+              className={`flex-1 px-4 py-3 text-center font-medium text-sm ${
+                activeTab === "variasi"
+                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              🎨 VARIASI & KREATIFITAS
+            </button>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Form Navigation */}
-          <div className="sticky top-4 z-10 bg-white rounded-xl shadow-lg border border-gray-200 p-4 mb-6">
-            <div className="flex flex-wrap gap-2">
-              {Object.values(FORMS).map((form) => (
-                <button
-                  key={form.id}
-                  type="button"
-                  onClick={() => setActiveForm(form.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                    activeForm === form.id
-                      ? `${form.color} text-white`
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}>
-                  <span className="font-medium">
-                    {form.title.split(". ")[0]}
-                  </span>
-                  <div
-                    className={`px-2 py-1 rounded text-xs font-bold ${
-                      activeForm === form.id ? "bg-white/20" : "bg-white"
-                    }`}>
-                    {form.categories.reduce(
-                      (total, cat) => total + cat.items.length,
-                      0,
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Active Form */}
-          {Object.values(FORMS).map(
-            (form) =>
-              activeForm === form.id && (
-                <FormSection key={form.id} form={form} />
-              ),
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <Info size={16} />
-                <span>
-                  Ketik langsung nilai angka (misal: 25 lalu tekan Enter)
-                </span>
+        {/* Quick Stats */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="text-center md:text-left mb-4 md:mb-0">
+              <div className="text-sm text-gray-600">Total Nilai Saat Ini</div>
+              <div className="text-3xl font-bold text-gray-900">
+                {activeTab === "pbb"
+                  ? getTotalPBBScore()
+                  : getTotalVariasiScore()}
+              </div>
+              <div className="text-sm text-gray-500">
+                dari {activeTab === "pbb" ? 700 : 32} poin
               </div>
             </div>
-            <div className="flex gap-4">
+            <div className="text-center md:text-left">
+              <div className="text-sm text-gray-600">Persentase</div>
+              <div
+                className={`text-3xl font-bold ${
+                  getPercentage() >= 80
+                    ? "text-green-600"
+                    : getPercentage() >= 70
+                      ? "text-yellow-600"
+                      : "text-red-600"
+                }`}
+              >
+                {getPercentage()}%
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4 md:mt-0">
               <button
                 type="button"
                 onClick={handleReset}
-                className="flex items-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors">
-                <RefreshCw size={18} />
-                Reset Semua
+                className="px-4 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 text-sm font-medium"
+              >
+                Reset
               </button>
-
-              <button
-                type="submit"
-                disabled={!teamName || !judgeName || !teamCode}
-                className={`flex items-center justify-center gap-2 px-8 py-3 font-bold text-white rounded-xl transition-all ${
-                  !teamName || !judgeName || !teamCode
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl"
-                }`}>
-                <Save size={20} />
-                SIMPAN SEMUA PENILAIAN
-              </button>
-            </div>
-          </div>
-        </form>
-
-        {/* Scoring Guidelines */}
-        <div className="mt-12 pt-6 border-t border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">
-            Pedoman Penilaian
-          </h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-              <h4 className="font-semibold text-blue-900 mb-2">
-                PBB (700 poin)
-              </h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Fokus pada presisi gerakan</li>
-                <li>• Keseragaman barisan</li>
-                <li>• Ketepatan aba-aba</li>
-              </ul>
-            </div>
-            <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
-              <h4 className="font-semibold text-purple-900 mb-2">
-                Danton (100 poin)
-              </h4>
-              <ul className="text-sm text-purple-800 space-y-1">
-                <li>• Volume dan artikulasi suara</li>
-                <li>• Penguasaan materi dan lapangan</li>
-                <li>• Sikap dan kewibawaan</li>
-              </ul>
-            </div>
-            <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-              <h4 className="font-semibold text-green-900 mb-2">
-                Variasi & Formasi (225 poin)
-              </h4>
-              <ul className="text-sm text-green-800 space-y-1">
-                <li>• Kreativitas dan orisinalitas</li>
-                <li>• Kesesuaian dengan tema</li>
-                <li>• Kerapihan dan simetri</li>
-              </ul>
-            </div>
-            <div className="bg-pink-50 rounded-xl p-4 border border-pink-200">
-              <h4 className="font-semibold text-pink-900 mb-2">
-                Kostum & Makeup (225 poin)
-              </h4>
-              <ul className="text-sm text-pink-800 space-y-1">
-                <li>• Kesesuaian dengan konsep</li>
-                <li>• Kerapihan dan kebersihan</li>
-                <li>• Keharmonisan penampilan</li>
-              </ul>
             </div>
           </div>
         </div>
-      </motion.div>
+
+        {/* Scoring Form based on active tab */}
+        {renderScoringForm()}
+
+        {/* Summary Card */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <AlertCircle size={18} className="text-blue-600" />
+            📊 Ringkasan Total Penilaian LKBB
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-sm text-blue-600 mb-2">Nilai PBB</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {getTotalPBBScore()}
+              </div>
+              <div className="text-sm text-blue-500">/ 700 poin</div>
+              <div className="text-xs text-blue-400 mt-1">
+                {Math.round((getTotalPBBScore() / 700) * 100)}%
+              </div>
+            </div>
+
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-sm text-green-600 mb-2">Nilai Variasi</div>
+              <div className="text-3xl font-bold text-green-600">
+                {getTotalVariasiScore()}
+              </div>
+              <div className="text-sm text-green-500">/ 32 poin</div>
+              <div className="text-xs text-green-400 mt-1">
+                {Math.round((getTotalVariasiScore() / 32) * 100)}%
+              </div>
+            </div>
+
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-sm text-purple-600 mb-2">Total Nilai</div>
+              <div className="text-3xl font-bold text-purple-600">
+                {getTotalPBBScore() + getTotalVariasiScore()}
+              </div>
+              <div className="text-sm text-purple-500">/ 732 poin</div>
+              <div className="text-xs text-purple-400 mt-1">
+                {Math.round(
+                  ((getTotalPBBScore() + getTotalVariasiScore()) / 732) * 100,
+                )}
+                %
+              </div>
+            </div>
+
+            <div className="text-center p-4 bg-yellow-50 rounded-lg">
+              <div className="text-sm text-yellow-600 mb-2">Progress</div>
+              <div className="text-3xl font-bold text-yellow-600">
+                {getProgressPercentage()}%
+              </div>
+              <div className="text-sm text-yellow-500">
+                {getTotalItemsFilled()} / {getTotalItemsCount()} item
+              </div>
+              <div className="text-xs text-yellow-400 mt-1">Pengisian Form</div>
+            </div>
+          </div>
+
+          {/* Progress Bars */}
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <span className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  PBB: {getTotalPBBScore()} / 700 poin
+                </span>
+                <span>{Math.round((getTotalPBBScore() / 700) * 100)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${(getTotalPBBScore() / 700) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <span className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Variasi & Kreatifitas: {getTotalVariasiScore()} / 32 poin
+                </span>
+                <span>{Math.round((getTotalVariasiScore() / 32) * 100)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${(getTotalVariasiScore() / 32) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <span className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  Total LKBB: {getTotalPBBScore() + getTotalVariasiScore()} /
+                  732 poin
+                </span>
+                <span>
+                  {Math.round(
+                    ((getTotalPBBScore() + getTotalVariasiScore()) / 732) * 100,
+                  )}
+                  %
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className="bg-purple-600 h-2.5 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${((getTotalPBBScore() + getTotalVariasiScore()) / 732) * 100}%`,
+                  }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCw size={18} />
+            Reset Semua Nilai
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!teamName || !teamCode}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium text-white rounded-md transition-colors ${
+              !teamName || !teamCode
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            <Save size={18} />
+            Simpan Penilaian LKBB
+          </button>
+        </div>
+
+        {/* Success Message */}
+        {showSuccess && (
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-green-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-green-800">
+                  ✓ Nilai berhasil disimpan untuk tim {teamName}! PBB:{" "}
+                  {getTotalPBBScore()} poin, Variasi: {getTotalVariasiScore()}{" "}
+                  poin, Total: {getTotalPBBScore() + getTotalVariasiScore()}{" "}
+                  poin (
+                  {Math.round(
+                    ((getTotalPBBScore() + getTotalVariasiScore()) / 732) * 100,
+                  )}
+                  %)
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Instructions */}
+        <div className="mt-8 p-4 bg-white border border-gray-200 rounded-lg">
+          <h4 className="font-bold text-gray-900 mb-3">
+            🎯 Panduan Penggunaan Form Penilaian LKBB
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h5 className="font-medium text-gray-700 mb-2">
+                Sistem Penilaian LKBB:
+              </h5>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li className="flex items-start gap-2">
+                  <div className="w-2 h-2 mt-1.5 bg-red-500 rounded-full"></div>
+                  <span>
+                    <strong>Kurang (0.1-0.35)</strong> - Nilai 1-3: Performa
+                    belum memenuhi standar
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-2 h-2 mt-1.5 bg-yellow-500 rounded-full"></div>
+                  <span>
+                    <strong>Cukup (0.50)</strong> - Nilai 4: Memenuhi standar
+                    minimum
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-2 h-2 mt-1.5 bg-blue-500 rounded-full"></div>
+                  <span>
+                    <strong>Baik (0.6-0.8)</strong> - Nilai 5-6: Melebihi
+                    standar
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-2 h-2 mt-1.5 bg-green-500 rounded-full"></div>
+                  <span>
+                    <strong>Baik Sekali (1.0)</strong> - Nilai 7-8: Performa
+                    sempurna
+                  </span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5 className="font-medium text-gray-700 mb-2">
+                Struktur Penilaian:
+              </h5>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li className="flex items-start gap-2">
+                  <ChevronRight size={14} className="text-gray-400 mt-0.5" />
+                  <span>
+                    <strong>PBB</strong>: 30 item dalam 6 kategori
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <ChevronRight size={14} className="text-gray-400 mt-0.5" />
+                  <span>
+                    <strong>Variasi & Kreatifitas</strong>: 4 item dalam 2
+                    sub-kategori
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <ChevronRight size={14} className="text-gray-400 mt-0.5" />
+                  <span>Klik kategori untuk membuka item penilaian</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <ChevronRight size={14} className="text-gray-400 mt-0.5" />
+                  <span>Gunakan tombol kualitas untuk nilai cepat</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Additional info for Variasi */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <h5 className="font-medium text-gray-700 mb-2">
+              📝 Struktur Variasi & Kreatifitas:
+            </h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+              <div>
+                <strong>VARIASI</strong>
+                <div className="mt-1 ml-4">
+                  <div className="font-medium">1. Opening Variasi</div>
+                  <ul className="mt-1 space-y-1 ml-4">
+                    <li>
+                      • <strong>BEBAS</strong>: Penilaian fleksibilitas gerakan
+                    </li>
+                    <li>
+                      • <strong>TOTAL</strong>: Penilaian keseluruhan opening
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div>
+                <strong>KREATIFITAS</strong>
+                <div className="mt-1 ml-4">
+                  <div className="font-medium">
+                    2. Pembukaan Materi dan Isi Pesan
+                  </div>
+                  <ul className="mt-1 space-y-1 ml-4">
+                    <li>
+                      • <strong>BEBAS</strong>: Kreativitas penyampaian
+                    </li>
+                    <li>
+                      • <strong>TOTAL</strong>: Penilaian keseluruhan materi
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
