@@ -71,7 +71,7 @@ const EditEvent = () => {
 
   /* ================= ADD DEBUG LOG ================= */
   const addDebugLog = (message) => {
-    console.log(`[DEBUG EditEvent] ${message}`);
+    // console.log(`[DEBUG EditEvent] ${message}`);
     setDebugInfo((prev) => [
       ...prev,
       `${new Date().toISOString().split("T")[1].split(".")[0]} - ${message}`,
@@ -88,7 +88,7 @@ const EditEvent = () => {
     addDebugLog(`User ID: ${user?.id}, Name: ${user?.name}`);
 
     try {
-      console.log(`📥 Loading event data for ID: ${id}`);
+      // console.log(`📥 Loading event data for ID: ${id}`);
       addDebugLog(`Trying to load event with ID: ${id}`);
 
       // ========== STRATEGY 1: Coba dari localStorage langsung ==========
@@ -104,7 +104,7 @@ const EditEvent = () => {
           if (localEvent) {
             event = localEvent;
             addDebugLog(`✅ Found event in localStorage: ${event.name}`);
-            console.log("📋 localStorage event data:", localEvent);
+            // console.log("📋 localStorage event data:", localEvent);
           }
         }
       } catch (localError) {
@@ -124,7 +124,7 @@ const EditEvent = () => {
             if (extracted) {
               event = extracted;
               addDebugLog(`✅ Found event at ${endpoint}`);
-              console.log("📋 API Response data:", extracted);
+              // console.log("📋 API Response data:", extracted);
             }
           }
         } catch (err) {
@@ -207,14 +207,14 @@ const EditEvent = () => {
   const findImagePathInEvent = (event) => {
     if (!event) return null;
 
-    console.log("🔍 Searching for image path in event...");
+    // console.log("🔍 Searching for image path in event...");
 
     // Debug: log semua field event
-    console.log("📊 All event fields and values:", event);
+    // console.log("📊 All event fields and values:", event);
 
     // Priority 1: Cek langsung field 'image'
     if (event.image) {
-      console.log(`✅ Found in direct field "image":`, event.image);
+      // console.log(`✅ Found in direct field "image":`, event.image);
       return event.image;
     }
 
@@ -236,7 +236,7 @@ const EditEvent = () => {
 
     for (const field of possibleFields) {
       if (event[field] && typeof event[field] === "string") {
-        console.log(`✅ Found in field "${field}":`, event[field]);
+        // console.log(`✅ Found in field "${field}":`, event[field]);
         return event[field];
       }
     }
@@ -252,13 +252,13 @@ const EditEvent = () => {
           value.includes("events/") &&
           value.match(/\.(jpg|jpeg|png|gif|webp)$/i)
         ) {
-          console.log(`✅ Found events/ path in field "${field}":`, value);
+          // console.log(`✅ Found events/ path in field "${field}":`, value);
           return value;
         }
       }
     }
 
-    console.log("❌ No image path found in event data");
+    // console.log("❌ No image path found in event data");
     return null;
   };
 
@@ -272,7 +272,7 @@ const EditEvent = () => {
     const baseUrl = "https://apipaskibra.my.id";
     const cleanPath = imagePath.trim();
 
-    console.log(`🖼️ Original image path: ${cleanPath}`);
+    // console.log(`🖼️ Original image path: ${cleanPath}`);
 
     // 1. Jika sudah URL lengkap, return langsung
     if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
@@ -282,20 +282,20 @@ const EditEvent = () => {
     // 2. Format khusus untuk path 'events/xxx.jpg' dari backend
     if (cleanPath.startsWith("events/")) {
       const url = `${baseUrl}/storage/${cleanPath}`;
-      console.log(`🖼️ Formatted URL (events/): ${url}`);
+      // console.log(`🖼️ Formatted URL (events/): ${url}`);
       return url;
     }
 
     // 3. Jika path dimulai dengan '/storage/'
     if (cleanPath.startsWith("/storage/")) {
       const url = `${baseUrl}${cleanPath}`;
-      console.log(`🖼️ Formatted URL (/storage/): ${url}`);
+      // console.log(`🖼️ Formatted URL (/storage/): ${url}`);
       return url;
     }
 
     // 4. Default: tambahkan /storage/ di depan
     const url = `${baseUrl}/storage/${cleanPath}`;
-    console.log(`🖼️ Formatted URL (default): ${url}`);
+    // console.log(`🖼️ Formatted URL (default): ${url}`);
     return url;
   };
 
@@ -306,7 +306,7 @@ const EditEvent = () => {
     const img = new Image();
     img.onload = () => {
       addDebugLog(`✅ Image loaded successfully: ${url}`);
-      console.log(`✅ Image dimensions: ${img.width}x${img.height}`);
+      // console.log(`✅ Image dimensions: ${img.width}x${img.height}`);
     };
     img.onerror = () => {
       addDebugLog(`❌ Failed to load image: ${url}`);
@@ -332,7 +332,7 @@ const EditEvent = () => {
       return null;
     }
 
-    console.log("📦 Raw response data:", data);
+    // console.log("📦 Raw response data:", data);
 
     // Format 1: { success: true, data: { ... } }
     if (data.success && data.data) {
@@ -364,8 +364,8 @@ const EditEvent = () => {
 
   /* ================= POPULATE FORM ================= */
   const populateForm = (data) => {
-    console.log("📝 Populating form with data:", data);
-    console.log("🔍 Image in data:", data.image);
+    // console.log("📝 Populating form with data:", data);
+    // console.log("🔍 Image in data:", data.image);
 
     const formattedData = {
       name: data.name || data.event_name || "",
@@ -378,13 +378,13 @@ const EditEvent = () => {
       image: null,
     };
 
-    console.log("📝 Formatted form data:", formattedData);
+    // console.log("📝 Formatted form data:", formattedData);
     setFormData(formattedData);
     addDebugLog("Form populated with event data");
 
     // Tambahkan debug untuk image
     if (data.image) {
-      console.log(`🖼️ Image path from data: ${data.image}`);
+      // console.log(`🖼️ Image path from data: ${data.image}`);
       addDebugLog(`Image path from data: ${data.image}`);
     }
   };
@@ -538,7 +538,7 @@ const EditEvent = () => {
 
         addDebugLog(`✅ Update successful! Status: ${response.status}`);
 
-        console.log("✅ Update response:", response.data);
+        // console.log("✅ Update response:", response.data);
         addDebugLog(`API Response: ${JSON.stringify(response.data)}`);
 
         if (
@@ -574,9 +574,9 @@ const EditEvent = () => {
                 // Tambahkan image jika ada di response
                 if (response.data.data?.image) {
                   updatedEvent.image = response.data.data.image;
-                  console.log(
-                    `✅ Added image to localStorage: ${response.data.data.image}`,
-                  );
+                  // console.log(
+                  //   `✅ Added image to localStorage: ${response.data.data.image}`,
+                  // );
                 }
 
                 eventsArray[eventIndex] = updatedEvent;
@@ -634,7 +634,7 @@ const EditEvent = () => {
       let validationDetails = "";
 
       if (error.response?.data) {
-        console.log("Full error response:", error.response.data);
+        // console.log("Full error response:", error.response.data);
         addDebugLog(
           `Error response data: ${JSON.stringify(error.response.data)}`,
         );

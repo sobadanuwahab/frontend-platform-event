@@ -139,7 +139,7 @@ const CreateParticipant = () => {
           });
 
           allEvents = [...allEvents, ...formattedApiEvents];
-          console.log(`✅ Loaded ${formattedApiEvents.length} events from API`);
+          // console.log(`✅ Loaded ${formattedApiEvents.length} events from API`);
         }
       } catch (apiError) {
         console.error("Error fetching events from API:", apiError);
@@ -167,9 +167,9 @@ const CreateParticipant = () => {
           }));
 
           allEvents = [...allEvents, ...formattedLocalEvents];
-          console.log(
-            `✅ Loaded ${formattedLocalEvents.length} events from localStorage`,
-          );
+          // console.log(
+          //   `✅ Loaded ${formattedLocalEvents.length} events from localStorage`,
+          // );
         }
       } catch (localStorageError) {
         console.error(
@@ -189,7 +189,7 @@ const CreateParticipant = () => {
         }
       });
 
-      console.log(`📊 Total unique events: ${uniqueEvents.length}`);
+      // console.log(`📊 Total unique events: ${uniqueEvents.length}`);
       setEvents(uniqueEvents);
     } catch (err) {
       console.error("Error fetching events:", err);
@@ -337,7 +337,7 @@ const CreateParticipant = () => {
       });
 
       if (response.data.success) {
-        console.log("🎉 Participant created via API!");
+        // console.log("🎉 Participant created via API!");
         setSuccess(true);
 
         // Reset form setelah berhasil

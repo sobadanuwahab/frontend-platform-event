@@ -109,7 +109,7 @@ const EditParticipant = () => {
   /* ================= LOAD PARTICIPANT FROM API ================= */
   const loadParticipantFromAPI = async () => {
     try {
-      console.log(`📥 Loading participant data from API for ID: ${id}`);
+      // console.log(`📥 Loading participant data from API for ID: ${id}`);
 
       const response = await api.get(`/edit-participant/${id}`);
 
@@ -123,7 +123,7 @@ const EditParticipant = () => {
           if (imageUrl) {
             setImagePreview(imageUrl);
             setOriginalImage(imageUrl);
-            console.log("✅ Set image from API:", imageUrl);
+            // console.log("✅ Set image from API:", imageUrl);
           }
         }
       } else {
@@ -335,7 +335,7 @@ const EditParticipant = () => {
         payload.append("user_id", user.id.toString());
       }
 
-      console.log("🔄 Updating participant via API...");
+      // console.log("🔄 Updating participant via API...");
       const response = await api.post(`/edit-participant/${id}`, payload, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -343,10 +343,10 @@ const EditParticipant = () => {
       });
 
       if (response.data.success) {
-        console.log(
-          "✅ Successfully updated participant via API:",
-          response.data,
-        );
+        // console.log(
+        //   "✅ Successfully updated participant via API:",
+        //   response.data,
+        // );
         setSuccess(true);
         setParticipantData(response.data.data || response.data);
 
@@ -397,7 +397,7 @@ const EditParticipant = () => {
 
     try {
       await api.delete(`/delete-participant/${id}`);
-      console.log("✅ Participant deleted from API");
+      // console.log("✅ Participant deleted from API");
 
       alert("Peserta berhasil dihapus");
       navigate("/organizer/participants");

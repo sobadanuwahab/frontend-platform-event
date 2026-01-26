@@ -62,7 +62,7 @@ const Events = () => {
     setDebugInfo("");
 
     try {
-      console.log(`👤 Loading events for user ID: ${user.id} (${user.name})`);
+      // console.log(`👤 Loading events for user ID: ${user.id} (${user.name})`);
 
       let allEvents = [];
       let debugMessages = [];
@@ -492,7 +492,7 @@ const Events = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      console.log("Test event creation response:", response.data);
+      // console.log("Test event creation response:", response.data);
       alert(
         `Test event created! Response: ${JSON.stringify(response.data, null, 2)}`,
       );

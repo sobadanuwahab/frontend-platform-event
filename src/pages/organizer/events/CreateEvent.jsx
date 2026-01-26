@@ -61,7 +61,7 @@ const CreateEvent = () => {
 
   /* ================= ADD DEBUG LOG ================= */
   const addDebugLog = (message) => {
-    console.log(`[DEBUG] ${message}`);
+    // console.log(`[DEBUG] ${message}`);
     setDebugInfo((prev) => [
       ...prev,
       `${new Date().toISOString().split("T")[1].split(".")[0]} - ${message}`,
@@ -209,12 +209,12 @@ const CreateEvent = () => {
       }
 
       // ========== DEBUG: Log form data content ==========
-      console.log("📋 FormData contents:");
+      // console.log("📋 FormData contents:");
       addDebugLog("FormData contents:");
       for (let pair of submitData.entries()) {
         const value =
           typeof pair[1] === "object" ? pair[1].name || "File" : pair[1];
-        console.log(`${pair[0]}: ${value}`);
+        // console.log(`${pair[0]}: ${value}`);
         addDebugLog(`Field: ${pair[0]} = ${value}`);
       }
 
@@ -233,7 +233,7 @@ const CreateEvent = () => {
       for (const endpoint of endpointsToTry) {
         try {
           addDebugLog(`Trying endpoint: ${endpoint}`);
-          console.log(`🚀 Sending POST to: ${endpoint}`);
+          // console.log(`🚀 Sending POST to: ${endpoint}`);
 
           response = await api.post(endpoint, submitData, {
             headers: {
@@ -271,7 +271,7 @@ const CreateEvent = () => {
         throw lastError || new Error("All endpoints failed");
       }
 
-      console.log("✅ API Response:", response.data);
+      // console.log("✅ API Response:", response.data);
       addDebugLog(`API Response: ${JSON.stringify(response.data)}`);
 
       // Cek berbagai format response yang mungkin
@@ -283,7 +283,7 @@ const CreateEvent = () => {
         const eventId =
           response.data.data?.id || response.data.id || response.data.event_id;
         addDebugLog(`✅ Event created successfully! Event ID: ${eventId}`);
-        console.log("🎉 Event created successfully! Event ID:", eventId);
+        // console.log("🎉 Event created successfully! Event ID:", eventId);
 
         // ========== SIMPAN KE LOCALSTORAGE ==========
         try {
@@ -415,9 +415,9 @@ const CreateEvent = () => {
       testData.append("end_date", tomorrow);
       testData.append("user_id", user.id.toString());
 
-      console.log("Testing with data:");
+      // console.log("Testing with data:");
       for (let pair of testData.entries()) {
-        console.log(`${pair[0]}: ${pair[1]}`);
+        // console.log(`${pair[0]}: ${pair[1]}`);
       }
 
       const response = await api.post("/create-event", testData, {
@@ -547,13 +547,13 @@ const CreateEvent = () => {
     >
       {/* Header */}
       <div className="mb-8">
-        <button
+        {/* <button
           onClick={() => navigate("/organizer/events")}
           className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6"
         >
           <ArrowLeft size={20} />
           <span>Kembali ke Daftar Event</span>
-        </button>
+        </button> */}
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -561,7 +561,7 @@ const CreateEvent = () => {
             <p className="text-gray-400">
               Buat event Paskibra Championship baru untuk diikuti peserta
             </p>
-            {user && (
+            {/* {user && (
               <div className="mt-2 text-sm text-gray-500">
                 <div className="flex items-center gap-2">
                   <span>
@@ -574,10 +574,10 @@ const CreateEvent = () => {
                   </span>
                 </div>
               </div>
-            )}
+            )} */}
           </div>
 
-          <div className="flex gap-2">
+          {/* <div className="flex gap-2">
             <button
               onClick={viewDebugInfo}
               className="px-4 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 transition-colors flex items-center gap-2 text-sm"
@@ -599,7 +599,7 @@ const CreateEvent = () => {
               <Database size={16} />
               Test API
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -686,7 +686,7 @@ const CreateEvent = () => {
 
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* User Information */}
-              <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-700">
+              {/* <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-700">
                 <h3 className="text-lg font-bold mb-3 text-gray-300 flex items-center gap-2">
                   <User size={20} />
                   Informasi Pembuat
@@ -709,7 +709,7 @@ const CreateEvent = () => {
                     Anda
                   </p>
                 </div>
-              </div>
+              </div> */}
 
               {/* Basic Information */}
               <div>
@@ -999,7 +999,7 @@ const CreateEvent = () => {
                   <p>• Gambar opsional, maksimal 5MB</p>
                   <p>• Event akan langsung muncul di daftar organizer</p>
                 </div>
-                <div className="mt-3 text-xs text-gray-500">
+                {/* <div className="mt-3 text-xs text-gray-500">
                   <p>
                     <strong>User ID:</strong> {user.id}
                   </p>
@@ -1011,7 +1011,7 @@ const CreateEvent = () => {
                         ? "Success!"
                         : "Ready"}
                   </p>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
