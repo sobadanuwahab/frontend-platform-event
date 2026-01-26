@@ -10,7 +10,16 @@ import VotingPage from "./pages/VotingPage";
 import TicketPage from "./pages/TicketPage";
 import JudgingPage from "./pages/JudgingPage";
 import ResultsPage from "./pages/ResultsPage";
+
+// Import Admin Pages & Components
 import DashboardPage from "./pages/admin/DashboardPage";
+import OverviewTab from "./pages/admin/components/OverviewTab";
+import ParticipantsTab from "./pages/admin/components/ParticipantsTab";
+import UserManagementTab from "./pages/admin/components/UserManagement";
+import TransactionsTab from "./pages/admin/components/TransactionsTab";
+import TicketsTab from "./pages/admin/components/TicketsTab";
+import HistoryTab from "./pages/admin/components/HistoryTab";
+import SettingsTab from "./pages/admin/components/SettingsTab";
 
 // Import Organizer Pages
 import OrganizerPage from "./pages/organizer/OrganizerPage";
@@ -66,14 +75,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="admin/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
 
             {/* 404 */}
             <Route
@@ -97,6 +98,35 @@ function App() {
                 </div>
               }
             />
+          </Route>
+
+          {/* ADMIN ROUTES dengan Layout Khusus */}
+          {/* OPTION 1: Gunakan route /admin/dashboard untuk kompatibilitas */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* OPTION 2: Route /admin dengan nested routes */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<OverviewTab />} />
+            <Route path="participants" element={<ParticipantsTab />} />
+            <Route path="users" element={<UserManagementTab />} />
+            <Route path="transactions" element={<TransactionsTab />} />
+            <Route path="tickets" element={<TicketsTab />} />
+            <Route path="history" element={<HistoryTab />} />
+            <Route path="settings" element={<SettingsTab />} />
           </Route>
 
           {/* ORGANIZER ROUTES dengan Layout Khusus */}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useOutletContext } from "react-router-dom";
 import {
   Search,
   UserPlus,
@@ -24,7 +25,30 @@ import { motion } from "framer-motion";
 
 const API_URL = "https://apipaskibra.my.id/api";
 
-const UserManagementTab = ({ stats, setStats }) => {
+const UserManagementTab = () => {
+  // Ambil props dari outlet context
+  const context = useOutletContext();
+  const stats = context?.stats || {
+    totalUsers: 0,
+    totalCoinsSold: 0,
+    totalTicketSold: 0,
+    totalVotes: 0,
+    revenue: 0,
+    activeUsers: 0,
+    pendingTransactions: 0,
+    completedTransaction: 0,
+    completedTransactions: 0,
+    totalParticipants: 0,
+    activeParticipants: 0,
+    pendingParticipants: 0,
+  };
+
+  const setStats =
+    context?.setStats ||
+    (() => {
+      console.warn("setStats function not available from context");
+    });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState([]);
   const [userRoles, setUserRoles] = useState([]);
@@ -65,7 +89,7 @@ const UserManagementTab = ({ stats, setStats }) => {
     try {
       setLoadingRoles(true);
       const token = getAuthToken();
-      // console.log("Fetching user roles from API...");
+      console.log("Fetching user roles from API...");
 
       const response = await fetch(`${API_URL}/user-roles`, {
         method: "GET",
@@ -77,7 +101,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       });
 
       const data = await response.json();
-      // console.log("API Response for user roles:", data);
+      console.log("API Response for user roles:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengambil data roles");
@@ -94,7 +118,7 @@ const UserManagementTab = ({ stats, setStats }) => {
         rolesData = data.roles;
       }
 
-      // console.log("Mapped roles data:", rolesData);
+      console.log("Mapped roles data:", rolesData);
       setUserRoles(rolesData);
 
       // Simpan ke localStorage untuk cache
@@ -118,7 +142,7 @@ const UserManagementTab = ({ stats, setStats }) => {
     }
   };
 
-  // Fetch users dari API - TANPA user_role_id
+  // Fetch users dari API
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -126,7 +150,7 @@ const UserManagementTab = ({ stats, setStats }) => {
 
       const token = getAuthToken();
 
-      // console.log("Fetching users from API...");
+      console.log("Fetching users from API...");
       const response = await fetch(`${API_URL}/users`, {
         method: "GET",
         headers: {
@@ -137,7 +161,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       });
 
       const data = await response.json();
-      // console.log("API Response for users:", data);
+      console.log("API Response for users:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengambil data users");
@@ -154,7 +178,7 @@ const UserManagementTab = ({ stats, setStats }) => {
         usersData = data.users;
       }
 
-      // console.log("Mapped users data:", usersData);
+      console.log("Mapped users data:", usersData);
 
       // Ambil roles dari state atau cache
       let rolesList =
@@ -162,7 +186,7 @@ const UserManagementTab = ({ stats, setStats }) => {
           ? userRoles
           : JSON.parse(localStorage.getItem("cached_user_roles") || "[]");
 
-      // console.log("Roles list for mapping:", rolesList);
+      console.log("Roles list for mapping:", rolesList);
 
       // Buat mapping dari role string ke ID
       const roleNameToIdMap = {};
@@ -170,11 +194,11 @@ const UserManagementTab = ({ stats, setStats }) => {
         roleNameToIdMap[role.role] = role.id; // Perhatikan: fieldnya "role" bukan "name"
       });
 
-      // console.log("Role name to ID map:", roleNameToIdMap);
+      console.log("Role name to ID map:", roleNameToIdMap);
 
       // Format users
       const formattedUsers = usersData.map((user, index) => {
-        // console.log(`User ${index} data:`, user);
+        console.log(`User ${index} data:`, user);
 
         const userRoleName = user.role || "user";
         const roleId = roleNameToIdMap[userRoleName] || 1; // Default ke user (ID 1)
@@ -222,12 +246,17 @@ const UserManagementTab = ({ stats, setStats }) => {
 
       setUsers(formattedUsers);
 
-      // Update stats
-      setStats((prevStats) => ({
-        ...prevStats,
-        totalUsers: formattedUsers.length,
-        activeUsers: formattedUsers.filter((u) => u.status === "active").length,
-      }));
+      // Update stats jika setStats tersedia
+      if (setStats && typeof setStats === "function") {
+        setStats((prevStats) => ({
+          ...prevStats,
+          totalUsers: formattedUsers.length,
+          activeUsers: formattedUsers.filter((u) => u.status === "active")
+            .length,
+        }));
+      } else {
+        console.warn("setStats is not a function, cannot update stats");
+      }
     } catch (err) {
       console.error("Error fetching users:", err);
       setError(err.message);
@@ -255,7 +284,7 @@ const UserManagementTab = ({ stats, setStats }) => {
         status: formData.status,
       };
 
-      // console.log("Creating user with data:", requestData);
+      console.log("Creating user with data:", requestData);
 
       const response = await fetch(`${API_URL}/users`, {
         method: "POST",
@@ -268,7 +297,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       });
 
       const data = await response.json();
-      // console.log("Create user response:", data);
+      console.log("Create user response:", data);
 
       if (!response.ok) {
         if (data.errors) {
@@ -325,8 +354,8 @@ const UserManagementTab = ({ stats, setStats }) => {
         requestData.password_confirmation = formData.password_confirmation;
       }
 
-      // console.log("Updating user with data:", requestData);
-      // console.log("Updating user ID:", selectedUser.id);
+      console.log("Updating user with data:", requestData);
+      console.log("Updating user ID:", selectedUser.id);
 
       // COBA beberapa kemungkinan endpoint:
       const endpointsToTry = [
@@ -341,7 +370,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       for (const endpoint of endpointsToTry) {
         for (const method of ["PUT", "PATCH", "POST"]) {
           try {
-            // console.log(`Trying ${method} ${endpoint}`);
+            console.log(`Trying ${method} ${endpoint}`);
 
             const config = {
               method: method,
@@ -361,12 +390,12 @@ const UserManagementTab = ({ stats, setStats }) => {
             response = await fetch(endpoint, config);
 
             if (response.ok) {
-              // console.log(`Success with ${method} ${endpoint}`);
+              console.log(`Success with ${method} ${endpoint}`);
               break;
             }
           } catch (err) {
             lastError = err;
-            // console.log(`Failed with ${method} ${endpoint}:`, err.message);
+            console.log(`Failed with ${method} ${endpoint}:`, err.message);
           }
         }
         if (response && response.ok) break;
@@ -375,7 +404,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       // Jika semua gagal
       if (!response || !response.ok) {
         // Coba endpoint alternatif dengan format berbeda
-        // console.log("Trying alternative format...");
+        console.log("Trying alternative format...");
 
         // COBA 1: endpoint dengan query parameter
         try {
@@ -421,7 +450,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       }
 
       const data = await response.json();
-      // console.log("Update user response:", data);
+      console.log("Update user response:", data);
 
       if (!response.ok) {
         if (data.errors) {
@@ -480,7 +509,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       });
 
       const data = await response.json();
-      // console.log("Delete user response:", data);
+      console.log("Delete user response:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal menghapus user");
@@ -518,7 +547,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       });
 
       const data = await response.json();
-      // console.log("Update status response:", data);
+      console.log("Update status response:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengupdate status");
@@ -655,7 +684,8 @@ const UserManagementTab = ({ stats, setStats }) => {
     const initializeData = async () => {
       if (!isMounted) return;
 
-      // console.log("Initializing data...");
+      console.log("Initializing data...");
+      console.log("Context available:", !!context);
 
       // Ambil roles dulu
       await fetchUserRoles();
@@ -702,7 +732,8 @@ const UserManagementTab = ({ stats, setStats }) => {
         <p className="text-red-600 mb-4">{error}</p>
         <button
           onClick={refreshAllData}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 mx-auto">
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 mx-auto"
+        >
           <RefreshCw size={16} />
           Coba Lagi
         </button>
@@ -712,19 +743,37 @@ const UserManagementTab = ({ stats, setStats }) => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-1">
+            User Management
+          </h2>
+          <p className="text-gray-400">
+            Kelola pengguna sistem ({users.length} total users,{" "}
+            {users.filter((u) => u.status === "active").length} aktif)
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-lg text-sm">
+            Admin Access
+          </span>
+        </div>
+      </div>
+
       {/* Add User Form */}
       {showAddForm && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6"
+        >
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900">
-              Tambah User Baru
-            </h3>
+            <h3 className="text-xl font-bold text-white">Tambah User Baru</h3>
             <button
               onClick={() => setShowAddForm(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg">
+              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white"
+            >
               <X size={20} />
             </button>
           </div>
@@ -732,7 +781,7 @@ const UserManagementTab = ({ stats, setStats }) => {
           <form onSubmit={handleCreateUser} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Nama Lengkap *
                 </label>
                 <input
@@ -741,13 +790,13 @@ const UserManagementTab = ({ stats, setStats }) => {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                   placeholder="Masukkan nama lengkap"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Email *
                 </label>
                 <input
@@ -756,13 +805,13 @@ const UserManagementTab = ({ stats, setStats }) => {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                   placeholder="user@example.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   WhatsApp *
                 </label>
                 <input
@@ -771,19 +820,19 @@ const UserManagementTab = ({ stats, setStats }) => {
                   value={formData.whatsapp}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                   placeholder="081234567890"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Role *
                 </label>
                 {loadingRoles ? (
                   <div className="flex items-center space-x-2">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span className="text-sm text-gray-500">
+                    <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
+                    <span className="text-sm text-gray-400">
                       Memuat roles...
                     </span>
                   </div>
@@ -793,7 +842,8 @@ const UserManagementTab = ({ stats, setStats }) => {
                     value={formData.user_role_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                  >
                     <option value="">Pilih Role</option>
                     {userRoles.map((role) => (
                       <option key={role.id} value={role.id}>
@@ -805,7 +855,7 @@ const UserManagementTab = ({ stats, setStats }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Password *
                 </label>
                 <input
@@ -815,13 +865,13 @@ const UserManagementTab = ({ stats, setStats }) => {
                   onChange={handleInputChange}
                   required
                   minLength={6}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                   placeholder="Minimal 6 karakter"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Konfirmasi Password *
                 </label>
                 <input
@@ -831,20 +881,21 @@ const UserManagementTab = ({ stats, setStats }) => {
                   onChange={handleInputChange}
                   required
                   minLength={6}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                   placeholder="Ulangi password"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Status
                 </label>
                 <select
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -855,13 +906,15 @@ const UserManagementTab = ({ stats, setStats }) => {
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700"
+              >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
                 {actionLoading ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
@@ -884,15 +937,17 @@ const UserManagementTab = ({ stats, setStats }) => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6"
+        >
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900">Edit User</h3>
+            <h3 className="text-xl font-bold text-white">Edit User</h3>
             <button
               onClick={() => {
                 setShowEditForm(false);
                 setSelectedUser(null);
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg">
+              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white"
+            >
               <X size={20} />
             </button>
           </div>
@@ -900,7 +955,7 @@ const UserManagementTab = ({ stats, setStats }) => {
           <form onSubmit={handleUpdateUser} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Nama Lengkap *
                 </label>
                 <input
@@ -909,12 +964,12 @@ const UserManagementTab = ({ stats, setStats }) => {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Email *
                 </label>
                 <input
@@ -923,12 +978,12 @@ const UserManagementTab = ({ stats, setStats }) => {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   WhatsApp *
                 </label>
                 <input
@@ -937,18 +992,18 @@ const UserManagementTab = ({ stats, setStats }) => {
                   value={formData.whatsapp}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Role *
                 </label>
                 {loadingRoles ? (
                   <div className="flex items-center space-x-2">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span className="text-sm text-gray-500">
+                    <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
+                    <span className="text-sm text-gray-400">
                       Memuat roles...
                     </span>
                   </div>
@@ -958,7 +1013,8 @@ const UserManagementTab = ({ stats, setStats }) => {
                     value={formData.user_role_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                  >
                     <option value="">Pilih Role</option>
                     {userRoles.map((role) => (
                       <option key={role.id} value={role.id}>
@@ -979,7 +1035,7 @@ const UserManagementTab = ({ stats, setStats }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Password (Kosongkan jika tidak ingin mengubah)
                 </label>
                 <input
@@ -987,13 +1043,13 @@ const UserManagementTab = ({ stats, setStats }) => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                   placeholder="Biarkan kosong untuk tidak mengubah"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Konfirmasi Password
                 </label>
                 <input
@@ -1001,20 +1057,21 @@ const UserManagementTab = ({ stats, setStats }) => {
                   name="password_confirmation"
                   value={formData.password_confirmation}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
                   placeholder="Biarkan kosong untuk tidak mengubah"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Status
                 </label>
                 <select
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -1028,13 +1085,15 @@ const UserManagementTab = ({ stats, setStats }) => {
                   setShowEditForm(false);
                   setSelectedUser(null);
                 }}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700"
+              >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
                 {actionLoading ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
@@ -1053,7 +1112,7 @@ const UserManagementTab = ({ stats, setStats }) => {
       )}
 
       {/* Control Bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <div className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 p-5">
         <div className="flex flex-col lg:flex-row gap-4 justify-between">
           {/* Search */}
           <div className="flex-1">
@@ -1067,7 +1126,7 @@ const UserManagementTab = ({ stats, setStats }) => {
                 placeholder="Cari user berdasarkan nama, email, atau whatsapp..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
               />
             </div>
           </div>
@@ -1080,7 +1139,8 @@ const UserManagementTab = ({ stats, setStats }) => {
                 onChange={(e) =>
                   setFilters({ ...filters, role: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg bg-white appearance-none">
+                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer"
+              >
                 <option value="all">Semua Role</option>
                 {userRoles.map((role) => (
                   <option key={role.id} value={role.name}>
@@ -1100,7 +1160,8 @@ const UserManagementTab = ({ stats, setStats }) => {
                 onChange={(e) =>
                   setFilters({ ...filters, status: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 border border-gray-300 rounded-lg bg-white appearance-none">
+                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer"
+              >
                 <option value="all">Semua Status</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -1113,7 +1174,8 @@ const UserManagementTab = ({ stats, setStats }) => {
 
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+              className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+            >
               <UserPlus size={18} />
               Tambah User
             </button>
@@ -1121,14 +1183,16 @@ const UserManagementTab = ({ stats, setStats }) => {
             <button
               onClick={refreshAllData}
               className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              title="Refresh">
+              title="Refresh"
+            >
               <RefreshCw size={18} />
             </button>
 
             <button
               onClick={handleExportData}
               className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
-              title="Export Data">
+              title="Export Data"
+            >
               <Download size={18} />
             </button>
           </div>
@@ -1139,23 +1203,25 @@ const UserManagementTab = ({ stats, setStats }) => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden"
+      >
         {sortedUsers.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
+            <div className="text-gray-500 mb-4">
               <UserPlus size={48} className="mx-auto" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-white mb-2">
               Tidak ada data user
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-400 mb-6">
               {searchTerm
                 ? "Tidak ditemukan user dengan kata kunci tersebut"
                 : "Belum ada user yang terdaftar"}
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto">
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto"
+            >
               <Plus size={18} />
               Tambah User Pertama
             </button>
@@ -1164,49 +1230,49 @@ const UserManagementTab = ({ stats, setStats }) => {
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-900">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       User
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Kontak
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Role
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Coins
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Bergabung
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-700">
                   {sortedUsers.map((user) => {
                     const roleColor = getRoleColor(user.role_name);
 
                     return (
-                      <tr key={user.id} className="hover:bg-gray-50">
+                      <tr key={user.id} className="hover:bg-gray-750">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <span className="text-blue-600 font-semibold">
+                            <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                              <span className="text-blue-300 font-semibold">
                                 {user.name?.charAt(0)?.toUpperCase() || "U"}
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">
+                              <p className="font-medium text-white">
                                 {user.name || "No Name"}
                               </p>
-                              <p className="text-sm text-gray-500">
+                              <p className="text-sm text-gray-400">
                                 ID: {user.id}
                               </p>
                             </div>
@@ -1216,13 +1282,13 @@ const UserManagementTab = ({ stats, setStats }) => {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <Mail size={14} className="text-gray-400" />
-                              <span className="text-sm">
+                              <span className="text-sm text-gray-300">
                                 {user.email || "-"}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Phone size={14} className="text-gray-400" />
-                              <span className="text-sm">
+                              <span className="text-sm text-gray-300">
                                 {user.whatsapp || "-"}
                               </span>
                             </div>
@@ -1232,15 +1298,16 @@ const UserManagementTab = ({ stats, setStats }) => {
                           <div className="flex items-center gap-2">
                             <Shield size={16} className={roleColor.icon} />
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${roleColor.bg} ${roleColor.text}`}>
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${roleColor.bg} ${roleColor.text}`}
+                            >
                               {user.role_display_name?.toUpperCase() || "USER"}
                             </span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <Coins size={16} className="text-yellow-500" />
-                            <span className="font-bold">
+                            <Coins size={16} className="text-yellow-400" />
+                            <span className="font-bold text-white">
                               {user.coinBalance || 0}
                             </span>
                           </div>
@@ -1250,10 +1317,10 @@ const UserManagementTab = ({ stats, setStats }) => {
                             {user.status === "active" ? (
                               <CheckCircle
                                 size={16}
-                                className="text-green-500"
+                                className="text-green-400"
                               />
                             ) : (
-                              <XCircle size={16} className="text-red-500" />
+                              <XCircle size={16} className="text-red-400" />
                             )}
                             <button
                               onClick={() =>
@@ -1262,9 +1329,10 @@ const UserManagementTab = ({ stats, setStats }) => {
                               disabled={actionLoading}
                               className={`px-3 py-1 rounded-full text-xs font-medium ${
                                 user.status === "active"
-                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                  : "bg-red-100 text-red-800 hover:bg-red-200"
-                              }`}>
+                                  ? "bg-green-900/30 text-green-400 hover:bg-green-900/50"
+                                  : "bg-red-900/30 text-red-400 hover:bg-red-900/50"
+                              }`}
+                            >
                               {user.status === "active" ? "AKTIF" : "NONAKTIF"}
                             </button>
                           </div>
@@ -1272,7 +1340,7 @@ const UserManagementTab = ({ stats, setStats }) => {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <Calendar size={14} className="text-gray-400" />
-                            <span className="text-sm">
+                            <span className="text-sm text-gray-300">
                               {user.joinDate || "-"}
                             </span>
                           </div>
@@ -1284,23 +1352,26 @@ const UserManagementTab = ({ stats, setStats }) => {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleEditClick(user)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                              title="Edit">
+                              className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg"
+                              title="Edit"
+                            >
                               <Edit size={18} />
                             </button>
                             <button
                               onClick={() => handleDeleteUser(user.id)}
                               disabled={actionLoading}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                              title="Delete">
+                              className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg"
+                              title="Delete"
+                            >
                               <Trash2 size={18} />
                             </button>
                             <button
-                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                              className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg"
                               title="View Details"
                               onClick={() => {
-                                // console.log("View user details:", user);
-                              }}>
+                                console.log("View user details:", user);
+                              }}
+                            >
                               <Eye size={18} />
                             </button>
                           </div>
@@ -1313,18 +1384,18 @@ const UserManagementTab = ({ stats, setStats }) => {
             </div>
 
             {/* Pagination */}
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <p className="text-sm text-gray-700">
+            <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+              <p className="text-sm text-gray-400">
                 Menampilkan {sortedUsers.length} dari {users.length} users
               </p>
               <div className="flex gap-2">
-                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">
+                <button className="px-3 py-1 border border-gray-600 text-gray-300 rounded hover:bg-gray-700">
                   Previous
                 </button>
                 <button className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
                   1
                 </button>
-                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">
+                <button className="px-3 py-1 border border-gray-600 text-gray-300 rounded hover:bg-gray-700">
                   Next
                 </button>
               </div>
