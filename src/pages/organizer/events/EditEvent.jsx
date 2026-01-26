@@ -48,61 +48,279 @@ const EditEvent = () => {
   const [originalImage, setOriginalImage] = useState("");
 
   useEffect(() => {
-    if (id) {
+    if (id && user) {
       loadEventData();
     }
-  }, [id]);
+  }, [id, user]);
 
+  /* ================= LOAD EVENT DATA ================= */
   const loadEventData = async () => {
     setLoading(true);
     setError("");
 
     try {
       console.log(`📥 Loading event data for ID: ${id}`);
+      console.log(`👤 Current User ID: ${user?.id}`);
+      console.log(`🔍 Looking for event ID: ${id} for user ${user?.id}`);
 
-      // Coba load dari API terlebih dahulu
+      // Coba load dari API endpoint /list-event-by-user terlebih dahulu
       try {
-        const response = await api.get(`/events/${id}`);
-        console.log("✅ API Response:", response.data);
+        console.log("🔄 Fetching events from /list-event-by-user...");
+        const response = await api.get("/list-event-by-user");
+        console.log("✅ List events API Response:", response.data);
 
         if (response.data.success) {
-          const data = response.data.data || response.data;
-          setEventData(data);
-          populateForm(data);
-          setLoading(false);
-          return;
+          let events = [];
+
+          // Handle format response dari /list-event-by-user
+          if (response.data.data && typeof response.data.data === "object") {
+            // Debug: Tampilkan struktur data
+            console.log("📊 Data structure from API:", response.data.data);
+
+            // Coba berbagai kemungkinan struktur
+            if (response.data.data.id) {
+              // Single event object
+              console.log("📦 Single event object returned from API");
+              events = [response.data.data];
+            } else if (Array.isArray(response.data.data)) {
+              // Array langsung
+              events = response.data.data;
+            } else if (
+              response.data.data.events &&
+              Array.isArray(response.data.data.events)
+            ) {
+              // events array dalam object
+              events = response.data.data.events;
+            } else {
+              // Cari properti lain yang mungkin berisi array
+              for (const key in response.data.data) {
+                if (Array.isArray(response.data.data[key])) {
+                  events = response.data.data[key];
+                  console.log(`📦 Found events array in property: ${key}`);
+                  break;
+                }
+              }
+            }
+          }
+
+          console.log(`📊 Total events processed from API: ${events.length}`);
+          console.log("📦 Events structure from API:", events);
+
+          // Debug: Tampilkan semua ID untuk verifikasi
+          console.log("🔍 Available event IDs from API:");
+          events.forEach((e, index) => {
+            console.log(
+              `  [${index}] ID: ${e.id}, Name: ${e.name || "No name"}, User ID: ${e.user_id || "No user ID"}`,
+            );
+          });
+
+          // Cari event dengan ID yang sesuai
+          const event = events.find((e) => {
+            // Convert ID ke string untuk perbandingan yang aman
+            const eventId = e.id?.toString();
+            const searchId = id.toString();
+            return eventId === searchId;
+          });
+
+          if (event) {
+            console.log("✅ Found event in API:", event);
+
+            // PERIKSA APAKAH EVENT MILIK USER YANG LOGIN
+            const eventUserId = event.user_id?.toString();
+            const currentUserId = user.id.toString();
+
+            if (eventUserId && eventUserId !== currentUserId) {
+              setError(
+                "Anda tidak memiliki izin untuk mengedit event ini. Hanya pembuat event yang dapat mengedit.",
+              );
+              setLoading(false);
+              return;
+            }
+
+            console.log("✅ Event ownership verified:", {
+              eventUserId,
+              currentUserId,
+              match: eventUserId === currentUserId,
+            });
+
+            setEventData(event);
+            populateForm(event);
+
+            // Set image preview dari API jika ada
+            if (event.image_url) {
+              const fullImageUrl = formatImageUrl(event.image_url);
+              console.log("🖼️ Formatted Image URL from API:", fullImageUrl);
+              setImagePreview(fullImageUrl);
+              setOriginalImage(fullImageUrl);
+              testImageLoad(fullImageUrl);
+            } else if (event.image) {
+              const fullImageUrl = formatImageUrl(event.image);
+              console.log("🖼️ Formatted Image from field:", fullImageUrl);
+              setImagePreview(fullImageUrl);
+              setOriginalImage(fullImageUrl);
+              testImageLoad(fullImageUrl);
+            } else {
+              console.log("🖼️ No image found in API response");
+            }
+
+            setLoading(false);
+            return;
+          } else {
+            console.log(`❌ Event ID ${id} not found in API response`);
+
+            // Coba endpoint alternatif untuk mengambil event spesifik user
+            console.log(
+              "🔄 Trying to get user's events with user_id filter...",
+            );
+            try {
+              // Coba ambil semua event kemudian filter berdasarkan user_id
+              const allEventsResponse = await api.get("/list-event-by-user");
+              if (allEventsResponse.data.success) {
+                let allEvents = [];
+
+                // Process all events
+                if (Array.isArray(allEventsResponse.data.data)) {
+                  allEvents = allEventsResponse.data.data;
+                }
+
+                // Filter events by user_id
+                const userEvents = allEvents.filter(
+                  (e) => e.user_id == user.id,
+                );
+                console.log(
+                  `📊 Found ${userEvents.length} events for user ${user.id}`,
+                );
+
+                // Cari event dengan ID yang sesuai
+                const userEvent = userEvents.find((e) => e.id == id);
+
+                if (userEvent) {
+                  console.log(
+                    "✅ Found event in user's filtered events:",
+                    userEvent,
+                  );
+
+                  setEventData(userEvent);
+                  populateForm(userEvent);
+
+                  if (userEvent.image_url) {
+                    const fullImageUrl = formatImageUrl(userEvent.image_url);
+                    setImagePreview(fullImageUrl);
+                    setOriginalImage(fullImageUrl);
+                  }
+
+                  setLoading(false);
+                  return;
+                }
+              }
+            } catch (allEventsError) {
+              console.log(
+                "⚠️ Could not get all events:",
+                allEventsError.message,
+              );
+            }
+          }
         }
       } catch (apiError) {
-        console.log("⚠️ API not available, trying localStorage...");
+        console.log("⚠️ API not available or error:", apiError.message);
       }
 
-      // Jika API gagal, coba dari localStorage
+      // ========== FALLBACK KE LOCALSTORAGE ==========
+      console.log("🔄 Falling back to localStorage...");
       const storedEvents = localStorage.getItem("user_created_events");
       if (storedEvents) {
-        const events = JSON.parse(storedEvents);
-        const event = events.find((e) => e.id == id);
+        try {
+          const events = JSON.parse(storedEvents);
+          console.log(`📊 Total events in localStorage: ${events.length}`);
 
-        if (event) {
-          console.log("✅ Found event in localStorage:", event);
-          setEventData(event);
-          populateForm(event);
+          // Debug: Tampilkan semua ID di localStorage
+          console.log("🔍 Available event IDs in localStorage:");
+          events.forEach((e, index) => {
+            console.log(
+              `  [${index}] ID: ${e.id}, Name: ${e.name || "No name"}, User ID: ${e.user_id || "No user ID"}, From API: ${e.from_api || false}`,
+            );
+          });
 
-          // Coba load image dari localStorage
-          try {
-            const storedImage = localStorage.getItem(`event_image_${id}`);
-            if (storedImage) {
-              setImagePreview(storedImage);
-              setOriginalImage(storedImage);
+          const event = events.find((e) => e.id == id);
+
+          if (event) {
+            console.log("✅ Found event in localStorage:", event);
+
+            // PERIKSA KEPEMILIKAN DI LOCALSTORAGE
+            if (event.user_id && event.user_id != user.id) {
+              setError(
+                "Anda tidak memiliki izin untuk mengedit event ini. Hanya pembuat event yang dapat mengedit.",
+              );
+              setLoading(false);
+              return;
             }
-          } catch (imageError) {
-            console.error("Error loading image from storage:", imageError);
+
+            console.log("✅ LocalStorage event ownership verified:", {
+              eventUserId: event.user_id,
+              currentUserId: user.id,
+              match: event.user_id == user.id,
+            });
+
+            setEventData(event);
+            populateForm(event);
+
+            // Coba load image dari localStorage
+            try {
+              const storedImage = localStorage.getItem(`event_image_${id}`);
+              if (storedImage) {
+                console.log("🖼️ Image from localStorage (base64)");
+                setImagePreview(storedImage);
+                setOriginalImage(storedImage);
+              } else if (event.image_url) {
+                const fullImageUrl = formatImageUrl(event.image_url);
+                console.log(
+                  "🖼️ Image URL from localStorage data:",
+                  fullImageUrl,
+                );
+                setImagePreview(fullImageUrl);
+                setOriginalImage(fullImageUrl);
+                testImageLoad(fullImageUrl);
+              } else if (event.image) {
+                const fullImageUrl = formatImageUrl(event.image);
+                console.log(
+                  "🖼️ Image from localStorage data field:",
+                  fullImageUrl,
+                );
+                setImagePreview(fullImageUrl);
+                setOriginalImage(fullImageUrl);
+                testImageLoad(fullImageUrl);
+              } else {
+                console.log("🖼️ No image found in localStorage");
+              }
+            } catch (imageError) {
+              console.error("Error loading image from storage:", imageError);
+            }
+
+            // Tampilkan warning jika event hanya ada di localStorage
+            if (!event.from_api) {
+              console.log(
+                "⚠️ This event exists only in localStorage (not synced to API yet)",
+              );
+              if (!error) {
+                setError(
+                  "⚠️ Event ini disimpan secara lokal. Perubahan akan disimpan di browser Anda sampai tersinkronisasi dengan server.",
+                );
+              }
+            }
+
+            setLoading(false);
+            return;
+          } else {
+            console.log(`❌ Event ID ${id} not found in localStorage`);
           }
-        } else {
-          throw new Error("Event tidak ditemukan");
+        } catch (parseError) {
+          console.error("Error parsing localStorage events:", parseError);
         }
       } else {
-        throw new Error("Event tidak ditemukan");
+        console.log("❌ No events found in localStorage");
       }
+
+      throw new Error(`Event dengan ID ${id} tidak ditemukan`);
     } catch (error) {
       console.error("❌ Error loading event:", error);
       setError("Gagal memuat data event. " + (error.message || ""));
@@ -111,7 +329,25 @@ const EditEvent = () => {
     }
   };
 
+  /* ================= TEST IMAGE LOAD ================= */
+  const testImageLoad = (url) => {
+    console.log("🔄 Testing image load from URL:", url);
+
+    const img = new Image();
+    img.onload = function () {
+      console.log("✅ Image loaded successfully:", url);
+      console.log("📏 Image dimensions:", this.width, "x", this.height);
+    };
+    img.onerror = function () {
+      console.error("❌ Failed to load image:", url);
+    };
+    img.src = url;
+  };
+
+  /* ================= POPULATE FORM ================= */
   const populateForm = (data) => {
+    console.log("📝 Populating form with data:", data);
+
     setFormData({
       name: data.name || "",
       organized_by: data.organized_by || "",
@@ -124,16 +360,15 @@ const EditEvent = () => {
     });
   };
 
+  /* ================= HANDLE IMAGE ================= */
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validasi ukuran file (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError("Ukuran file maksimal 5MB");
         return;
       }
 
-      // Validasi tipe file
       const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
       if (!validTypes.includes(file.type)) {
         setError("Format file harus JPG, JPEG, PNG, atau GIF");
@@ -143,7 +378,6 @@ const EditEvent = () => {
       setFormData((prev) => ({ ...prev, image: file }));
       setError("");
 
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -154,15 +388,23 @@ const EditEvent = () => {
 
   const removeImage = () => {
     setFormData((prev) => ({ ...prev, image: null }));
-    setImagePreview("");
-    setOriginalImage("");
+    setImagePreview(originalImage || "");
   };
 
+  /* ================= HANDLE SUBMIT ================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!user) {
       setError("Anda harus login untuk mengedit event");
+      return;
+    }
+
+    // PERIKSA KEPEMILIKAN SEBELUM SUBMIT
+    if (eventData && eventData.user_id != user.id) {
+      setError(
+        "Anda tidak memiliki izin untuk mengedit event ini. Hanya pembuat event yang dapat mengedit.",
+      );
       return;
     }
 
@@ -189,7 +431,6 @@ const EditEvent = () => {
         errors.push("Tanggal selesai wajib diisi");
       }
 
-      // Validasi tanggal
       if (formData.start_date && formData.end_date) {
         const startDate = new Date(formData.start_date);
         const endDate = new Date(formData.end_date);
@@ -203,10 +444,16 @@ const EditEvent = () => {
         throw new Error(errors.join(", "));
       }
 
-      // Prepare form data for multipart upload
+      // Prepare form data
       const submitData = new FormData();
 
-      // Append semua field yang diperlukan
+      console.log("🔍 Debug sebelum submit:");
+      console.log("  - Event ID:", id);
+      console.log("  - User ID:", user.id);
+      console.log("  - Event user_id:", eventData?.user_id);
+      console.log("  - Event from_api:", eventData?.from_api);
+
+      // Append semua field
       submitData.append("name", formData.name.trim());
       submitData.append("organized_by", formData.organized_by.trim());
       submitData.append("location", formData.location.trim());
@@ -214,31 +461,80 @@ const EditEvent = () => {
       submitData.append("term_condition", formData.term_condition.trim());
       submitData.append("start_date", formData.start_date);
       submitData.append("end_date", formData.end_date);
-      submitData.append("user_id", user.id);
-      submitData.append("_method", "PUT"); // Untuk Laravel form method spoofing
+
+      const userIdToUse = eventData?.user_id || user?.id;
+      if (userIdToUse) {
+        submitData.append("user_id", userIdToUse.toString());
+        console.log("✅ Using user_id:", userIdToUse);
+      }
+
+      // ========== HANDLE EVENT SYNC ==========
+      // Jika event hanya ada di localStorage (belum di API)
+      if (eventData && !eventData.from_api) {
+        console.log(
+          "🔄 Event hanya ada di localStorage, mencoba sync ke API...",
+        );
+
+        // Coba sync dulu ke API menggunakan endpoint create
+        const syncResponse = await api.post("/create-event", submitData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        if (syncResponse.data.success) {
+          const newEventId = syncResponse.data.data?.id;
+          console.log("✅ Event synced to API with new ID:", newEventId);
+
+          // Update eventData dengan ID baru dari API
+          const updatedEvent = {
+            ...eventData,
+            id: newEventId,
+            from_api: true,
+            api_response: syncResponse.data,
+            image_url: syncResponse.data.data?.image_url || eventData.image_url,
+          };
+
+          setEventData(updatedEvent);
+          setSuccess(true);
+
+          // Update localStorage
+          const storedEvents = localStorage.getItem("user_created_events");
+          if (storedEvents) {
+            let events = JSON.parse(storedEvents);
+            const oldEventIndex = events.findIndex((e) => e.id == id);
+            if (oldEventIndex !== -1) {
+              // Hapus event lama
+              events.splice(oldEventIndex, 1);
+            }
+            // Tambahkan event baru
+            events.push(updatedEvent);
+            localStorage.setItem("user_created_events", JSON.stringify(events));
+          }
+
+          // Update image
+          if (imagePreview && !imagePreview.startsWith("http")) {
+            localStorage.setItem(`event_image_${newEventId}`, imagePreview);
+            localStorage.removeItem(`event_image_${id}`);
+          }
+
+          setTimeout(() => {
+            navigate("/organizer/events");
+          }, 2000);
+          return;
+        }
+      }
+
+      // Jika event sudah ada di API, gunakan endpoint edit
+      submitData.append("_method", "PUT");
 
       if (formData.image) {
         submitData.append("image", formData.image);
+        console.log("📸 Image included in payload:", formData.image.name);
       }
 
-      console.log("📤 Submitting event update...");
-      console.log("📋 Update data:", {
-        name: formData.name,
-        organized_by: formData.organized_by,
-        location: formData.location,
-        event_info: formData.event_info.substring(0, 100) + "...",
-        term_condition: formData.term_condition.substring(0, 100) + "...",
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        user_id: user.id,
-        has_new_image: !!formData.image,
-      });
+      console.log("📤 Submitting event update to /edit-event/" + id);
 
-      // Submit to API dengan method PUT
       const response = await api.post(`/edit-event/${id}`, submitData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       console.log("✅ API Update Response:", response.data);
@@ -246,7 +542,7 @@ const EditEvent = () => {
       if (response.data.success) {
         setSuccess(true);
 
-        // ========== UPDATE LOCALSTORAGE ==========
+        // Update localStorage
         const updatedEvent = {
           ...eventData,
           name: formData.name,
@@ -259,28 +555,32 @@ const EditEvent = () => {
           updated_at: new Date().toISOString(),
           from_api: true,
           api_response: response.data,
+          image_url: response.data.data?.image_url || eventData?.image_url,
+          image: response.data.data?.image || eventData?.image,
+          user_id: user.id,
+          last_updated_by: user.id,
+          last_updated_at: new Date().toISOString(),
         };
 
-        // Update di localStorage
         const storedEvents = localStorage.getItem("user_created_events");
         if (storedEvents) {
           let events = JSON.parse(storedEvents);
           const eventIndex = events.findIndex((e) => e.id == id);
-
           if (eventIndex !== -1) {
             events[eventIndex] = updatedEvent;
             localStorage.setItem("user_created_events", JSON.stringify(events));
-            console.log("🔄 Updated event in localStorage:", updatedEvent);
           }
         }
 
-        // Simpan image jika ada
-        if (imagePreview && imagePreview.length < 1000000) {
+        // Handle image storage
+        if (
+          formData.image &&
+          imagePreview &&
+          !imagePreview.startsWith("http")
+        ) {
           localStorage.setItem(`event_image_${id}`, imagePreview);
-          console.log("🖼️ Updated image in localStorage");
         }
 
-        // Redirect setelah 2 detik
         setTimeout(() => {
           navigate("/organizer/events");
         }, 2000);
@@ -293,29 +593,29 @@ const EditEvent = () => {
       let errorMessage = "Terjadi kesalahan saat mengupdate event";
 
       if (error.response?.status === 401) {
-        setError("Sesi Anda telah berakhir. Silakan login kembali.");
+        errorMessage = "Sesi Anda telah berakhir. Silakan login kembali.";
         setTimeout(() => {
           navigate("/auth/login");
         }, 2000);
+      } else if (error.response?.status === 403) {
+        errorMessage =
+          "Akses ditolak: Anda tidak memiliki izin untuk mengedit event ini.";
       } else if (error.response?.status === 404) {
-        setError("Event tidak ditemukan di server");
+        errorMessage = "Event tidak ditemukan di server";
       } else if (error.response?.status === 422) {
-        // Validation errors from Laravel
         const validationErrors = error.response.data.errors;
         const errorMessages = [];
-
         for (const field in validationErrors) {
           errorMessages.push(`${field}: ${validationErrors[field].join(", ")}`);
         }
-
-        setError(`Validasi gagal: ${errorMessages.join("; ")}`);
+        errorMessage = `Validasi gagal: ${errorMessages.join("; ")}`;
       } else if (error.response?.data?.message) {
-        setError(error.response.data.message);
+        errorMessage = error.response.data.message;
       } else if (error.message) {
-        setError(error.message);
+        errorMessage = error.message;
       }
 
-      // ========== FALLBACK: UPDATE LOCALSTORAGE MESKI API GAGAL ==========
+      // FALLBACK: UPDATE LOCALSTORAGE
       try {
         const updatedEvent = {
           ...eventData,
@@ -328,32 +628,28 @@ const EditEvent = () => {
           end_date: formData.end_date,
           updated_at: new Date().toISOString(),
           from_api: false,
-          api_error: error.message,
+          api_error: error.message || "API Error",
         };
 
         const storedEvents = localStorage.getItem("user_created_events");
         if (storedEvents) {
           let events = JSON.parse(storedEvents);
           const eventIndex = events.findIndex((e) => e.id == id);
-
-          if (eventIndex !== -1) {
+          if (eventIndex !== -1 && events[eventIndex].user_id == user?.id) {
             events[eventIndex] = updatedEvent;
             localStorage.setItem("user_created_events", JSON.stringify(events));
 
-            if (imagePreview && imagePreview.length < 1000000) {
+            if (imagePreview && !imagePreview.startsWith("http")) {
               localStorage.setItem(`event_image_${id}`, imagePreview);
             }
 
-            console.log(
-              "🔄 Updated event in localStorage (fallback):",
-              updatedEvent,
-            );
-
-            errorMessage += "\n\n✅ Perubahan telah disimpan secara lokal.";
+            errorMessage +=
+              "\n\n✅ Perubahan telah disimpan secara lokal (offline).";
           }
         }
       } catch (storageError) {
         console.error("❌ Error updating localStorage:", storageError);
+        errorMessage += "\n\n⚠️ Gagal menyimpan perubahan secara lokal.";
       }
 
       setError(errorMessage);
@@ -362,6 +658,7 @@ const EditEvent = () => {
     }
   };
 
+  /* ================= HANDLE CHANGE ================= */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -381,12 +678,20 @@ const EditEvent = () => {
       [name]: value,
     }));
 
-    // Auto-resize textarea
     e.target.style.height = "auto";
     e.target.style.height = e.target.scrollHeight + "px";
   };
 
+  /* ================= DELETE EVENT ================= */
   const handleDeleteEvent = async () => {
+    // PERIKSA KEPEMILIKAN SEBELUM HAPUS
+    if (eventData && eventData.user_id != user.id) {
+      alert(
+        "Anda tidak memiliki izin untuk menghapus event ini. Hanya pembuat event yang dapat menghapus.",
+      );
+      return;
+    }
+
     if (
       !window.confirm(
         "Apakah Anda yakin ingin menghapus event ini? Data peserta yang terkait juga akan dihapus.",
@@ -399,8 +704,12 @@ const EditEvent = () => {
       // Coba hapus dari API
       try {
         await api.delete(`/delete-event/${id}`);
+        console.log("✅ Event deleted from API");
       } catch (apiError) {
-        console.log("⚠️ API delete failed, continuing with localStorage...");
+        console.log(
+          "⚠️ API delete failed, continuing with localStorage...",
+          apiError.message,
+        );
       }
 
       // Hapus dari localStorage
@@ -433,6 +742,28 @@ const EditEvent = () => {
     }
   };
 
+  /* ================= FORMAT IMAGE URL ================= */
+  const formatImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+
+    console.log("🔄 Formatting image URL from:", imagePath);
+
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+
+    if (imagePath.startsWith("storage/")) {
+      return `https://apipaskibra.my.id/${imagePath}`;
+    }
+
+    if (imagePath.startsWith("/")) {
+      return `https://apipaskibra.my.id${imagePath}`;
+    }
+
+    return `https://apipaskibra.my.id/storage/${imagePath}`;
+  };
+
+  /* ================= RENDER LOADING ================= */
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -444,6 +775,7 @@ const EditEvent = () => {
     );
   }
 
+  /* ================= RENDER NOT FOUND ================= */
   if (!eventData && !loading) {
     return (
       <div className="max-w-4xl mx-auto">
@@ -462,7 +794,8 @@ const EditEvent = () => {
             Event Tidak Ditemukan
           </h2>
           <p className="text-gray-400 mb-6">
-            Event yang Anda cari tidak ditemukan atau telah dihapus.
+            Event yang Anda cari tidak ditemukan atau Anda tidak memiliki akses
+            untuk mengedit.
           </p>
           <button
             onClick={() => navigate("/organizer/events")}
@@ -475,6 +808,7 @@ const EditEvent = () => {
     );
   }
 
+  /* ================= RENDER FORM ================= */
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -526,6 +860,7 @@ const EditEvent = () => {
 
       {/* Form */}
       <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
+        {/* Error Alert */}
         {error && !success && (
           <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
             <div className="flex items-start space-x-3">
@@ -545,6 +880,7 @@ const EditEvent = () => {
           </div>
         )}
 
+        {/* Success Alert */}
         {success && (
           <div className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
             <div className="flex items-start space-x-3">
@@ -584,7 +920,8 @@ const EditEvent = () => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={submitting}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                     placeholder="Contoh: Paskibra Championship 2024"
                     maxLength={200}
                   />
@@ -609,7 +946,8 @@ const EditEvent = () => {
                     value={formData.organized_by}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={submitting}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                     placeholder="Contoh: Dinas Pendidikan Kota Cilegon"
                     maxLength={200}
                   />
@@ -634,8 +972,9 @@ const EditEvent = () => {
                   value={formData.location}
                   onChange={handleTextAreaChange}
                   required
+                  disabled={submitting}
                   rows="3"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
                   placeholder="Contoh: Gedung Serba Guna, Jl. Merdeka No. 123, Cilegon, Banten"
                   maxLength={500}
                 />
@@ -667,7 +1006,8 @@ const EditEvent = () => {
                     value={formData.start_date}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={submitting}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -687,8 +1027,9 @@ const EditEvent = () => {
                     value={formData.end_date}
                     onChange={handleChange}
                     required
+                    disabled={submitting}
                     min={formData.start_date}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -714,8 +1055,9 @@ const EditEvent = () => {
                     name="event_info"
                     value={formData.event_info}
                     onChange={handleTextAreaChange}
+                    disabled={submitting}
                     rows="4"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
                     placeholder="Deskripsi lengkap tentang event, tujuan, kegiatan yang akan dilakukan, dll."
                     maxLength={2000}
                   />
@@ -738,8 +1080,9 @@ const EditEvent = () => {
                     name="term_condition"
                     value={formData.term_condition}
                     onChange={handleTextAreaChange}
+                    disabled={submitting}
                     rows="4"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
                     placeholder="Syarat dan ketentuan peserta, persyaratan pendaftaran, aturan lomba, dll."
                     maxLength={2000}
                   />
@@ -771,13 +1114,14 @@ const EditEvent = () => {
                 onChange={handleImageChange}
                 className="hidden"
                 id="event-image-upload"
+                disabled={submitting}
               />
 
               <div className="flex flex-col md:flex-row gap-6">
                 {/* Upload Area */}
                 <label
                   htmlFor="event-image-upload"
-                  className="flex-1 cursor-pointer group"
+                  className={`flex-1 cursor-pointer group ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   <div className="border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors h-full">
                     <div className="flex flex-col items-center space-y-4">
@@ -789,46 +1133,70 @@ const EditEvent = () => {
                       </div>
                       <div>
                         <p className="text-gray-300 font-medium">
-                          {imagePreview || originalImage
+                          {imagePreview
                             ? "Klik untuk ganti gambar"
                             : "Klik untuk upload poster event"}
                         </p>
                         <p className="text-sm text-gray-500">
                           PNG, JPG, JPEG, GIF (max. 5MB)
                         </p>
+                        {imagePreview && imagePreview.startsWith("http") && (
+                          <p className="text-xs text-yellow-400 mt-1">
+                            Gambar saat ini dari server
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
                 </label>
 
                 {/* Preview */}
-                {(imagePreview || originalImage) && (
+                {imagePreview && (
                   <div className="flex-1">
                     <div className="rounded-2xl border border-gray-700 p-4 h-full">
                       <p className="text-sm text-gray-400 mb-3">Preview:</p>
                       <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900">
                         <img
-                          src={imagePreview || originalImage}
+                          src={imagePreview}
                           alt="Preview"
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error(
+                              "❌ Error loading image:",
+                              imagePreview,
+                            );
+                            e.target.src =
+                              "https://via.placeholder.com/400x200?text=Image+Not+Found";
+                          }}
                         />
                         <button
                           type="button"
                           onClick={removeImage}
-                          className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white"
+                          disabled={submitting}
+                          className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white disabled:opacity-50"
                         >
                           <X size={16} />
                         </button>
                       </div>
-                      {formData.image && (
+                      {formData.image ? (
                         <p className="text-xs text-gray-400 mt-2 text-center">
                           {formData.image.name} (
                           {(formData.image.size / 1024 / 1024).toFixed(2)} MB)
                         </p>
-                      )}
-                      {!formData.image && originalImage && (
+                      ) : imagePreview.startsWith("http") ? (
+                        <div className="text-xs text-gray-400 mt-2 text-center">
+                          <p>Gambar saat ini dari server</p>
+                          <p className="text-xs truncate" title={imagePreview}>
+                            {imagePreview.substring(0, 50)}...
+                          </p>
+                        </div>
+                      ) : imagePreview.startsWith("data:image") ? (
                         <p className="text-xs text-gray-400 mt-2 text-center">
-                          Gambar saat ini (disimpan di browser)
+                          Gambar saat ini (disimpan di browser - base64)
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-2 text-center">
+                          Gambar tidak tersedia
                         </p>
                       )}
                     </div>
@@ -838,15 +1206,13 @@ const EditEvent = () => {
             </div>
           </div>
 
-          {/* Hidden user_id field */}
-          <input type="hidden" name="user_id" value={user?.id} />
-
           {/* Form Actions */}
           <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6 border-t border-gray-700">
             <button
               type="button"
               onClick={() => navigate("/organizer/events")}
-              className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium"
+              disabled={submitting}
+              className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
             >
               Batal
             </button>
@@ -861,7 +1227,8 @@ const EditEvent = () => {
                   }
                   setError("");
                 }}
-                className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium"
+                disabled={submitting}
+                className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
               >
                 Reset Perubahan
               </button>
@@ -903,17 +1270,18 @@ const EditEvent = () => {
                     <strong>ID Event:</strong> {eventData.id}
                   </p>
                   <p>
-                    <strong>Dibuat pada:</strong>{" "}
-                    {new Date(eventData.created_at).toLocaleString("id-ID")}
+                    <strong>Pemilik Event:</strong>{" "}
+                    {eventData.user_id == user?.id ? "Anda" : "User Lain"}
                   </p>
                   <p>
-                    <strong>Status:</strong>{" "}
-                    {eventData.from_api ? "Dari API" : "Lokal"}
+                    <strong>Dibuat pada:</strong>{" "}
+                    {new Date(eventData.created_at).toLocaleString("id-ID")}
                   </p>
                 </div>
                 <div>
                   <p>
-                    <strong>User ID:</strong> {eventData.user_id}
+                    <strong>Status:</strong>{" "}
+                    {eventData.from_api ? "Dari API" : "Lokal"}
                   </p>
                   <p>
                     <strong>Total Peserta:</strong>{" "}
@@ -925,8 +1293,55 @@ const EditEvent = () => {
                       {new Date(eventData.updated_at).toLocaleString("id-ID")}
                     </p>
                   )}
+                  {eventData.image_url && (
+                    <p>
+                      <strong>Image URL:</strong>{" "}
+                      <span className="text-xs truncate block">
+                        {eventData.image_url}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Debug Info */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="mt-6 p-4 bg-gray-900/50 border border-gray-700 rounded-xl">
+          <h4 className="font-medium text-gray-300 mb-3">Debug Information:</h4>
+          <div className="text-sm text-gray-400 space-y-2">
+            <div>
+              <strong>Event ID:</strong> {id}
+            </div>
+            <div>
+              <strong>Event in localStorage:</strong> {eventData ? "Yes" : "No"}
+            </div>
+            <div>
+              <strong>Event Owner ID:</strong> {eventData?.user_id || "Unknown"}
+            </div>
+            <div>
+              <strong>Current User ID:</strong> {user?.id || "Not logged in"}
+            </div>
+            <div>
+              <strong>Image Preview:</strong>{" "}
+              {imagePreview
+                ? imagePreview.substring(0, 50) + "..."
+                : "No image"}
+            </div>
+            <div>
+              <strong>Image Source:</strong>{" "}
+              {imagePreview?.startsWith("http")
+                ? "URL"
+                : imagePreview
+                  ? "Base64"
+                  : "None"}
+            </div>
+            <div>
+              <strong>Loaded from API:</strong>{" "}
+              {eventData?.from_api ? "Yes" : "No"}
             </div>
           </div>
         </div>

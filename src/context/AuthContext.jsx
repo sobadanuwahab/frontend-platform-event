@@ -17,15 +17,23 @@ export const AuthProvider = ({ children }) => {
 
           if (parsedUser && parsedUser.role) {
             setUser(parsedUser);
+
+            // **CLEANUP: Hapus backup lama jika ada**
+            cleanupOldBackups(parsedUser.id);
           } else {
-            console.warn("AuthProvider - Invalid user data, clearing...");
+            console.warn(
+              "AuthProvider - Invalid user data, clearing auth only...",
+            );
+            // Hapus hanya auth data
             localStorage.removeItem("user");
             localStorage.removeItem("access_token");
           }
         }
       } catch (error) {
         console.error("AuthProvider - Error loading user:", error);
-        localStorage.clear();
+        // Hapus hanya auth data, jangan semua
+        localStorage.removeItem("user");
+        localStorage.removeItem("access_token");
       } finally {
         setLoading(false);
       }
@@ -33,6 +41,34 @@ export const AuthProvider = ({ children }) => {
 
     initAuth();
   }, []);
+
+  // Fungsi cleanup
+  const cleanupOldBackups = (currentUserId) => {
+    // Hapus backup dari user lain yang sudah lama
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith("events_backup_")) {
+        const backupUserId = key.replace("events_backup_", "");
+
+        // Jika bukan user saat ini, hapus backup lama
+        if (backupUserId != currentUserId) {
+          try {
+            const backupData = JSON.parse(localStorage.getItem(key));
+            const backupTime = new Date(backupData.timestamp || 0).getTime();
+
+            if (backupTime < oneDayAgo) {
+              localStorage.removeItem(key);
+              localStorage.removeItem(`participants_backup_${backupUserId}`);
+              console.log(`🧹 Cleaned up old backup for user ${backupUserId}`);
+            }
+          } catch (e) {
+            localStorage.removeItem(key);
+          }
+        }
+      }
+    });
+  };
 
   const login = async (email, password) => {
     try {
@@ -182,6 +218,12 @@ export const AuthProvider = ({ children }) => {
       const redirectPath = getRedirectPathByRole(userData.role);
       console.log(`AuthContext - Immediate redirect to: ${redirectPath}`);
 
+      if (userData.id) {
+        setTimeout(() => {
+          restoreUserEvents(userData.id);
+        }, 1000); // Delay sedikit untuk memastikan state sudah terupdate
+      }
+
       return {
         success: true,
         user: userData,
@@ -190,6 +232,63 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("AuthContext - Login error:", error);
       throw error;
+    }
+  };
+
+  // Fungsi untuk restore data event
+  const restoreUserEvents = (userId) => {
+    try {
+      console.log(`🔄 Restoring events for user ${userId} after login...`);
+
+      // Cek apakah ada backup
+      const backupKey = `events_backup_${userId}`;
+      const backupData = localStorage.getItem(backupKey);
+
+      if (backupData) {
+        const backup = JSON.parse(backupData);
+        console.log(
+          `📦 Found backup with ${backup.events?.length || 0} events`,
+        );
+
+        // Ambil data event yang ada sekarang
+        const currentEvents = JSON.parse(
+          localStorage.getItem("user_created_events") || "[]",
+        );
+
+        // Gabungkan: backup + current (hapus duplikat)
+        const allEvents = [...backup.events, ...currentEvents];
+        const uniqueEvents = Array.from(
+          new Map(allEvents.map((event) => [event.id, event])).values(),
+        );
+
+        localStorage.setItem(
+          "user_created_events",
+          JSON.stringify(uniqueEvents),
+        );
+        console.log(
+          `✅ Restored ${backup.events.length} events, total now: ${uniqueEvents.length}`,
+        );
+
+        // Restore participants
+        const participantsBackupKey = `participants_backup_${userId}`;
+        const participantsBackup = localStorage.getItem(participantsBackupKey);
+
+        if (participantsBackup) {
+          const participantsData = JSON.parse(participantsBackup);
+          Object.keys(participantsData).forEach((key) => {
+            localStorage.setItem(key, participantsData[key]);
+          });
+          console.log(
+            `✅ Restored ${Object.keys(participantsData).length} participant sets`,
+          );
+        }
+
+        // Hapus backup (optional)
+        localStorage.removeItem(backupKey);
+        localStorage.removeItem(participantsBackupKey);
+      }
+    } catch (error) {
+      console.error("❌ Error restoring user events:", error);
     }
   };
 
@@ -210,9 +309,90 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    console.log("AuthContext - Logging out");
-    localStorage.clear();
+    console.log("AuthContext - Smart logout (preserving user's data)");
+
+    const currentUserId = user?.id;
+
+    if (currentUserId) {
+      // 1. Backup data event untuk user ini
+      backupUserEvents(currentUserId);
+    }
+
+    // 2. Hapus hanya data autentikasi
+    const authKeys = ["user", "access_token", "token", "last_login"];
+    authKeys.forEach((key) => localStorage.removeItem(key));
+
+    // 3. Reset user state
     setUser(null);
+
+    console.log("✅ Logout completed");
+  };
+
+  // Fungsi untuk backup data event user
+  const backupUserEvents = (userId) => {
+    try {
+      console.log(`📦 Backing up events for user ${userId} before logout...`);
+
+      // Ambil semua data event
+      const allEvents = JSON.parse(
+        localStorage.getItem("user_created_events") || "[]",
+      );
+
+      // Pisahkan: event dari user ini vs dari user lain
+      const currentUserEvents = allEvents.filter(
+        (event) => event.user_id == userId,
+      );
+      const otherUserEvents = allEvents.filter(
+        (event) => event.user_id != userId,
+      );
+
+      console.log(
+        `📊 Events: ${currentUserEvents.length} for user ${userId}, ${otherUserEvents.length} from others`,
+      );
+
+      // Backup untuk user ini (untuk recovery jika perlu)
+      const userEventsBackup = {
+        user_id: userId,
+        timestamp: new Date().toISOString(),
+        events: currentUserEvents,
+      };
+
+      // Simpan backup terpisah
+      localStorage.setItem(
+        `events_backup_${userId}`,
+        JSON.stringify(userEventsBackup),
+      );
+
+      // Simpan data dari user lain saja
+      localStorage.setItem(
+        "user_created_events",
+        JSON.stringify(otherUserEvents),
+      );
+
+      // Backup peserta event
+      const userParticipants = {};
+      currentUserEvents.forEach((event) => {
+        const participants = localStorage.getItem(
+          `event_participants_${event.id}`,
+        );
+        if (participants) {
+          userParticipants[`event_participants_${event.id}`] = participants;
+        }
+      });
+
+      if (Object.keys(userParticipants).length > 0) {
+        localStorage.setItem(
+          `participants_backup_${userId}`,
+          JSON.stringify(userParticipants),
+        );
+      }
+
+      console.log(
+        `✅ Backup completed for user ${userId}: ${currentUserEvents.length} events`,
+      );
+    } catch (error) {
+      console.error("❌ Error backing up user events:", error);
+    }
   };
 
   return (
@@ -223,7 +403,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         getRedirectPathByRole,
-      }}>
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
