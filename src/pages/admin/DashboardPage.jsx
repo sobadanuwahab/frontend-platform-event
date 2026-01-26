@@ -5,17 +5,13 @@ import { useAuth } from "../../context/AuthContext";
 import {
   BarChart3,
   Users,
-  CreditCard,
   Vote,
   Ticket as TicketIcon,
   Shield,
   RefreshCw,
-  Bell,
   ChevronRight,
   User,
   LogOut,
-  Home,
-  Package,
   History,
   Settings,
 } from "lucide-react";
@@ -29,8 +25,8 @@ const DashboardPage = () => {
   // Update active tab berdasarkan URL
   useEffect(() => {
     const path = location.pathname;
-    if (path.includes("/admin/participants")) {
-      setActiveTab("participants");
+    if (path.includes("/admin/events")) {
+      setActiveTab("events");
     } else if (path.includes("/admin/users")) {
       setActiveTab("users");
     } else if (path.includes("/admin/transactions")) {
@@ -46,20 +42,7 @@ const DashboardPage = () => {
     }
   }, [location.pathname]);
 
-  const [stats, setStats] = useState({
-    totalUsers: 10,
-    totalCoinsSold: 1500,
-    totalTicketSold: 500,
-    totalVotes: 56800,
-    revenue: 25450000,
-    activeUsers: 10,
-    pendingTransactions: 5,
-    completedTransaction: 25,
-    completedTransactions: 250,
-    totalParticipants: 5,
-    activeParticipants: 4,
-    pendingParticipants: 1,
-  });
+  const [stats, setStats] = useState({});
 
   // Cek role admin
   useEffect(() => {
@@ -94,10 +77,10 @@ const DashboardPage = () => {
       color: "from-blue-600 to-cyan-600",
     },
     {
-      id: "participants",
+      id: "events",
       label: "Event",
       icon: Users,
-      path: "/admin/participants",
+      path: "/admin/events",
       color: "from-green-600 to-emerald-600",
     },
     {
@@ -134,51 +117,6 @@ const DashboardPage = () => {
       icon: Settings,
       path: "/admin/settings",
       color: "from-gray-600 to-gray-700",
-    },
-  ];
-
-  const adminStats = [
-    {
-      label: "Total Users",
-      value: stats.totalUsers,
-      icon: Users,
-      color: "bg-gradient-to-r from-blue-500 to-cyan-500",
-      change: "+12%",
-    },
-    {
-      label: "Revenue",
-      value: formatCurrency(stats.revenue),
-      icon: CreditCard,
-      color: "bg-gradient-to-r from-green-500 to-emerald-500",
-      change: "+24%",
-    },
-    {
-      label: "Total Votes",
-      value: stats.totalVotes.toLocaleString(),
-      icon: Vote,
-      color: "bg-gradient-to-r from-purple-500 to-violet-500",
-      change: "+18%",
-    },
-    {
-      label: "Tickets Sold",
-      value: stats.totalTicketSold,
-      icon: TicketIcon,
-      color: "bg-gradient-to-r from-orange-500 to-amber-500",
-      change: "+8%",
-    },
-    {
-      label: "Active Users",
-      value: stats.activeUsers,
-      icon: User,
-      color: "bg-gradient-to-r from-teal-500 to-cyan-500",
-      change: "+5%",
-    },
-    {
-      label: "Pending Transactions",
-      value: stats.pendingTransactions,
-      icon: Bell,
-      color: "bg-gradient-to-r from-red-500 to-pink-500",
-      change: "-3%",
     },
   ];
 
@@ -241,14 +179,6 @@ const DashboardPage = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Notifications */}
-              <button className="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors relative">
-                <Bell size={20} />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-xs rounded-full flex items-center justify-center">
-                  3
-                </span>
-              </button>
-
               {/* User Info */}
               <div className="flex items-center space-x-3">
                 <div className="text-right hidden md:block">
@@ -311,57 +241,11 @@ const DashboardPage = () => {
                   ))}
                 </nav>
               </div>
-
-              {/* Quick Stats */}
-              <div className="mt-8">
-                <h2 className="text-lg font-bold mb-4">Statistik Singkat</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {adminStats.slice(0, 4).map((stat, index) => (
-                    <div
-                      key={index}
-                      className="bg-gray-800/30 rounded-lg p-3 border border-gray-700"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <stat.icon size={16} className="text-gray-400" />
-                        <span className="text-xs text-green-400 font-medium">
-                          {stat.change}
-                        </span>
-                      </div>
-                      <p className="text-2xl font-bold">{stat.value}</p>
-                      <p className="text-xs text-gray-400">{stat.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
 
           {/* Main Content Area */}
           <div className="lg:w-3/4">
-            {/* Stats Grid */}
-            {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {adminStats.map((stat, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="bg-gray-800/30 rounded-xl border border-gray-700 p-6 hover:border-gray-600 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`p-3 rounded-lg ${stat.color}`}>
-                      <stat.icon size={20} className="text-white" />
-                    </div>
-                    <span className="text-sm font-medium text-green-400">
-                      {stat.change}
-                    </span>
-                  </div>
-                  <h3 className="text-3xl font-bold mb-1">{stat.value}</h3>
-                  <p className="text-gray-400">{stat.label}</p>
-                </motion.div>
-              ))}
-            </div> */}
-
             {/* Dynamic Content Area */}
             <motion.div
               key={activeTab}

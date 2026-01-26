@@ -11,7 +11,6 @@ import {
   MapPin,
   User,
   Phone,
-  Calendar,
   Award,
   ArrowLeft,
   Loader,
@@ -32,7 +31,6 @@ const CreateParticipant = () => {
 
   const [categories, setCategories] = useState([]);
   const [events, setEvents] = useState([]);
-  const [userCreatedEvents, setUserCreatedEvents] = useState([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -54,20 +52,29 @@ const CreateParticipant = () => {
   const fetchCategories = async () => {
     setLoadingCategories(true);
     try {
-      console.log("Fetching categories from /api/participant-categories...");
       const response = await api.get("/participant-categories");
-      console.log("Categories API response:", response.data);
 
+      let categoriesData = [];
       if (response.data.success && response.data.data) {
-        setCategories(response.data.data);
-        console.log("Categories loaded:", response.data.data);
+        if (Array.isArray(response.data.data)) {
+          categoriesData = response.data.data;
+        }
+      } else if (Array.isArray(response.data)) {
+        categoriesData = response.data;
+      }
+
+      if (categoriesData.length > 0) {
+        setCategories(categoriesData);
       } else {
-        throw new Error("Format data kategori tidak valid");
+        setCategories([
+          { id: 1, name: "SMP" },
+          { id: 2, name: "SMA" },
+          { id: 3, name: "SMK" },
+          { id: 4, name: "Universitas" },
+        ]);
       }
     } catch (err) {
       console.error("Error fetching categories:", err);
-
-      // Fallback data untuk development
       setCategories([
         { id: 1, name: "SMP" },
         { id: 2, name: "SMA" },
@@ -79,134 +86,120 @@ const CreateParticipant = () => {
     }
   };
 
-  /* ================= LOAD USER'S CREATED EVENTS FROM STORAGE ================= */
-  const loadUserCreatedEvents = () => {
+  /* ================= FETCH EVENTS FROM API ================= */
+  const fetchEvents = async () => {
     setLoadingEvents(true);
     try {
-      console.log("Loading user's created events from storage...");
+      if (!user?.id) {
+        setEvents([]);
+        return;
+      }
 
-      // Coba ambil dari localStorage
-      const storedEvents = localStorage.getItem("user_created_events");
+      let allEvents = [];
 
-      if (storedEvents) {
-        const parsedEvents = JSON.parse(storedEvents);
-
-        // Filter event berdasarkan user_id jika ada
-        const userEvents = parsedEvents.filter(
-          (event) => user?.id && event.user_id == user.id,
+      // 1. Ambil dari API
+      try {
+        const response = await api.get(
+          `/list-event-by-user?user_id=${user.id}`,
         );
 
-        console.log("User's created events from storage:", userEvents);
+        if (response.data.success && response.data.data) {
+          let apiEvents = [];
 
-        if (userEvents.length > 0) {
-          setUserCreatedEvents(userEvents);
-          setEvents(userEvents);
-        } else {
-          // Jika tidak ada event user, tampilkan semua stored events
-          setEvents(parsedEvents);
-          setUserCreatedEvents(parsedEvents);
+          if (Array.isArray(response.data.data)) {
+            apiEvents = response.data.data;
+          } else if (response.data.data.id) {
+            apiEvents = [response.data.data];
+          }
+
+          // Format events dari API
+          const formattedApiEvents = apiEvents.map((event) => {
+            let displayName = "";
+
+            if (event.name) {
+              displayName = event.name;
+            } else if (event.event_name) {
+              displayName = event.event_name;
+            } else if (event.organized_by && event.location) {
+              displayName = `${event.organized_by} - ${event.location}`;
+            } else {
+              displayName = `Event ID: ${event.id}`;
+            }
+
+            return {
+              id: event.id || event.event_id,
+              name: displayName,
+              organized_by: event.organized_by || "Unknown",
+              location: event.location || "Unknown",
+              start_date:
+                event.start_date || event.start_time || event.date_start,
+              end_date: event.end_date || event.end_time || event.date_end,
+              from_api: true,
+            };
+          });
+
+          allEvents = [...allEvents, ...formattedApiEvents];
+          console.log(`✅ Loaded ${formattedApiEvents.length} events from API`);
         }
-      } else {
-        console.log("No events found in storage");
-        // Gunakan data fallback
-        useFallbackEvents();
+      } catch (apiError) {
+        console.error("Error fetching events from API:", apiError);
       }
+
+      // 2. Ambil dari localStorage (untuk event yang baru dibuat)
+      try {
+        const storedEvents = localStorage.getItem("user_created_events");
+        if (storedEvents) {
+          const localStorageEvents = JSON.parse(storedEvents);
+
+          // Filter hanya events milik user ini
+          const userLocalEvents = localStorageEvents.filter(
+            (event) => event.user_id == user.id,
+          );
+
+          const formattedLocalEvents = userLocalEvents.map((event) => ({
+            id: event.id,
+            name: event.name || `Event ID: ${event.id}`,
+            organized_by: event.organized_by || user?.name || "User",
+            location: event.location || "Unknown",
+            start_date: event.start_date,
+            end_date: event.end_date,
+            from_localStorage: true,
+          }));
+
+          allEvents = [...allEvents, ...formattedLocalEvents];
+          console.log(
+            `✅ Loaded ${formattedLocalEvents.length} events from localStorage`,
+          );
+        }
+      } catch (localStorageError) {
+        console.error(
+          "Error reading events from localStorage:",
+          localStorageError,
+        );
+      }
+
+      // 3. Hapus duplikat berdasarkan ID
+      const uniqueEvents = [];
+      const seenIds = new Set();
+
+      allEvents.forEach((event) => {
+        if (!seenIds.has(event.id)) {
+          seenIds.add(event.id);
+          uniqueEvents.push(event);
+        }
+      });
+
+      console.log(`📊 Total unique events: ${uniqueEvents.length}`);
+      setEvents(uniqueEvents);
     } catch (err) {
-      console.error("Error loading events from storage:", err);
-      useFallbackEvents();
+      console.error("Error fetching events:", err);
+      setEvents([]);
     } finally {
       setLoadingEvents(false);
     }
   };
 
-  /* ================= FALLBACK EVENTS ================= */
-  const useFallbackEvents = () => {
-    // Cek apakah ada event yang baru dibuat (dari localStorage)
-    const lastCreatedEventId = localStorage.getItem("last_created_event_id");
-    const lastCreatedEventData = localStorage.getItem(
-      "last_created_event_data",
-    );
-
-    let fallbackEvents = [];
-
-    // Jika ada data event yang baru dibuat
-    if (lastCreatedEventData) {
-      try {
-        const eventData = JSON.parse(lastCreatedEventData);
-        fallbackEvents = [eventData];
-        console.log("Using last created event data:", eventData);
-      } catch (e) {
-        console.error("Error parsing last created event data:", e);
-      }
-    }
-
-    // Jika tidak ada event, gunakan data statis
-    if (fallbackEvents.length === 0) {
-      fallbackEvents = [
-        {
-          id: 1,
-          name: "Paskibra Championship 2024",
-          organized_by: "Dinas Pendidikan Kota Cilegon",
-          location: "Gedung Serba Guna, Cilegon",
-          start_date: "2024-12-01",
-          end_date: "2024-12-03",
-          status: "upcoming",
-          user_id: user?.id || 1,
-        },
-        {
-          id: 2,
-          name: "Lomba Paskibra Jawa Barat 2024",
-          organized_by: "Pemprov Jawa Barat",
-          location: "Bandung",
-          start_date: "2024-11-15",
-          end_date: "2024-11-17",
-          status: "upcoming",
-          user_id: user?.id || 1,
-        },
-      ];
-    }
-
-    setEvents(fallbackEvents);
-    setUserCreatedEvents(fallbackEvents);
-    console.log("Using fallback events:", fallbackEvents);
-  };
-
-  /* ================= MANUALLY ADD EVENT (jika tidak ada) ================= */
-  const handleAddEventManually = () => {
-    const eventName = prompt("Masukkan nama event:");
-    if (!eventName) return;
-
-    const eventDate = prompt("Masukkan tanggal event (format: YYYY-MM-DD):");
-    if (!eventDate) return;
-
-    const newEvent = {
-      id: Date.now(), // Generate unique ID
-      name: eventName,
-      start_date: eventDate,
-      end_date: eventDate,
-      organized_by: user?.name || "User",
-      location: "Belum ditentukan",
-      user_id: user?.id || 0,
-      manually_added: true,
-    };
-
-    const updatedEvents = [...events, newEvent];
-    setEvents(updatedEvents);
-    setUserCreatedEvents(updatedEvents);
-
-    // Simpan ke localStorage
-    localStorage.setItem("user_created_events", JSON.stringify(updatedEvents));
-
-    // Auto-select event yang baru ditambahkan
-    setFormData((prev) => ({
-      ...prev,
-      event_id: newEvent.id,
-    }));
-
-    alert(`Event "${eventName}" berhasil ditambahkan!`);
-  };
-
-  /* ================= FORMAT DATE FOR DISPLAY ================= */
+  /* ================= FORMAT DATE ================= */
   const formatEventDate = (dateString) => {
     try {
       const date = new Date(dateString);
@@ -225,39 +218,22 @@ const CreateParticipant = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-
-        // Fetch categories dan load events secara parallel
-        await Promise.all([fetchCategories(), loadUserCreatedEvents()]);
+        setError("");
+        await Promise.all([fetchCategories(), fetchEvents()]);
       } catch (err) {
         console.error("Error loading data:", err);
-        setError("Gagal memuat data. Silakan coba lagi.");
+        setError("Gagal memuat beberapa data. Silakan coba refresh halaman.");
       } finally {
         setLoading(false);
       }
     };
 
-    loadData();
-  }, [user?.id]);
-
-  /* ================= AUTO SELECT LAST CREATED EVENT ================= */
-  useEffect(() => {
-    // Coba ambil event_id dari localStorage (jika baru saja membuat event)
-    const lastEventId = localStorage.getItem("last_created_event_id");
-    if (lastEventId && events.length > 0) {
-      // Cek apakah event_id tersebut ada di daftar events
-      const eventExists = events.some((event) => event.id == lastEventId);
-      if (eventExists) {
-        setFormData((prev) => ({
-          ...prev,
-          event_id: lastEventId,
-        }));
-        console.log("Auto-selected last created event:", lastEventId);
-
-        // Hapus dari localStorage setelah digunakan
-        localStorage.removeItem("last_created_event_id");
-      }
+    if (user?.id) {
+      loadData();
+    } else {
+      setLoading(false);
     }
-  }, [events]);
+  }, [user?.id]);
 
   /* ================= FORM HANDLERS ================= */
   const handleChange = (e) => {
@@ -312,6 +288,7 @@ const CreateParticipant = () => {
     setFormData((prev) => ({ ...prev, coach_whatsapp: formatted }));
   };
 
+  /* ================= HANDLE SUBMIT ================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -340,19 +317,18 @@ const CreateParticipant = () => {
       // Append semua field ke FormData
       Object.entries(formData).forEach(([key, value]) => {
         if (value !== null && value !== "") {
-          payload.append(key, value);
+          if (key === "image" && value instanceof File) {
+            payload.append(key, value);
+          } else {
+            payload.append(key, value.toString());
+          }
         }
       });
 
-      // Log data yang akan dikirim
-      console.log("Submitting participant data...");
-      console.log("Form data:", {
-        ...formData,
-        image: formData.image ? formData.image.name : "No image",
-        event_name:
-          events.find((e) => e.id == formData.event_id)?.name ||
-          "No event selected",
-      });
+      // Tambahkan user_id jika ada
+      if (user?.id) {
+        payload.append("user_id", user.id.toString());
+      }
 
       const response = await api.post("/create-participant", payload, {
         headers: {
@@ -360,162 +336,8 @@ const CreateParticipant = () => {
         },
       });
 
-      console.log("API Response:", response.data);
-
       if (response.data.success) {
-        const participantId = response.data.data?.id || Date.now();
-        console.log("🎉 Participant created! ID:", participantId);
-
-        // ========== SIMPAN PESERTA KE LOCALSTORAGE DAN EVENT ==========
-        const newParticipant = {
-          id: participantId,
-          event_id: formData.event_id ? parseInt(formData.event_id) : null,
-          participant_category_id: parseInt(formData.participant_category_id),
-          school_name: formData.school_name,
-          school_address: formData.school_address,
-          coach: formData.coach,
-          coach_whatsapp: formData.coach_whatsapp,
-          image: imagePreview, // Simpan base64 preview
-          created_at: new Date().toISOString(),
-          from_api: true,
-          api_response: response.data,
-        };
-
-        // ========== SIMPAN PESERTA KE EVENT (JIKA ADA EVENT_ID) ==========
-        if (formData.event_id) {
-          try {
-            // 1. Simpan peserta ke array peserta event
-            const eventParticipantsKey = `event_participants_${formData.event_id}`;
-            let eventParticipants = [];
-
-            try {
-              const storedParticipants =
-                localStorage.getItem(eventParticipantsKey);
-              if (storedParticipants) {
-                eventParticipants = JSON.parse(storedParticipants);
-              }
-            } catch (err) {
-              console.error("Error parsing event participants:", err);
-              eventParticipants = [];
-            }
-
-            // Tambahkan peserta baru
-            eventParticipants.push(newParticipant);
-            localStorage.setItem(
-              eventParticipantsKey,
-              JSON.stringify(eventParticipants),
-            );
-            console.log(`✅ Participant saved to event ${formData.event_id}:`, {
-              event_id: formData.event_id,
-              participant_id: participantId,
-              total_participants_in_event: eventParticipants.length,
-            });
-
-            // 2. Update mapping event-peserta
-            const eventParticipantsMap = JSON.parse(
-              localStorage.getItem("event_participants_map") || "{}",
-            );
-            if (!eventParticipantsMap[formData.event_id]) {
-              eventParticipantsMap[formData.event_id] = [];
-            }
-            eventParticipantsMap[formData.event_id].push(participantId);
-            localStorage.setItem(
-              "event_participants_map",
-              JSON.stringify(eventParticipantsMap),
-            );
-
-            // 3. Update statistik peserta
-            const participantStats = JSON.parse(
-              localStorage.getItem("participant_stats") || "{}",
-            );
-            if (!participantStats[formData.event_id]) {
-              participantStats[formData.event_id] = {
-                event_name:
-                  events.find((e) => e.id == formData.event_id)?.name ||
-                  "Unknown Event",
-                total_participants: 0,
-                last_updated: new Date().toISOString(),
-              };
-            }
-            participantStats[formData.event_id].total_participants =
-              eventParticipants.length;
-            participantStats[formData.event_id].last_updated =
-              new Date().toISOString();
-            localStorage.setItem(
-              "participant_stats",
-              JSON.stringify(participantStats),
-            );
-
-            // 4. Update data event di user_created_events
-            const storedEvents = localStorage.getItem("user_created_events");
-            if (storedEvents) {
-              let allEvents = JSON.parse(storedEvents);
-              const eventIndex = allEvents.findIndex(
-                (e) => e.id == formData.event_id,
-              );
-
-              if (eventIndex !== -1) {
-                // Update event dengan data peserta baru
-                const updatedEvent = {
-                  ...allEvents[eventIndex],
-                  participants_count: eventParticipants.length,
-                  participant_ids: [
-                    ...(allEvents[eventIndex].participant_ids || []),
-                    participantId,
-                  ],
-                  total_participants: eventParticipants.length,
-                  updated_at: new Date().toISOString(),
-                };
-
-                allEvents[eventIndex] = updatedEvent;
-                localStorage.setItem(
-                  "user_created_events",
-                  JSON.stringify(allEvents),
-                );
-
-                console.log(
-                  `📊 Updated event ${formData.event_id} participant count to: ${eventParticipants.length}`,
-                );
-              }
-            }
-          } catch (storageError) {
-            console.error(
-              "❌ Error saving participant to event storage:",
-              storageError,
-            );
-          }
-        }
-
-        // ========== SIMPAN PESERTA KE DAFTAR GLOBAL ==========
-        try {
-          const allParticipantsKey = "all_participants";
-          let allParticipants = [];
-
-          try {
-            const storedAllParticipants =
-              localStorage.getItem(allParticipantsKey);
-            if (storedAllParticipants) {
-              allParticipants = JSON.parse(storedAllParticipants);
-            }
-          } catch (err) {
-            console.error("Error parsing all participants:", err);
-            allParticipants = [];
-          }
-
-          allParticipants.push(newParticipant);
-          localStorage.setItem(
-            allParticipantsKey,
-            JSON.stringify(allParticipants),
-          );
-
-          console.log("✅ Participant saved to global list:", {
-            total_global_participants: allParticipants.length,
-            participant_id: participantId,
-          });
-        } catch (globalError) {
-          console.error("❌ Error saving to global participants:", globalError);
-        }
-
+        console.log("🎉 Participant created via API!");
         setSuccess(true);
 
         // Reset form setelah berhasil
@@ -545,113 +367,25 @@ const CreateParticipant = () => {
       let errorMessage = "Terjadi kesalahan saat menyimpan data";
 
       if (err.response) {
-        const serverError = err.response.data;
-        if (serverError.message) {
-          errorMessage = serverError.message;
-        }
-        if (serverError.errors) {
-          const validationErrors = Object.values(serverError.errors).flat();
-          errorMessage = validationErrors.join(", ");
+        if (err.response.status === 401) {
+          errorMessage = "Sesi Anda telah berakhir. Silakan login kembali.";
+        } else if (err.response.status === 422) {
+          // Validation errors from Laravel
+          const validationErrors = err.response.data.errors;
+          const errorMessages = [];
+
+          for (const field in validationErrors) {
+            errorMessages.push(
+              `${field}: ${validationErrors[field].join(", ")}`,
+            );
+          }
+
+          errorMessage = `Validasi gagal:\n${errorMessages.join("\n")}`;
+        } else if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
         }
       } else if (err.message) {
         errorMessage = err.message;
-      }
-
-      // ========== FALLBACK: SIMPAN KE LOCALSTORAGE MESKI API GAGAL ==========
-      try {
-        if (formData.event_id || formData.school_name) {
-          const fallbackParticipantId = Date.now();
-          const fallbackParticipant = {
-            id: fallbackParticipantId,
-            event_id: formData.event_id ? parseInt(formData.event_id) : null,
-            participant_category_id:
-              parseInt(formData.participant_category_id) || 0,
-            school_name: formData.school_name,
-            school_address: formData.school_address,
-            coach: formData.coach,
-            coach_whatsapp: formData.coach_whatsapp,
-            image: imagePreview,
-            created_at: new Date().toISOString(),
-            from_api: false,
-            api_error: err.message,
-          };
-
-          // Simpan ke event jika ada event_id
-          if (formData.event_id) {
-            const eventParticipantsKey = `event_participants_${formData.event_id}`;
-            let eventParticipants = [];
-
-            try {
-              const storedParticipants =
-                localStorage.getItem(eventParticipantsKey);
-              if (storedParticipants) {
-                eventParticipants = JSON.parse(storedParticipants);
-              }
-            } catch (parseError) {
-              eventParticipants = [];
-            }
-
-            eventParticipants.push(fallbackParticipant);
-            localStorage.setItem(
-              eventParticipantsKey,
-              JSON.stringify(eventParticipants),
-            );
-
-            // Update event data
-            const storedEvents = localStorage.getItem("user_created_events");
-            if (storedEvents) {
-              let allEvents = JSON.parse(storedEvents);
-              const eventIndex = allEvents.findIndex(
-                (e) => e.id == formData.event_id,
-              );
-
-              if (eventIndex !== -1) {
-                allEvents[eventIndex].participants_count =
-                  eventParticipants.length;
-                allEvents[eventIndex].total_participants =
-                  eventParticipants.length;
-                allEvents[eventIndex].updated_at = new Date().toISOString();
-                localStorage.setItem(
-                  "user_created_events",
-                  JSON.stringify(allEvents),
-                );
-              }
-            }
-
-            console.log("🔄 Saved fallback participant to event:", {
-              event_id: formData.event_id,
-              participant_id: fallbackParticipantId,
-              total_participants: eventParticipants.length,
-            });
-          }
-
-          // Simpan ke daftar global
-          const allParticipantsKey = "all_participants";
-          let allParticipants = [];
-
-          try {
-            const storedAllParticipants =
-              localStorage.getItem(allParticipantsKey);
-            if (storedAllParticipants) {
-              allParticipants = JSON.parse(storedAllParticipants);
-            }
-          } catch (globalError) {
-            allParticipants = [];
-          }
-
-          allParticipants.push(fallbackParticipant);
-          localStorage.setItem(
-            allParticipantsKey,
-            JSON.stringify(allParticipants),
-          );
-
-          errorMessage +=
-            "\n\n✅ Data telah disimpan secara lokal. " +
-            "Peserta tetap dapat dilihat di daftar peserta.";
-        }
-      } catch (fallbackError) {
-        console.error("❌ Error saving fallback participant:", fallbackError);
-        errorMessage += "\n\n⚠️ Juga gagal menyimpan ke penyimpanan lokal.";
       }
 
       setError(errorMessage);
@@ -686,13 +420,6 @@ const CreateParticipant = () => {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={() => navigate("/organizer/participants")}
-            className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-          >
-            <ArrowLeft size={20} />
-            Kembali ke Daftar Peserta
-          </button>
           <h1 className="text-2xl md:text-3xl font-bold text-white">
             Tambah Peserta Baru
           </h1>
@@ -702,20 +429,22 @@ const CreateParticipant = () => {
         </p>
 
         {/* User Info */}
-        {user && (
+        {/* {user && (
           <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
             <p className="text-sm text-blue-400">
               <span className="font-medium">User Login:</span> {user.name}
               <span className="mx-2">•</span>
               <span className="font-medium">ID:</span> {user.id}
             </p>
-            {events.length > 0 && (
-              <p className="text-xs text-blue-300 mt-1">
-                Menampilkan {events.length} event yang tersedia
-              </p>
-            )}
+            <p className="text-xs text-blue-300 mt-1">
+              {loadingEvents
+                ? "Memuat event..."
+                : events.length > 0
+                  ? `Menampilkan ${events.length} event yang tersedia`
+                  : "Belum ada event. Silakan buat event terlebih dahulu."}
+            </p>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Error Alert */}
@@ -729,7 +458,9 @@ const CreateParticipant = () => {
             <AlertCircle className="text-red-400 mt-0.5" size={20} />
             <div className="flex-1">
               <p className="text-red-400 font-medium">Terjadi Kesalahan</p>
-              <p className="text-red-300 text-sm mt-1">{error}</p>
+              <p className="text-red-300 text-sm mt-1 whitespace-pre-line">
+                {error}
+              </p>
             </div>
           </div>
         </motion.div>
@@ -789,11 +520,6 @@ const CreateParticipant = () => {
                   </div>
                 )}
               </div>
-              {categories.length === 0 && !loadingCategories && (
-                <p className="text-yellow-500 text-sm mt-2">
-                  Tidak ada kategori tersedia.
-                </p>
-              )}
             </div>
 
             {/* Event Selection */}
@@ -815,90 +541,37 @@ const CreateParticipant = () => {
                 <div className="space-y-3">
                   <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
                     <p className="text-yellow-400 text-sm">
-                      Tidak ada event tersedia.
+                      Belum ada event tersedia. Buat event terlebih dahulu.
                     </p>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate("/organizer/events/create")}
-                      className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-                    >
-                      <PlusCircle size={18} />
-                      Buat Event Baru
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddEventManually}
-                      className="px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-xl transition-colors text-sm"
-                    >
-                      + Tambah Event Manual (Sementara)
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/organizer/events/create")}
+                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    <PlusCircle size={18} />
+                    Buat Event Baru
+                  </button>
                 </div>
               ) : (
-                <>
-                  <div className="relative">
-                    <select
-                      name="event_id"
-                      value={formData.event_id}
-                      onChange={handleChange}
-                      disabled={submitting}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
-                    >
-                      <option value="">-- Pilih Event --</option>
-                      {events.map((event) => (
-                        <option key={event.id} value={event.id}>
-                          {event.name}
-                          {event.start_date &&
-                            ` (${formatEventDate(event.start_date)})`}
-                          {event.manually_added && " [Manual]"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Info event yang dipilih */}
-                  {formData.event_id && (
-                    <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                      <p className="text-xs text-blue-400">
-                        <span className="font-medium">Event dipilih:</span>{" "}
-                        {events.find((e) => e.id == formData.event_id)?.name}
-                      </p>
-                      {events.find((e) => e.id == formData.event_id)
-                        ?.organized_by && (
-                        <p className="text-xs text-blue-300 mt-1">
-                          <span className="font-medium">Penyelenggara:</span>{" "}
-                          {
-                            events.find((e) => e.id == formData.event_id)
-                              ?.organized_by
-                          }
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate("/organizer/events/create")}
-                      className="text-xs px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors"
-                    >
-                      + Buat Event Baru
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddEventManually}
-                      className="text-xs px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 text-gray-400 rounded-lg transition-colors"
-                    >
-                      + Tambah Manual
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-gray-500 mt-2">
-                    Pilih event jika peserta mengikuti event tertentu
-                  </p>
-                </>
+                <div className="relative">
+                  <select
+                    name="event_id"
+                    value={formData.event_id}
+                    onChange={handleChange}
+                    disabled={submitting}
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
+                  >
+                    <option value="">-- Pilih Event --</option>
+                    {events.map((event) => (
+                      <option key={event.id} value={event.id}>
+                        {event.name}
+                        {event.start_date &&
+                          ` (${formatEventDate(event.start_date)})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
 
@@ -1045,48 +718,6 @@ const CreateParticipant = () => {
             </div>
           </div>
         </div>
-
-        {/* Debug Info (Hanya untuk development) */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-6 p-4 bg-gray-900/50 border border-gray-700 rounded-xl">
-            <h4 className="font-bold mb-2 text-sm text-gray-400">Debug Info</h4>
-            <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
-              <div>
-                <p>
-                  <strong>User ID:</strong> {user?.id || "No user"}
-                </p>
-                <p>
-                  <strong>Total Events:</strong> {events.length}
-                </p>
-                <p>
-                  <strong>Event Selected:</strong> {formData.event_id || "None"}
-                </p>
-                <p>
-                  <strong>Events Source:</strong>{" "}
-                  {events.some((e) => e.manually_added)
-                    ? "Manual/Storage"
-                    : "Storage/Static"}
-                </p>
-              </div>
-              <div>
-                <p>
-                  <strong>Categories:</strong> {categories.length}
-                </p>
-                <p>
-                  <strong>Category Selected:</strong>{" "}
-                  {formData.participant_category_id || "None"}
-                </p>
-                <p>
-                  <strong>Has Image:</strong> {formData.image ? "Yes" : "No"}
-                </p>
-                <p>
-                  <strong>Last Event ID in Storage:</strong>{" "}
-                  {localStorage.getItem("last_created_event_id") || "None"}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Submit Button */}
         <div className="flex justify-end gap-4 pt-6 border-t border-gray-800">

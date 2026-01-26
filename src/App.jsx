@@ -14,7 +14,7 @@ import ResultsPage from "./pages/ResultsPage";
 // Import Admin Pages & Components
 import DashboardPage from "./pages/admin/DashboardPage";
 import OverviewTab from "./pages/admin/components/OverviewTab";
-import ParticipantsTab from "./pages/admin/components/ParticipantsTab";
+import EventsTab from "./pages/admin/components/EventsTab";
 import UserManagementTab from "./pages/admin/components/UserManagement";
 import TransactionsTab from "./pages/admin/components/TransactionsTab";
 import TicketsTab from "./pages/admin/components/TicketsTab";
@@ -121,7 +121,7 @@ function App() {
             }
           >
             <Route index element={<OverviewTab />} />
-            <Route path="participants" element={<ParticipantsTab />} />
+            <Route path="events" element={<EventsTab />} />
             <Route path="users" element={<UserManagementTab />} />
             <Route path="transactions" element={<TransactionsTab />} />
             <Route path="tickets" element={<TicketsTab />} />

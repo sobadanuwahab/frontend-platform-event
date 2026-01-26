@@ -11,7 +11,6 @@ import {
   MapPin,
   User,
   Phone,
-  Calendar,
   Award,
   ArrowLeft,
   Loader,
@@ -19,9 +18,6 @@ import {
   CalendarDays,
   Trash2,
   Eye,
-  Users,
-  Building,
-  Info, // TAMBAHKAN INI
 } from "lucide-react";
 import api from "../../../services/api";
 import { useAuth } from "../../../context/AuthContext";
@@ -56,6 +52,27 @@ const EditParticipant = () => {
   const [imagePreview, setImagePreview] = useState("");
   const [originalImage, setOriginalImage] = useState("");
 
+  /* ================= FORMAT IMAGE URL ================= */
+  const formatImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+
+    const baseUrl = "https://apipaskibra.my.id";
+
+    if (imagePath.includes("participants/")) {
+      return `${baseUrl}/storage/${imagePath}`;
+    }
+
+    if (imagePath.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      return `${baseUrl}/storage/participants/${imagePath}`;
+    }
+
+    return `${baseUrl}/storage/${imagePath}`;
+  };
+
   /* ================= LOAD DATA ================= */
   useEffect(() => {
     if (id) {
@@ -63,16 +80,23 @@ const EditParticipant = () => {
     }
   }, [id]);
 
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
   const loadAllData = async () => {
     setLoading(true);
     setError("");
 
     try {
-      // Load categories, events, dan participant data secara parallel
       await Promise.all([
         fetchCategories(),
         fetchEvents(),
-        loadParticipantData(),
+        loadParticipantFromAPI(),
       ]);
     } catch (err) {
       console.error("Error loading data:", err);
@@ -82,51 +106,33 @@ const EditParticipant = () => {
     }
   };
 
-  /* ================= LOAD PARTICIPANT DATA ================= */
-  const loadParticipantData = async () => {
+  /* ================= LOAD PARTICIPANT FROM API ================= */
+  const loadParticipantFromAPI = async () => {
     try {
-      console.log(`📥 Loading participant data for ID: ${id}`);
+      console.log(`📥 Loading participant data from API for ID: ${id}`);
 
-      // Coba load dari API terlebih dahulu - gunakan endpoint GET /participants/{id}
-      try {
-        const response = await api.get(`/participants/${id}`);
-        console.log("✅ Participant API Response:", response.data);
+      const response = await api.get(`/edit-participant/${id}`);
 
-        if (response.data.success) {
-          const data = response.data.data || response.data;
-          setParticipantData(data);
-          populateForm(data);
-          return;
-        }
-      } catch (apiError) {
-        console.log("⚠️ API not available, trying localStorage...");
-      }
+      if (response.data.success || response.data.id) {
+        const data = response.data.data || response.data;
+        setParticipantData(data);
+        populateForm(data);
 
-      // Jika API gagal, coba dari localStorage
-      const allParticipants = localStorage.getItem("all_participants");
-      if (allParticipants) {
-        const participants = JSON.parse(allParticipants);
-        const participant = participants.find((p) => p.id == id);
-
-        if (participant) {
-          console.log("✅ Found participant in localStorage:", participant);
-          setParticipantData(participant);
-          populateForm(participant);
-
-          // Load image dari localStorage jika ada
-          if (participant.image) {
-            setImagePreview(participant.image);
-            setOriginalImage(participant.image);
+        if (data.image) {
+          const imageUrl = formatImageUrl(data.image);
+          if (imageUrl) {
+            setImagePreview(imageUrl);
+            setOriginalImage(imageUrl);
+            console.log("✅ Set image from API:", imageUrl);
           }
-        } else {
-          throw new Error("Peserta tidak ditemukan");
         }
       } else {
-        throw new Error("Peserta tidak ditemukan");
+        throw new Error("Data peserta tidak ditemukan di API");
       }
-    } catch (error) {
-      console.error("❌ Error loading participant:", error);
-      throw error;
+    } catch (apiError) {
+      console.error("Error loading from API:", apiError);
+      setError("Gagal memuat data peserta dari server.");
+      throw apiError;
     }
   };
 
@@ -134,24 +140,28 @@ const EditParticipant = () => {
   const fetchCategories = async () => {
     setLoadingCategories(true);
     try {
-      console.log("Fetching categories from /api/participant-categories...");
       const response = await api.get("/participant-categories");
-      console.log("Categories API response:", response.data);
+
+      let categoriesData = [];
 
       if (response.data.success && response.data.data) {
-        setCategories(response.data.data);
+        if (Array.isArray(response.data.data)) {
+          categoriesData = response.data.data;
+        } else if (response.data.data.id) {
+          categoriesData = [response.data.data];
+        }
+      } else if (Array.isArray(response.data)) {
+        categoriesData = response.data;
+      }
+
+      if (categoriesData.length > 0) {
+        setCategories(categoriesData);
       } else {
-        throw new Error("Format data kategori tidak valid");
+        setCategories([]);
       }
     } catch (err) {
       console.error("Error fetching categories:", err);
-      // Fallback data
-      setCategories([
-        { id: 1, name: "SMP" },
-        { id: 2, name: "SMA" },
-        { id: 3, name: "SMK" },
-        { id: 4, name: "Universitas" },
-      ]);
+      setCategories([]);
     } finally {
       setLoadingCategories(false);
     }
@@ -161,43 +171,36 @@ const EditParticipant = () => {
   const fetchEvents = async () => {
     setLoadingEvents(true);
     try {
-      console.log("Fetching events...");
+      if (!user?.id) {
+        setEvents([]);
+        return;
+      }
 
-      // Coba dari localStorage terlebih dahulu
-      const storedEvents = localStorage.getItem("user_created_events");
-      if (storedEvents) {
-        const eventsData = JSON.parse(storedEvents);
+      const response = await api.get(`/list-event-by-user?user_id=${user.id}`);
 
-        // Filter untuk user yang login
-        if (user?.id) {
-          const userEvents = eventsData.filter(
-            (event) =>
-              event.user_id == user.id ||
-              event.user_id === user.id ||
-              !event.user_id,
-          );
-          setEvents(userEvents.length > 0 ? userEvents : eventsData);
-        } else {
-          setEvents(eventsData);
+      let apiEvents = [];
+
+      if (response.data.success && response.data.data) {
+        if (Array.isArray(response.data.data)) {
+          apiEvents = response.data.data;
+        } else if (response.data.data.id) {
+          apiEvents = [response.data.data];
         }
+      } else if (Array.isArray(response.data)) {
+        apiEvents = response.data;
+      }
+
+      if (apiEvents.length > 0) {
+        const formattedEvents = apiEvents.map((event) => ({
+          id: event.id || event.event_id,
+          name: event.name || event.event_name || "Event",
+          organized_by: event.organized_by || "Unknown",
+          start_date: event.start_date || event.start_time,
+          end_date: event.end_date || event.end_time,
+        }));
+        setEvents(formattedEvents);
       } else {
-        // Fallback events
-        setEvents([
-          {
-            id: 1,
-            name: "Paskibra Championship 2024",
-            organized_by: "Dinas Pendidikan Kota Cilegon",
-            start_date: "2024-12-01",
-            end_date: "2024-12-03",
-          },
-          {
-            id: 2,
-            name: "Lomba Paskibra Jawa Barat 2024",
-            organized_by: "Pemprov Jawa Barat",
-            start_date: "2024-11-15",
-            end_date: "2024-11-17",
-          },
-        ]);
+        setEvents([]);
       }
     } catch (err) {
       console.error("Error fetching events:", err);
@@ -227,27 +230,38 @@ const EditParticipant = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validasi ukuran file (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError("Ukuran gambar maksimal 5MB");
       return;
     }
 
-    // Validasi tipe file
-    if (!file.type.startsWith("image/")) {
-      setError("File harus berupa gambar (JPG, PNG, JPEG)");
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
+      "image/bmp",
+      "image/tiff",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError(
+        `Format file tidak didukung. Gunakan: JPG, JPEG, PNG, GIF, WebP, SVG, BMP, TIFF`,
+      );
       return;
     }
 
+    const blobUrl = URL.createObjectURL(file);
     setFormData((prev) => ({ ...prev, image: file }));
-    setImagePreview(URL.createObjectURL(file));
+    setImagePreview(blobUrl);
     setError("");
   };
 
   const removeImage = () => {
     setFormData((prev) => ({ ...prev, image: null }));
-    setImagePreview("");
-    setOriginalImage("");
+    setImagePreview(originalImage || "");
   };
 
   /* ================= FORMAT WHATSAPP NUMBER ================= */
@@ -307,218 +321,66 @@ const EditParticipant = () => {
       // Append semua field ke FormData
       Object.entries(formData).forEach(([key, value]) => {
         if (value !== null && value !== "") {
-          payload.append(key, value);
+          if (key === "image" && value instanceof File) {
+            payload.append(key, value);
+          } else {
+            payload.append(key, value.toString());
+          }
         }
       });
 
-      // Tambahkan _method untuk Laravel PUT method
       payload.append("_method", "PUT");
 
-      console.log(
-        "📤 Submitting participant update to /edit-participant/${id}...",
-      );
-      console.log("📋 Update data:", {
-        ...formData,
-        image: formData.image ? formData.image.name : "No new image",
-        event_name:
-          events.find((e) => e.id == formData.event_id)?.name ||
-          "No event selected",
-      });
+      if (user?.id) {
+        payload.append("user_id", user.id.toString());
+      }
 
-      // Submit to API dengan POST ke /edit-participant/{id} dengan _method=PUT
+      console.log("🔄 Updating participant via API...");
       const response = await api.post(`/edit-participant/${id}`, payload, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
-      console.log("✅ API Update Response:", response.data);
-
       if (response.data.success) {
+        console.log(
+          "✅ Successfully updated participant via API:",
+          response.data,
+        );
         setSuccess(true);
+        setParticipantData(response.data.data || response.data);
 
-        // ========== UPDATE LOCALSTORAGE ==========
-        const updatedParticipant = {
-          ...participantData,
-          school_name: formData.school_name,
-          school_address: formData.school_address,
-          coach: formData.coach,
-          coach_whatsapp: formData.coach_whatsapp,
-          event_id: formData.event_id ? parseInt(formData.event_id) : null,
-          participant_category_id: parseInt(formData.participant_category_id),
-          image: imagePreview || originalImage,
-          updated_at: new Date().toISOString(),
-          from_api: true,
-          api_response: response.data,
-        };
-
-        // Update di all_participants
-        const allParticipantsKey = "all_participants";
-        let allParticipants = [];
-
-        try {
-          const storedAllParticipants =
-            localStorage.getItem(allParticipantsKey);
-          if (storedAllParticipants) {
-            allParticipants = JSON.parse(storedAllParticipants);
-          }
-        } catch (err) {
-          allParticipants = [];
-        }
-
-        const participantIndex = allParticipants.findIndex((p) => p.id == id);
-        if (participantIndex !== -1) {
-          allParticipants[participantIndex] = updatedParticipant;
-          localStorage.setItem(
-            allParticipantsKey,
-            JSON.stringify(allParticipants),
-          );
-          console.log("🔄 Updated participant in global list");
-        }
-
-        // Jika ada event_id, update di event_participants
-        if (formData.event_id) {
-          try {
-            const eventParticipantsKey = `event_participants_${formData.event_id}`;
-            let eventParticipants = [];
-
-            try {
-              const storedParticipants =
-                localStorage.getItem(eventParticipantsKey);
-              if (storedParticipants) {
-                eventParticipants = JSON.parse(storedParticipants);
-              }
-            } catch (err) {
-              eventParticipants = [];
-            }
-
-            const eventParticipantIndex = eventParticipants.findIndex(
-              (p) => p.id == id,
-            );
-            if (eventParticipantIndex !== -1) {
-              eventParticipants[eventParticipantIndex] = updatedParticipant;
-              localStorage.setItem(
-                eventParticipantsKey,
-                JSON.stringify(eventParticipants),
-              );
-              console.log(
-                `✅ Updated participant in event ${formData.event_id}`,
-              );
-            }
-          } catch (eventError) {
-            console.error("Error updating in event participants:", eventError);
-          }
-        }
-
-        // Redirect setelah 2 detik
         setTimeout(() => {
           navigate("/organizer/participants");
-        }, 2000);
+        }, 1500);
       } else {
         throw new Error(response.data.message || "Gagal mengupdate peserta");
       }
     } catch (err) {
       console.error("❌ Error updating participant:", err);
 
-      let errorMessage = "Terjadi kesalahan saat mengupdate data";
+      let errorMessage = "Terjadi kesalahan saat menyimpan data";
 
-      if (err.response?.status === 401) {
-        setError("Sesi Anda telah berakhir. Silakan login kembali.");
-        setTimeout(() => {
-          navigate("/auth/login");
-        }, 2000);
-      } else if (err.response?.status === 404) {
-        setError("Peserta tidak ditemukan di server");
-      } else if (err.response?.status === 422) {
-        // Validation errors from Laravel
-        const validationErrors = err.response.data.errors;
-        const errorMessages = [];
+      if (err.response) {
+        if (err.response.status === 401) {
+          errorMessage = "Sesi Anda telah berakhir. Silakan login kembali.";
+        } else if (err.response.status === 404) {
+          errorMessage = "Endpoint tidak ditemukan.";
+        } else if (err.response.status === 422) {
+          const validationErrors = err.response.data.errors;
+          const errorMessages = [];
 
-        for (const field in validationErrors) {
-          errorMessages.push(`${field}: ${validationErrors[field].join(", ")}`);
-        }
-
-        setError(`Validasi gagal: ${errorMessages.join("; ")}`);
-      } else if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err.message) {
-        setError(err.message);
-      }
-
-      // ========== FALLBACK: UPDATE LOCALSTORAGE MESKI API GAGAL ==========
-      try {
-        const updatedParticipant = {
-          ...participantData,
-          school_name: formData.school_name,
-          school_address: formData.school_address,
-          coach: formData.coach,
-          coach_whatsapp: formData.coach_whatsapp,
-          event_id: formData.event_id ? parseInt(formData.event_id) : null,
-          participant_category_id: parseInt(formData.participant_category_id),
-          image: imagePreview || originalImage,
-          updated_at: new Date().toISOString(),
-          from_api: false,
-          api_error: err.message,
-        };
-
-        // Update global list
-        const allParticipantsKey = "all_participants";
-        let allParticipants = [];
-
-        try {
-          const storedAllParticipants =
-            localStorage.getItem(allParticipantsKey);
-          if (storedAllParticipants) {
-            allParticipants = JSON.parse(storedAllParticipants);
-          }
-        } catch (parseError) {
-          allParticipants = [];
-        }
-
-        const participantIndex = allParticipants.findIndex((p) => p.id == id);
-        if (participantIndex !== -1) {
-          allParticipants[participantIndex] = updatedParticipant;
-          localStorage.setItem(
-            allParticipantsKey,
-            JSON.stringify(allParticipants),
-          );
-
-          // Update di event jika ada
-          if (formData.event_id) {
-            const eventParticipantsKey = `event_participants_${formData.event_id}`;
-            let eventParticipants = [];
-
-            try {
-              const storedParticipants =
-                localStorage.getItem(eventParticipantsKey);
-              if (storedParticipants) {
-                eventParticipants = JSON.parse(storedParticipants);
-              }
-            } catch (eventError) {
-              eventParticipants = [];
-            }
-
-            const eventParticipantIndex = eventParticipants.findIndex(
-              (p) => p.id == id,
+          for (const field in validationErrors) {
+            errorMessages.push(
+              `${field}: ${validationErrors[field].join(", ")}`,
             );
-            if (eventParticipantIndex !== -1) {
-              eventParticipants[eventParticipantIndex] = updatedParticipant;
-              localStorage.setItem(
-                eventParticipantsKey,
-                JSON.stringify(eventParticipants),
-              );
-            }
           }
-
-          console.log(
-            "🔄 Updated participant in localStorage (fallback):",
-            updatedParticipant,
-          );
-
-          errorMessage += "\n\n✅ Perubahan telah disimpan secara lokal.";
+          errorMessage = `Validasi gagal:\n${errorMessages.join("\n")}`;
+        } else if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
         }
-      } catch (storageError) {
-        console.error("❌ Error updating localStorage:", storageError);
+      } else if (err.message) {
+        errorMessage = err.message;
       }
 
       setError(errorMessage);
@@ -534,73 +396,8 @@ const EditParticipant = () => {
     }
 
     try {
-      // Coba hapus dari API
-      try {
-        await api.delete(`/delete-participant/${id}`);
-      } catch (apiError) {
-        console.log("⚠️ API delete failed, continuing with localStorage...");
-      }
-
-      // Hapus dari localStorage
-      const allParticipantsKey = "all_participants";
-      let allParticipants = [];
-
-      try {
-        const storedAllParticipants = localStorage.getItem(allParticipantsKey);
-        if (storedAllParticipants) {
-          allParticipants = JSON.parse(storedAllParticipants);
-        }
-      } catch (err) {
-        allParticipants = [];
-      }
-
-      // Hapus peserta
-      const participantToDelete = allParticipants.find((p) => p.id == id);
-      const updatedParticipants = allParticipants.filter((p) => p.id != id);
-      localStorage.setItem(
-        allParticipantsKey,
-        JSON.stringify(updatedParticipants),
-      );
-
-      // Hapus dari event jika ada
-      if (participantToDelete?.event_id) {
-        const eventParticipantsKey = `event_participants_${participantToDelete.event_id}`;
-        let eventParticipants = [];
-
-        try {
-          const storedParticipants = localStorage.getItem(eventParticipantsKey);
-          if (storedParticipants) {
-            eventParticipants = JSON.parse(storedParticipants);
-          }
-        } catch (err) {
-          eventParticipants = [];
-        }
-
-        const updatedEventParticipants = eventParticipants.filter(
-          (p) => p.id != id,
-        );
-        localStorage.setItem(
-          eventParticipantsKey,
-          JSON.stringify(updatedEventParticipants),
-        );
-
-        // Update jumlah peserta di event
-        const storedEvents = localStorage.getItem("user_created_events");
-        if (storedEvents) {
-          let events = JSON.parse(storedEvents);
-          const eventIndex = events.findIndex(
-            (e) => e.id == participantToDelete.event_id,
-          );
-
-          if (eventIndex !== -1) {
-            events[eventIndex].participants_count =
-              updatedEventParticipants.length;
-            events[eventIndex].total_participants =
-              updatedEventParticipants.length;
-            localStorage.setItem("user_created_events", JSON.stringify(events));
-          }
-        }
-      }
+      await api.delete(`/delete-participant/${id}`);
+      console.log("✅ Participant deleted from API");
 
       alert("Peserta berhasil dihapus");
       navigate("/organizer/participants");
@@ -613,6 +410,7 @@ const EditParticipant = () => {
   /* ================= FORMAT DATE ================= */
   const formatEventDate = (dateString) => {
     try {
+      if (!dateString) return "";
       const date = new Date(dateString);
       return date.toLocaleDateString("id-ID", {
         day: "numeric",
@@ -620,7 +418,7 @@ const EditParticipant = () => {
         year: "numeric",
       });
     } catch {
-      return "Tanggal tidak valid";
+      return "";
     }
   };
 
@@ -760,7 +558,7 @@ const EditParticipant = () => {
             <div className="flex-1">
               <p className="text-green-400 font-medium">Berhasil!</p>
               <p className="text-green-300 text-sm mt-1">
-                Peserta berhasil diupdate. Mengarahkan ke daftar peserta...
+                Data peserta berhasil disimpan.
               </p>
             </div>
           </div>
@@ -814,7 +612,7 @@ const EditParticipant = () => {
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 <div className="flex items-center gap-2">
                   <CalendarDays size={16} />
-                  Pilih Event
+                  Pilih Event (Opsional)
                 </div>
               </label>
 
@@ -826,14 +624,7 @@ const EditParticipant = () => {
               ) : events.length === 0 ? (
                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
                   <p className="text-yellow-400 text-sm">
-                    Tidak ada event tersedia.{" "}
-                    <button
-                      type="button"
-                      onClick={() => navigate("/organizer/events/create")}
-                      className="underline hover:text-yellow-300"
-                    >
-                      Buat event baru
-                    </button>
+                    Tidak ada event tersedia.
                   </p>
                 </div>
               ) : (
@@ -846,38 +637,25 @@ const EditParticipant = () => {
                       disabled={submitting}
                       className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
                     >
-                      <option value="">-- Pilih Event --</option>
+                      <option value="">-- Pilih Event (Opsional) --</option>
                       {events.map((event) => (
                         <option key={event.id} value={event.id}>
-                          {event.name} ({formatEventDate(event.start_date)})
+                          {event.name}{" "}
+                          {event.start_date &&
+                            `(${formatEventDate(event.start_date)})`}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* Info event yang dipilih */}
                   {formData.event_id && (
                     <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                       <p className="text-xs text-blue-400">
                         <span className="font-medium">Event dipilih:</span>{" "}
                         {events.find((e) => e.id == formData.event_id)?.name}
                       </p>
-                      {events.find((e) => e.id == formData.event_id)
-                        ?.organized_by && (
-                        <p className="text-xs text-blue-300 mt-1">
-                          <span className="font-medium">Penyelenggara:</span>{" "}
-                          {
-                            events.find((e) => e.id == formData.event_id)
-                              ?.organized_by
-                          }
-                        </p>
-                      )}
                     </div>
                   )}
-
-                  <p className="text-xs text-gray-500 mt-2">
-                    Pilih event jika peserta mengikuti event tertentu
-                  </p>
                 </>
               )}
             </div>
@@ -964,7 +742,7 @@ const EditParticipant = () => {
                 className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50"
               />
               <p className="text-xs text-gray-500 mt-2">
-                Format: 08xx-xxxx-xxxx atau +62-xxx-xxx-xxx
+                Format: 08xx-xxxx-xxxx
               </p>
             </div>
 
@@ -978,123 +756,113 @@ const EditParticipant = () => {
                 </div>
               </label>
 
-              {imagePreview || originalImage ? (
-                <div className="relative">
-                  <div className="border-2 border-dashed border-gray-700 rounded-xl p-4">
-                    <img
-                      src={imagePreview || originalImage}
-                      alt="Preview"
-                      className="w-full h-48 object-contain rounded-lg"
-                    />
+              {/* Image Preview Area */}
+              <div className="mb-4">
+                {imagePreview ? (
+                  <div className="relative border-2 border-gray-700 rounded-xl p-4 bg-gray-900/50">
+                    <div className="flex flex-col items-center">
+                      <div className="relative w-full max-w-xs h-48 mb-4">
+                        <img
+                          src={imagePreview}
+                          alt={`Logo ${formData.school_name}`}
+                          className="w-full h-full object-contain rounded-lg"
+                          onError={(e) => {
+                            console.error(
+                              "❌ Image failed to load:",
+                              e.target.src,
+                            );
+                            e.target.onerror = null;
+                            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.school_name)}&background=1e40af&color=fff&size=160&bold=true&format=svg`;
+                            e.target.src = avatarUrl;
+                          }}
+                        />
+                        {imagePreview?.startsWith("blob:") && (
+                          <div className="absolute top-2 right-2 bg-yellow-500/80 text-white text-xs px-2 py-1 rounded">
+                            Baru
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 w-full max-w-xs">
+                        <label className="flex-1">
+                          <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.tiff"
+                            onChange={handleImageChange}
+                            className="hidden"
+                            disabled={submitting}
+                            id="image-upload"
+                          />
+                          <div className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl text-center transition-colors cursor-pointer flex items-center justify-center gap-2">
+                            <Upload size={14} />
+                            Ganti
+                          </div>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          disabled={submitting}
+                          className="flex-1 px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          <X size={14} />
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2 text-center">
+                      {formData.image ? (
+                        <>
+                          <span className="text-green-400">Gambar baru: </span>
+                          {formData.image.name}
+                        </>
+                      ) : originalImage ? (
+                        <>
+                          <span className="text-blue-400">
+                            Gambar dari server
+                          </span>
+                        </>
+                      ) : (
+                        "Tidak ada gambar"
+                      )}
+                    </p>
                   </div>
-                  <div className="flex gap-2 mt-3">
-                    <label className="flex-1">
+                ) : (
+                  <div className="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center hover:border-blue-500/50 transition-colors bg-gray-900/30">
+                    <label className="cursor-pointer block">
                       <input
                         type="file"
-                        accept="image/*"
+                        accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.tiff"
                         onChange={handleImageChange}
                         className="hidden"
                         disabled={submitting}
-                        id="participant-image-upload"
+                        id="image-upload"
                       />
-                      <div className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl text-center transition-colors cursor-pointer">
-                        Ganti Gambar
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <div className="p-3 bg-gray-800 rounded-full">
+                          <Upload className="text-gray-400" size={24} />
+                        </div>
+                        <div>
+                          <p className="text-gray-300 font-medium">
+                            Klik untuk upload gambar
+                          </p>
+                          <p className="text-gray-500 text-sm mt-1">
+                            JPG, PNG, GIF, WebP, SVG (Maks. 5MB)
+                          </p>
+                        </div>
+                        {!originalImage && (
+                          <div className="mt-4">
+                            <p className="text-xs text-yellow-400">
+                              ⚠️ Peserta ini belum memiliki gambar
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </label>
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      disabled={submitting}
-                      className="flex-1 px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-                    >
-                      Hapus Gambar
-                    </button>
                   </div>
-                  {formData.image && (
-                    <p className="text-xs text-gray-400 mt-2 text-center">
-                      Gambar baru: {formData.image.name} (
-                      {(formData.image.size / 1024 / 1024).toFixed(2)} MB)
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center hover:border-blue-500/50 transition-colors">
-                  <label className="cursor-pointer block">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                      disabled={submitting}
-                    />
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="p-3 bg-gray-800 rounded-full">
-                        <Upload className="text-gray-400" size={24} />
-                      </div>
-                      <div>
-                        <p className="text-gray-300 font-medium">
-                          Klik untuk upload gambar
-                        </p>
-                        <p className="text-gray-500 text-sm mt-1">
-                          PNG, JPG, JPEG (Maks. 5MB)
-                        </p>
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Participant Info */}
-        {participantData && (
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-            <div className="flex items-start gap-3">
-              <Info size={20} className="text-blue-400 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-blue-300 mb-2">
-                  Informasi Peserta:
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-400">
-                  <div>
-                    <p>
-                      <strong>ID Peserta:</strong> {participantData.id}
-                    </p>
-                    <p>
-                      <strong>Dibuat pada:</strong>{" "}
-                      {new Date(
-                        participantData.created_at || Date.now(),
-                      ).toLocaleString("id-ID")}
-                    </p>
-                    <p>
-                      <strong>Status:</strong>{" "}
-                      {participantData.from_api ? "Dari API" : "Lokal"}
-                    </p>
-                  </div>
-                  <div>
-                    <p>
-                      <strong>Event ID:</strong>{" "}
-                      {participantData.event_id || "Tidak ada"}
-                    </p>
-                    <p>
-                      <strong>User ID:</strong>{" "}
-                      {participantData.user_id || user?.id}
-                    </p>
-                    {participantData.updated_at && (
-                      <p>
-                        <strong>Terakhir diupdate:</strong>{" "}
-                        {new Date(participantData.updated_at).toLocaleString(
-                          "id-ID",
-                        )}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Submit Button */}
         <div className="flex justify-end gap-4 pt-6 border-t border-gray-800">
@@ -1114,12 +882,13 @@ const EditParticipant = () => {
                 if (participantData) {
                   populateForm(participantData);
                   setImagePreview(originalImage);
+                  setFormData((prev) => ({ ...prev, image: null }));
                 }
                 setError("");
               }}
               className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors"
             >
-              Reset Perubahan
+              Reset
             </button>
 
             <button
@@ -1130,7 +899,7 @@ const EditParticipant = () => {
               {submitting ? (
                 <>
                   <Loader className="animate-spin" size={18} />
-                  Mengupdate...
+                  Menyimpan...
                 </>
               ) : (
                 <>

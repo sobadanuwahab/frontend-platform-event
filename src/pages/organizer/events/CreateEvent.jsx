@@ -15,6 +15,9 @@ import {
   ArrowLeft,
   Loader,
   Image as ImageIcon,
+  User,
+  Database,
+  Bug,
 } from "lucide-react";
 import api from "../../../services/api";
 import { useAuth } from "../../../context/AuthContext";
@@ -27,6 +30,11 @@ const CreateEvent = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [debugInfo, setDebugInfo] = useState([]);
+
+  // Format tanggal default (hari ini dan besok)
+  const today = new Date().toISOString().split("T")[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
   const [formData, setFormData] = useState({
     name: "",
@@ -34,8 +42,8 @@ const CreateEvent = () => {
     location: "",
     event_info: "",
     term_condition: "",
-    start_date: "",
-    end_date: "",
+    start_date: today, // Default hari ini
+    end_date: tomorrow, // Default besok
     image: null,
     user_id: user?.id || "",
   });
@@ -51,6 +59,15 @@ const CreateEvent = () => {
     }
   }, [user]);
 
+  /* ================= ADD DEBUG LOG ================= */
+  const addDebugLog = (message) => {
+    console.log(`[DEBUG] ${message}`);
+    setDebugInfo((prev) => [
+      ...prev,
+      `${new Date().toISOString().split("T")[1].split(".")[0]} - ${message}`,
+    ]);
+  };
+
   /* ================= HANDLE IMAGE CHANGE ================= */
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -58,18 +75,31 @@ const CreateEvent = () => {
       // Validasi ukuran file (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError("Ukuran file maksimal 5MB");
+        addDebugLog(
+          `Image validation failed: File too large (${(file.size / 1024 / 1024).toFixed(2)}MB)`,
+        );
         return;
       }
 
       // Validasi tipe file
-      const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
+      const validTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+      ];
       if (!validTypes.includes(file.type)) {
-        setError("Format file harus JPG, JPEG, PNG, atau GIF");
+        setError("Format file harus JPG, JPEG, PNG, GIF, atau WebP");
+        addDebugLog(`Image validation failed: Invalid type (${file.type})`);
         return;
       }
 
       setFormData((prev) => ({ ...prev, image: file }));
       setError("");
+      addDebugLog(
+        `Image selected: ${file.name} (${(file.size / 1024).toFixed(2)}KB)`,
+      );
 
       // Create preview
       const reader = new FileReader();
@@ -91,10 +121,13 @@ const CreateEvent = () => {
 
     setSubmitting(true);
     setError("");
+    setDebugInfo([]);
+    addDebugLog("=== START EVENT CREATION ===");
 
     try {
       // Validation
       const errors = [];
+      addDebugLog("Validating form data...");
 
       if (!formData.name.trim()) {
         errors.push("Nama event wajib diisi");
@@ -122,187 +155,168 @@ const CreateEvent = () => {
       }
 
       if (errors.length > 0) {
+        addDebugLog(`Validation failed: ${errors.join(", ")}`);
         throw new Error(errors.join(", "));
       }
 
       // ========== PREPARE FORM DATA ==========
+      addDebugLog("Preparing form data...");
       const submitData = new FormData();
 
-      // Tambahkan semua field teks
+      // Berdasarkan log, API mungkin mengharapkan field dengan nama berbeda
+      // Coba format yang berbeda-beda
+
+      // Format 1: Field sesuai dengan database
       submitData.append("name", formData.name.trim());
       submitData.append("organized_by", formData.organized_by.trim());
       submitData.append("location", formData.location.trim());
-      submitData.append("event_info", formData.event_info.trim());
-      submitData.append("term_condition", formData.term_condition.trim());
+
+      // Format 2: Field dengan nama alternatif
+      submitData.append("event_name", formData.name.trim()); // Alternatif
+      submitData.append("organizer", formData.organized_by.trim()); // Alternatif
+      submitData.append("event_location", formData.location.trim()); // Alternatif
+
+      // Field opsional
+      submitData.append("event_info", formData.event_info.trim() || "");
+      submitData.append("description", formData.event_info.trim() || ""); // Alternatif
+
+      submitData.append("term_condition", formData.term_condition.trim() || "");
+      submitData.append("terms", formData.term_condition.trim() || ""); // Alternatif
+
+      // Tanggal
       submitData.append("start_date", formData.start_date);
       submitData.append("end_date", formData.end_date);
-      submitData.append("user_id", user.id.toString());
+      submitData.append("start_time", formData.start_date); // Alternatif
+      submitData.append("end_time", formData.end_date); // Alternatif
 
-      // DEBUG: Log data sebelum dikirim
-      console.log("📤 Submitting event data to /create-event endpoint...");
-      console.log("📋 Form data:", {
-        name: formData.name,
-        organized_by: formData.organized_by,
-        location: formData.location,
-        event_info: formData.event_info.substring(0, 100) + "...",
-        term_condition: formData.term_condition.substring(0, 100) + "...",
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        user_id: user.id,
-      });
+      // User ID - sangat penting
+      submitData.append("user_id", user.id.toString());
+      submitData.append("created_by", user.id.toString()); // Alternatif
+      submitData.append("organizer_id", user.id.toString()); // Alternatif
+
+      addDebugLog(
+        `Form data prepared: name="${formData.name}", user_id=${user.id}`,
+      );
 
       // ========== HANDLE IMAGE UPLOAD ==========
       if (formData.image) {
-        console.log("🖼️ Image file details:", {
-          name: formData.image.name,
-          type: formData.image.type,
-          size: formData.image.size,
-        });
-
-        // Append image dengan field name "image" (sesuai dengan backend Laravel)
+        addDebugLog(`Adding image: ${formData.image.name}`);
         submitData.append("image", formData.image);
-
-        console.log("✅ Image appended to FormData");
+        submitData.append("image_url", formData.image); // Alternatif
+        submitData.append("banner_image", formData.image); // Alternatif
       } else {
-        console.log("📸 No image selected for upload");
+        addDebugLog("No image selected");
       }
 
-      // DEBUG: Log FormData content
-      console.log("📦 FormData entries:");
+      // ========== DEBUG: Log form data content ==========
+      console.log("📋 FormData contents:");
+      addDebugLog("FormData contents:");
       for (let pair of submitData.entries()) {
-        if (pair[0] === "image") {
-          console.log(
-            `  ${pair[0]}:`,
-            pair[1].name,
-            `(${pair[1].type}, ${pair[1].size} bytes)`,
-          );
-        } else {
-          console.log(`  ${pair[0]}:`, pair[1]);
-        }
+        const value =
+          typeof pair[1] === "object" ? pair[1].name || "File" : pair[1];
+        console.log(`${pair[0]}: ${value}`);
+        addDebugLog(`Field: ${pair[0]} = ${value}`);
       }
 
       // ========== SEND TO API ==========
-      console.log("🚀 Sending POST request to: /create-event");
+      // Coba endpoint alternatif jika diperlukan
+      const endpointsToTry = [
+        "/create-event",
+        "/store-event",
+        "/events/store",
+        "/event/create",
+      ];
 
-      const response = await api.post("/create-event", submitData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        timeout: 30000, // 30 seconds
-      });
+      let response = null;
+      let lastError = null;
+
+      for (const endpoint of endpointsToTry) {
+        try {
+          addDebugLog(`Trying endpoint: ${endpoint}`);
+          console.log(`🚀 Sending POST to: ${endpoint}`);
+
+          response = await api.post(endpoint, submitData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+            timeout: 30000,
+          });
+
+          addDebugLog(`✅ Success! Response Status: ${response.status}`);
+          break; // Keluar dari loop jika sukses
+        } catch (err) {
+          lastError = err;
+          addDebugLog(
+            `❌ Endpoint ${endpoint} failed: ${err.response?.status || err.message}`,
+          );
+
+          if (err.response?.status === 422) {
+            // Log validation errors
+            if (err.response.data?.errors) {
+              const validationErrors = err.response.data.errors;
+              for (const field in validationErrors) {
+                addDebugLog(
+                  `Validation error for ${field}: ${validationErrors[field].join(", ")}`,
+                );
+              }
+            }
+          }
+
+          // Lanjut ke endpoint berikutnya
+          continue;
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error("All endpoints failed");
+      }
 
       console.log("✅ API Response:", response.data);
+      addDebugLog(`API Response: ${JSON.stringify(response.data)}`);
 
-      if (response.data.success) {
-        const eventId = response.data.data?.id || response.data.data?.event_id;
+      // Cek berbagai format response yang mungkin
+      if (
+        response.data.success ||
+        response.data.message?.includes("success") ||
+        response.data.id
+      ) {
+        const eventId =
+          response.data.data?.id || response.data.id || response.data.event_id;
+        addDebugLog(`✅ Event created successfully! Event ID: ${eventId}`);
         console.log("🎉 Event created successfully! Event ID:", eventId);
 
-        // DEBUG: Cek data gambar dari response
-        if (response.data.data?.image_url) {
-          console.log("🖼️ Image uploaded successfully!");
-          console.log(
-            "📁 Image path in database:",
-            response.data.data.image_url,
-          );
-          console.log(
-            "🔗 Full image URL:",
-            `https://apipaskibra.my.id/storage/${response.data.data.image_url}`,
-          );
-
-          // Test load image untuk memastikan bisa diakses
-          const img = new Image();
-          img.onload = () => console.log("✅ Image is accessible from server");
-          img.onerror = () => console.warn("⚠️ Image may not be accessible");
-          img.src = `https://apipaskibra.my.id/storage/${response.data.data.image_url}`;
-        } else if (response.data.data?.image) {
-          console.log("🖼️ Image data from API:", response.data.data.image);
-        } else {
-          console.log("ℹ️ No image data in response");
-        }
-
-        setSuccess(true);
-
         // ========== SIMPAN KE LOCALSTORAGE ==========
-        if (eventId) {
+        try {
           const newEvent = {
-            id: eventId,
+            id: eventId || `event-${Date.now()}`,
             name: formData.name,
             organized_by: formData.organized_by,
             location: formData.location,
-            start_date: formData.start_date,
-            end_date: formData.end_date,
             event_info: formData.event_info,
             term_condition: formData.term_condition,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
             user_id: user.id,
-            user_name: user.name,
             created_at: new Date().toISOString(),
-            from_api: true,
-            participants_count: 0,
-            // Simpan image info dari response
-            image_url: response.data.data?.image_url || null,
-            image: response.data.data?.image || null,
-            api_response: response.data,
-            session_user_id: user.id,
-            session_created: new Date().toISOString(),
+            _source: "api",
           };
 
-          // Update localStorage
-          let existingEvents = [];
-          try {
-            const storedEvents = localStorage.getItem("user_created_events");
-            if (storedEvents) {
-              existingEvents = JSON.parse(storedEvents);
-            }
-          } catch (err) {
-            console.error("Error parsing stored events:", err);
-          }
-
-          // Tambahkan atau update event
-          const existingIndex = existingEvents.findIndex(
-            (e) => e.id == eventId,
-          );
-          if (existingIndex !== -1) {
-            existingEvents[existingIndex] = newEvent;
-          } else {
-            existingEvents.push(newEvent);
-          }
-
+          const storedEvents = localStorage.getItem("user_created_events");
+          const eventsArray = storedEvents ? JSON.parse(storedEvents) : [];
+          eventsArray.push(newEvent);
           localStorage.setItem(
             "user_created_events",
-            JSON.stringify(existingEvents),
+            JSON.stringify(eventsArray),
           );
 
-          // Simpan image preview ke localStorage sebagai fallback
-          if (imagePreview) {
-            try {
-              if (imagePreview.length < 1000000) {
-                localStorage.setItem(`event_image_${eventId}`, imagePreview);
-                console.log(
-                  "🖼️ Saved image preview to localStorage as fallback",
-                );
-              }
-            } catch (err) {
-              console.error("Error saving image to localStorage:", err);
-            }
-          }
-
-          // Inisialisasi sistem peserta
-          localStorage.setItem(
-            `event_participants_${eventId}`,
-            JSON.stringify([]),
+          addDebugLog("✅ Event saved to localStorage as backup");
+        } catch (storageError) {
+          addDebugLog(
+            `⚠️ Failed to save to localStorage: ${storageError.message}`,
           );
-
-          const eventParticipantsMap = JSON.parse(
-            localStorage.getItem("event_participants_map") || "{}",
-          );
-          eventParticipantsMap[eventId] = [];
-          localStorage.setItem(
-            "event_participants_map",
-            JSON.stringify(eventParticipantsMap),
-          );
-
-          console.log("💾 Event saved to localStorage with ID:", eventId);
         }
+
+        setSuccess(true);
 
         // Reset form dan redirect
         setTimeout(() => {
@@ -312,138 +326,173 @@ const CreateEvent = () => {
             location: "",
             event_info: "",
             term_condition: "",
-            start_date: "",
-            end_date: "",
+            start_date: today,
+            end_date: tomorrow,
             image: null,
             user_id: user.id,
           });
           setImagePreview("");
+          addDebugLog("✅ Form reset completed");
 
+          // Redirect setelah 2 detik
           setTimeout(() => {
+            addDebugLog("Redirecting to /organizer/events");
             navigate("/organizer/events");
           }, 2000);
         }, 1500);
       } else {
-        throw new Error(response.data.message || "Gagal membuat event");
+        const errorMsg = response.data.message || "Gagal membuat event";
+        addDebugLog(`❌ API returned error: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
     } catch (error) {
       console.error("❌ Error creating event:", error);
-      console.error("❌ Error details:", error.response?.data);
+      addDebugLog(`❌ Error caught: ${error.message}`);
 
       let errorMessage = "Terjadi kesalahan saat membuat event";
 
       if (error.response?.status === 401) {
         errorMessage = "Sesi Anda telah berakhir. Silakan login kembali.";
+        addDebugLog("❌ Authentication failed, redirecting to login");
         setTimeout(() => {
           navigate("/auth/login");
         }, 2000);
       } else if (error.response?.status === 413) {
         errorMessage = "File gambar terlalu besar. Maksimal 5MB.";
+        addDebugLog("❌ File too large");
       } else if (error.response?.status === 422) {
         // Validation errors from Laravel
+        addDebugLog("❌ Validation errors (422)");
         const validationErrors = error.response.data.errors;
-        const errorMessages = [];
 
-        for (const field in validationErrors) {
-          errorMessages.push(`${field}: ${validationErrors[field].join(", ")}`);
+        if (validationErrors) {
+          const errorMessages = [];
+          for (const field in validationErrors) {
+            errorMessages.push(
+              `${field}: ${validationErrors[field].join(", ")}`,
+            );
+            addDebugLog(
+              `Validation: ${field} = ${validationErrors[field].join(", ")}`,
+            );
+          }
+          errorMessage = `Validasi gagal: ${errorMessages.join("; ")}`;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
         }
-
-        errorMessage = `Validasi gagal: ${errorMessages.join("; ")}`;
+      } else if (error.response?.status === 405) {
+        errorMessage = "Method tidak diizinkan. Coba gunakan endpoint lain.";
+        addDebugLog("❌ Method not allowed (405)");
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+        addDebugLog(`Server message: ${errorMessage}`);
       } else if (error.message) {
         errorMessage = error.message;
-      } else {
-        errorMessage =
-          "Terjadi kesalahan saat membuat event. Silakan coba lagi.";
-      }
-
-      // ========== FALLBACK: SIMPAN KE LOCALSTORAGE ==========
-      const fallbackEventId = Date.now();
-      const fallbackEvent = {
-        id: fallbackEventId,
-        name: formData.name,
-        organized_by: formData.organized_by,
-        location: formData.location,
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        event_info: formData.event_info,
-        term_condition: formData.term_condition,
-        user_id: user.id,
-        user_name: user.name,
-        created_at: new Date().toISOString(),
-        from_api: false,
-        participants_count: 0,
-        api_error: error.message,
-      };
-
-      try {
-        let existingEvents = [];
-        try {
-          const storedEvents = localStorage.getItem("user_created_events");
-          if (storedEvents) {
-            existingEvents = JSON.parse(storedEvents);
-          }
-        } catch (err) {
-          console.error("Error parsing stored events:", err);
-        }
-
-        existingEvents.push(fallbackEvent);
-        localStorage.setItem(
-          "user_created_events",
-          JSON.stringify(existingEvents),
-        );
-
-        // Inisialisasi sistem peserta
-        localStorage.setItem(
-          `event_participants_${fallbackEventId}`,
-          JSON.stringify([]),
-        );
-
-        const eventParticipantsMap = JSON.parse(
-          localStorage.getItem("event_participants_map") || "{}",
-        );
-        eventParticipantsMap[fallbackEventId] = [];
-        localStorage.setItem(
-          "event_participants_map",
-          JSON.stringify(eventParticipantsMap),
-        );
-
-        // Simpan image preview jika ada
-        if (imagePreview && imagePreview.length < 1000000) {
-          try {
-            localStorage.setItem(
-              `event_image_${fallbackEventId}`,
-              imagePreview,
-            );
-            console.log(
-              "🖼️ Saved image preview to localStorage for fallback event",
-            );
-          } catch (err) {
-            console.error("Error saving fallback image:", err);
-          }
-        }
-
-        console.log(
-          "💾 Fallback event saved to localStorage with ID:",
-          fallbackEventId,
-        );
-
-        // Tambahkan pesan info
-        errorMessage += "\n\n✅ Event telah disimpan secara lokal.";
-        errorMessage += "\n\nAnda dapat:";
-        errorMessage += "\n• Menambahkan peserta ke event ini";
-        errorMessage += "\n• Mengelola event dari halaman events";
-        errorMessage += "\n• Data akan tetap tersimpan di browser Anda";
-      } catch (storageError) {
-        console.error("❌ Error saving to localStorage:", storageError);
-        errorMessage += "\n\n⚠️ Juga gagal menyimpan ke penyimpanan lokal.";
       }
 
       setError(errorMessage);
     } finally {
       setSubmitting(false);
+      addDebugLog("=== END EVENT CREATION ===");
     }
+  };
+
+  /* ================= TEST API ENDPOINT (SEDERHANA) ================= */
+  const testApiEndpoint = async () => {
+    if (!user) {
+      alert("Please login first");
+      return;
+    }
+
+    try {
+      addDebugLog("Testing API with minimal data...");
+
+      // Data minimal untuk testing
+      const testData = new FormData();
+      testData.append("name", `Test Event ${Date.now()}`);
+      testData.append("organized_by", "Test Organizer");
+      testData.append("location", "Test Location");
+      testData.append("start_date", today);
+      testData.append("end_date", tomorrow);
+      testData.append("user_id", user.id.toString());
+
+      console.log("Testing with data:");
+      for (let pair of testData.entries()) {
+        console.log(`${pair[0]}: ${pair[1]}`);
+      }
+
+      const response = await api.post("/create-event", testData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      addDebugLog(`Test response: ${JSON.stringify(response.data)}`);
+      alert(
+        `✅ Test successful!\n\nResponse: ${JSON.stringify(response.data, null, 2)}`,
+      );
+    } catch (testError) {
+      addDebugLog(
+        `Test failed: ${testError.response?.status || testError.message}`,
+      );
+
+      let errorMsg = "Test failed";
+      if (testError.response?.data?.errors) {
+        const errors = testError.response.data.errors;
+        errorMsg = `Validation errors:\n${Object.keys(errors)
+          .map((key) => `• ${key}: ${errors[key].join(", ")}`)
+          .join("\n")}`;
+      } else if (testError.response?.data?.message) {
+        errorMsg = testError.response.data.message;
+      }
+
+      alert(`❌ Test failed:\n\n${errorMsg}`);
+    }
+  };
+
+  /* ================= CHECK ENDPOINTS ================= */
+  const checkEndpoints = async () => {
+    const endpoints = [
+      { method: "GET", url: "/list-event-by-user" },
+      { method: "POST", url: "/create-event" },
+      { method: "GET", url: "/events" },
+      { method: "GET", url: "/api/events" },
+    ];
+
+    const results = [];
+
+    for (const endpoint of endpoints) {
+      try {
+        let response;
+        if (endpoint.method === "GET") {
+          response = await api.get(endpoint.url);
+        } else if (endpoint.method === "POST") {
+          // Untuk POST, coba dengan data minimal
+          const testData = new FormData();
+          testData.append("test", "1");
+          response = await api.post(endpoint.url, testData);
+        }
+
+        results.push({
+          endpoint: `${endpoint.method} ${endpoint.url}`,
+          status: response.status,
+          success: response.status >= 200 && response.status < 300,
+        });
+      } catch (err) {
+        results.push({
+          endpoint: `${endpoint.method} ${endpoint.url}`,
+          status: err.response?.status || "ERROR",
+          success: false,
+          error: err.message,
+        });
+      }
+    }
+
+    const message = results
+      .map(
+        (r) =>
+          `${r.success ? "✅" : "❌"} ${r.endpoint} - ${r.status}${r.error ? ` (${r.error})` : ""}`,
+      )
+      .join("\n");
+
+    alert(`Endpoint Check Results:\n\n${message}`);
   };
 
   /* ================= HANDLE INPUT CHANGE ================= */
@@ -477,18 +526,18 @@ const CreateEvent = () => {
       ...prev,
       image: null,
     }));
+    addDebugLog("Image removed");
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="text-center">
-          <Loader className="animate-spin h-12 w-12 text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-400">Memuat...</p>
-        </div>
-      </div>
-    );
-  }
+  /* ================= VIEW DEBUG INFO ================= */
+  const viewDebugInfo = () => {
+    if (debugInfo.length > 0) {
+      const infoText = debugInfo.join("\n");
+      alert(`Debug Information:\n\n${infoText}`);
+    } else {
+      alert("No debug information available. Try submitting the form first.");
+    }
+  };
 
   return (
     <motion.div
@@ -506,17 +555,51 @@ const CreateEvent = () => {
           <span>Kembali ke Daftar Event</span>
         </button>
 
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Buat Event Baru</h1>
-          <p className="text-gray-400">
-            Buat event Paskibra Championship baru untuk diikuti peserta
-          </p>
-          {user && (
-            <div className="mt-2 text-sm text-gray-500">
-              Dibuat oleh: <span className="text-blue-400">{user.name}</span>{" "}
-              (ID: {user.id})
-            </div>
-          )}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Buat Event Baru</h1>
+            <p className="text-gray-400">
+              Buat event Paskibra Championship baru untuk diikuti peserta
+            </p>
+            {user && (
+              <div className="mt-2 text-sm text-gray-500">
+                <div className="flex items-center gap-2">
+                  <span>
+                    Dibuat oleh:{" "}
+                    <span className="text-blue-400">{user.name}</span>
+                  </span>
+                  <span className="text-gray-600">•</span>
+                  <span>
+                    ID: <span className="text-blue-400">{user.id}</span>
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={viewDebugInfo}
+              className="px-4 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 transition-colors flex items-center gap-2 text-sm"
+            >
+              <Bug size={16} />
+              Debug Info
+            </button>
+            <button
+              onClick={checkEndpoints}
+              className="px-4 py-2 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 text-yellow-400 transition-colors flex items-center gap-2 text-sm"
+            >
+              <Database size={16} />
+              Check Endpoints
+            </button>
+            <button
+              onClick={testApiEndpoint}
+              className="px-4 py-2 rounded-xl bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 transition-colors flex items-center gap-2 text-sm"
+            >
+              <Database size={16} />
+              Test API
+            </button>
+          </div>
         </div>
       </div>
 
@@ -542,27 +625,48 @@ const CreateEvent = () => {
       {/* Konten form hanya ditampilkan jika user login */}
       {user && (
         <>
-          {/* Form */}
-          <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
-            {error && !success && (
-              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-                <div className="flex items-start space-x-3">
-                  <AlertCircle
-                    size={20}
-                    className="text-red-400 flex-shrink-0 mt-0.5"
-                  />
-                  <div>
-                    <p className="text-red-400 font-medium">
-                      Gagal membuat event
-                    </p>
-                    <p className="text-red-300 text-sm mt-1 whitespace-pre-line">
-                      {error}
-                    </p>
+          {/* Debug Info Panel */}
+          {debugInfo.length > 0 && (
+            <div className="mb-6 p-4 rounded-xl bg-gray-900/50 border border-gray-700">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-gray-300">Debug Log</h3>
+                <span className="text-xs text-gray-500">
+                  {debugInfo.length} entries
+                </span>
+              </div>
+              <div className="text-xs font-mono text-gray-400 max-h-32 overflow-y-auto">
+                {debugInfo.slice(-10).map((log, index) => (
+                  <div
+                    key={index}
+                    className="py-1 border-b border-gray-800/50 last:border-b-0"
+                  >
+                    {log}
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Error Info dari Validasi */}
+          {error && error.includes("Validasi") && (
+            <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+              <div className="flex items-start gap-3">
+                <AlertCircle size={20} className="text-red-400 mt-0.5" />
+                <div>
+                  <p className="text-red-400 font-medium">Validasi Gagal</p>
+                  <p className="text-red-300 text-sm mt-1 whitespace-pre-line">
+                    {error}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Pastikan semua field required diisi dengan benar.
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
+          {/* Form */}
+          <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
             {success && (
               <div className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
                 <div className="flex items-start space-x-3">
@@ -581,89 +685,94 @@ const CreateEvent = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-8">
+              {/* User Information */}
+              <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-700">
+                <h3 className="text-lg font-bold mb-3 text-gray-300 flex items-center gap-2">
+                  <User size={20} />
+                  Informasi Pembuat
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Nama Organizer</p>
+                    <p className="text-gray-300 font-medium">{user.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">User ID</p>
+                    <p className="text-blue-400 font-mono font-medium">
+                      {user.id}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-blue-500/10 rounded-lg">
+                  <p className="text-xs text-blue-300">
+                    <strong>Note:</strong> Event akan dikaitkan dengan User ID
+                    Anda
+                  </p>
+                </div>
+              </div>
+
               {/* Basic Information */}
               <div>
                 <h3 className="text-lg font-bold mb-4 text-gray-300 border-b border-gray-700 pb-2">
                   Informasi Dasar Event
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Nama Event *
-                    </label>
-                    <div className="relative">
-                      <Calendar
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                        size={20}
-                      />
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        required
-                        disabled={submitting}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                        placeholder="Contoh: Paskibra Championship 2024"
-                        maxLength={200}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Maksimal 200 karakter
-                    </p>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Diselenggarakan Oleh *
-                    </label>
-                    <div className="relative">
-                      <Building
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                        size={20}
-                      />
-                      <input
-                        type="text"
-                        name="organized_by"
-                        value={formData.organized_by}
-                        onChange={handleChange}
-                        required
-                        disabled={submitting}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                        placeholder="Contoh: Dinas Pendidikan Kota Cilegon"
-                        maxLength={200}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Maksimal 200 karakter
-                    </p>
+                {/* Nama Event */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Nama Event *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      disabled={submitting}
+                      className="w-full pl-4 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                      placeholder="Contoh: Paskibra Championship 2024"
+                      maxLength={200}
+                    />
                   </div>
                 </div>
 
-                <div className="mt-6">
+                {/* Penyelenggara */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Diselenggarakan Oleh *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="organized_by"
+                      value={formData.organized_by}
+                      onChange={handleChange}
+                      required
+                      disabled={submitting}
+                      className="w-full pl-4 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                      placeholder="Contoh: Dinas Pendidikan Kota Cilegon"
+                      maxLength={200}
+                    />
+                  </div>
+                </div>
+
+                {/* Lokasi */}
+                <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Lokasi *
                   </label>
-                  <div className="relative">
-                    <MapPin
-                      className="absolute left-3 top-4 transform text-gray-500"
-                      size={20}
-                    />
-                    <textarea
-                      name="location"
-                      value={formData.location}
-                      onChange={handleTextAreaChange}
-                      required
-                      disabled={submitting}
-                      rows="3"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
-                      placeholder="Contoh: Gedung Serba Guna, Jl. Merdeka No. 123, Cilegon, Banten"
-                      maxLength={500}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formData.location.length}/500 karakter
-                  </p>
+                  <textarea
+                    name="location"
+                    value={formData.location}
+                    onChange={handleTextAreaChange}
+                    required
+                    disabled={submitting}
+                    rows="3"
+                    className="w-full pl-4 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
+                    placeholder="Contoh: Gedung Serba Guna, Jl. Merdeka No. 123, Cilegon, Banten"
+                    maxLength={500}
+                  />
                 </div>
               </div>
 
@@ -677,47 +786,32 @@ const CreateEvent = () => {
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Tanggal Mulai *
                     </label>
-                    <div className="relative">
-                      <Calendar
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                        size={20}
-                      />
-                      <input
-                        type="date"
-                        name="start_date"
-                        value={formData.start_date}
-                        onChange={handleChange}
-                        required
-                        disabled={submitting}
-                        min={new Date().toISOString().split("T")[0]}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                      />
-                    </div>
+                    <input
+                      type="date"
+                      name="start_date"
+                      value={formData.start_date}
+                      onChange={handleChange}
+                      required
+                      disabled={submitting}
+                      min={today}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                    />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Tanggal Selesai *
                     </label>
-                    <div className="relative">
-                      <Calendar
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                        size={20}
-                      />
-                      <input
-                        type="date"
-                        name="end_date"
-                        value={formData.end_date}
-                        onChange={handleChange}
-                        required
-                        disabled={submitting}
-                        min={
-                          formData.start_date ||
-                          new Date().toISOString().split("T")[0]
-                        }
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                      />
-                    </div>
+                    <input
+                      type="date"
+                      name="end_date"
+                      value={formData.end_date}
+                      onChange={handleChange}
+                      required
+                      disabled={submitting}
+                      min={formData.start_date || today}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                    />
                   </div>
                 </div>
               </div>
@@ -725,57 +819,39 @@ const CreateEvent = () => {
               {/* Event Information */}
               <div>
                 <h3 className="text-lg font-bold mb-4 text-gray-300 border-b border-gray-700 pb-2">
-                  Informasi Event
+                  Informasi Tambahan (Opsional)
                 </h3>
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Deskripsi Event (event_info)
+                      Deskripsi Event
                     </label>
-                    <div className="relative">
-                      <Info
-                        className="absolute left-3 top-4 transform text-gray-500"
-                        size={20}
-                      />
-                      <textarea
-                        name="event_info"
-                        value={formData.event_info}
-                        onChange={handleTextAreaChange}
-                        disabled={submitting}
-                        rows="4"
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
-                        placeholder="Deskripsi lengkap tentang event, tujuan, kegiatan yang akan dilakukan, dll."
-                        maxLength={2000}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formData.event_info.length}/2000 karakter
-                    </p>
+                    <textarea
+                      name="event_info"
+                      value={formData.event_info}
+                      onChange={handleTextAreaChange}
+                      disabled={submitting}
+                      rows="4"
+                      className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
+                      placeholder="Deskripsi lengkap tentang event, tujuan, kegiatan yang akan dilakukan, dll."
+                      maxLength={2000}
+                    />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Syarat & Ketentuan (term_condition)
+                      Syarat & Ketentuan
                     </label>
-                    <div className="relative">
-                      <FileText
-                        className="absolute left-3 top-4 transform text-gray-500"
-                        size={20}
-                      />
-                      <textarea
-                        name="term_condition"
-                        value={formData.term_condition}
-                        onChange={handleTextAreaChange}
-                        disabled={submitting}
-                        rows="4"
-                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
-                        placeholder="Syarat dan ketentuan peserta, persyaratan pendaftaran, aturan lomba, dll."
-                        maxLength={2000}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formData.term_condition.length}/2000 karakter
-                    </p>
+                    <textarea
+                      name="term_condition"
+                      value={formData.term_condition}
+                      onChange={handleTextAreaChange}
+                      disabled={submitting}
+                      rows="4"
+                      className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
+                      placeholder="Syarat dan ketentuan peserta, persyaratan pendaftaran, aturan lomba, dll."
+                      maxLength={2000}
+                    />
                   </div>
                 </div>
               </div>
@@ -787,17 +863,12 @@ const CreateEvent = () => {
                 </h3>
                 <div className="space-y-4">
                   <div className="text-sm text-gray-400 mb-2">
-                    <p>Format yang didukung: JPG, JPEG, PNG, GIF</p>
-                    <p>Ukuran maksimal: 5MB</p>
-                    <p className="text-yellow-400">
-                      Gambar akan disimpan di server dan dapat diakses melalui
-                      URL
-                    </p>
+                    <p>Format: JPG, JPEG, PNG, GIF, WebP (max. 5MB)</p>
                   </div>
 
                   <input
                     type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/gif"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                     onChange={handleImageChange}
                     className="hidden"
                     id="event-image-upload"
@@ -808,26 +879,21 @@ const CreateEvent = () => {
                     {/* Upload Area */}
                     <label
                       htmlFor="event-image-upload"
-                      className={`flex-1 cursor-pointer group ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}
+                      className={`flex-1 cursor-pointer ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       <div className="border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors h-full">
                         <div className="flex flex-col items-center space-y-4">
-                          <div className="p-4 rounded-xl bg-gray-900 group-hover:bg-gray-800 transition-colors">
-                            <ImageIcon
-                              size={32}
-                              className="text-gray-400 group-hover:text-blue-400"
-                            />
-                          </div>
+                          <ImageIcon size={32} className="text-gray-400" />
                           <div>
                             <p className="text-gray-300 font-medium">
-                              Klik untuk upload poster event
+                              Klik untuk upload poster
                             </p>
                             <p className="text-sm text-gray-500">
-                              PNG, JPG, JPEG, GIF (max. 5MB)
+                              PNG, JPG, JPEG, GIF, WebP
                             </p>
                             {formData.image && (
                               <p className="text-xs text-green-400 mt-1">
-                                ✓ File dipilih: {formData.image.name}
+                                ✓ {formData.image.name}
                               </p>
                             )}
                           </div>
@@ -839,7 +905,6 @@ const CreateEvent = () => {
                     {imagePreview && (
                       <div className="flex-1">
                         <div className="rounded-2xl border border-gray-700 p-4 h-full">
-                          <p className="text-sm text-gray-400 mb-3">Preview:</p>
                           <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900">
                             <img
                               src={imagePreview}
@@ -855,13 +920,6 @@ const CreateEvent = () => {
                               <X size={16} />
                             </button>
                           </div>
-                          {formData.image && (
-                            <p className="text-xs text-gray-400 mt-2 text-center">
-                              {formData.image.name} (
-                              {(formData.image.size / 1024 / 1024).toFixed(2)}{" "}
-                              MB)
-                            </p>
-                          )}
                         </div>
                       </div>
                     )}
@@ -890,13 +948,14 @@ const CreateEvent = () => {
                         location: "",
                         event_info: "",
                         term_condition: "",
-                        start_date: "",
-                        end_date: "",
+                        start_date: today,
+                        end_date: tomorrow,
                         image: null,
                         user_id: user.id,
                       });
                       setImagePreview("");
                       setError("");
+                      addDebugLog("Form reset manually");
                     }}
                     disabled={submitting}
                     className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
@@ -932,43 +991,26 @@ const CreateEvent = () => {
               <Info size={20} className="text-blue-400 mt-0.5" />
               <div>
                 <h4 className="font-medium text-blue-300 mb-2">
-                  Informasi API Endpoint:
+                  Tips Membuat Event:
                 </h4>
-                <div className="text-sm text-gray-400 space-y-2">
+                <div className="text-sm text-gray-400 space-y-1">
+                  <p>• Isi semua field bertanda * (wajib)</p>
+                  <p>• Tanggal selesai harus setelah tanggal mulai</p>
+                  <p>• Gambar opsional, maksimal 5MB</p>
+                  <p>• Event akan langsung muncul di daftar organizer</p>
+                </div>
+                <div className="mt-3 text-xs text-gray-500">
                   <p>
-                    • <strong>Endpoint:</strong>{" "}
-                    <code>POST /api/create-event</code>
+                    <strong>User ID:</strong> {user.id}
                   </p>
                   <p>
-                    • <strong>Content-Type:</strong>{" "}
-                    <code>multipart/form-data</code>
+                    <strong>Status:</strong>{" "}
+                    {submitting
+                      ? "Submitting..."
+                      : success
+                        ? "Success!"
+                        : "Ready"}
                   </p>
-                  <p>
-                    • <strong>Required fields:</strong> name, organized_by,
-                    location, start_date, end_date, user_id
-                  </p>
-                  <p>
-                    • <strong>Optional field:</strong> image (gambar poster
-                    event)
-                  </p>
-                  <p>
-                    • <strong>Image field name:</strong> <code>image</code>
-                  </p>
-                  <div className="mt-3 text-xs text-gray-500">
-                    <p>
-                      <strong>Current User ID:</strong> {user.id}
-                    </p>
-                    <p>
-                      <strong>Image selected:</strong>{" "}
-                      {formData.image ? "Yes" : "No"}
-                    </p>
-                    {formData.image && (
-                      <p>
-                        <strong>Image details:</strong> {formData.image.name} (
-                        {(formData.image.size / 1024).toFixed(2)} KB)
-                      </p>
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
