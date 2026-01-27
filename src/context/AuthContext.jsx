@@ -403,8 +403,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         getRedirectPathByRole,
-      }}
-    >
+      }}>
       {children}
     </AuthContext.Provider>
   );

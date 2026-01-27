@@ -2,42 +2,53 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 
 const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, getRedirectPathByRole } = useAuth();
+  const { user, loading } = useAuth();
+  const [shouldRender, setShouldRender] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
-  // AUTO-REDIRECT LOGIC: Cegah user yang sudah login mengakses home
+  // Cek apakah user boleh menggunakan layout ini
   useEffect(() => {
-    if (user) {
-      const currentPath = location.pathname;
-      const redirectPath = getRedirectPathByRole(user.role);
+    if (!loading) {
+      // Jika user memiliki role yang menggunakan dashboard khusus
+      const specialRoles = ["admin", "juri", "organizer"];
 
-      // Hanya redirect jika user mengakses homepage ("/" atau "/home")
-      // dan role-nya seharusnya tidak di homepage
-      if (
-        (currentPath === "/" || currentPath === "/home") &&
-        redirectPath !== "/"
-      ) {
-        console.log(
-          `Layout - Redirecting ${user.role} from ${currentPath} to ${redirectPath}`,
-        );
+      if (user && specialRoles.includes(user.role)) {
+        // User dengan role khusus, redirect ke dashboard mereka
+        const redirectPaths = {
+          admin: "/admin/dashboard",
+          juri: "/judging",
+          organizer: "/organizer",
+        };
+
+        const redirectPath = redirectPaths[user.role] || "/";
+        console.log(`Layout - Redirecting ${user.role} to ${redirectPath}`);
         navigate(redirectPath, { replace: true });
+        setShouldRender(false);
+      } else {
+        // Guest atau user biasa, boleh render layout
+        setShouldRender(true);
       }
+
+      setIsChecking(false);
     }
-  }, [user, location.pathname, navigate, getRedirectPathByRole]);
+  }, [user, loading, navigate]);
 
-  // Handle page transition
+  // Handle page transition hanya untuk route yang diizinkan
   useEffect(() => {
-    // Scroll to top on page change
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (shouldRender && location.pathname) {
+      // Scroll to top on page change
+      window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // Add transition class to body
-    document.body.classList.add("page-transition-active");
-  }, [location.pathname]);
+      // Add transition class to body
+      document.body.classList.add("page-transition-active");
+    }
+  }, [location.pathname, shouldRender]);
 
   // Loading animation
   const pageVariants = {
@@ -63,6 +74,33 @@ const Layout = () => {
     ease: "anticipate",
     duration: 0.5,
   };
+
+  // Tampilkan loading selama pengecekan
+  if (loading || isChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-black to-black">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Memuat halaman...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Jika user dengan role khusus, jangan render layout ini
+  if (!shouldRender) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-black to-black">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Mengarahkan ke dashboard...</p>
+          <p className="text-gray-500 text-sm mt-2">
+            Layout ini hanya untuk guest atau user biasa
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-black via-black to-black">

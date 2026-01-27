@@ -10,7 +10,6 @@ import {
   Filter,
   School,
   Phone,
-  MapPin,
   Calendar,
   Award,
   User,
@@ -19,80 +18,65 @@ import {
   Loader,
   AlertCircle,
   CheckCircle,
-  Image as ImageIcon,
 } from "lucide-react";
 import api from "../../../services/api";
+
+const ITEMS_PER_PAGE = 10;
 
 const ParticipantsList = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState([]);
+  const [categories, setCategories] = useState([]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [categories, setCategories] = useState([]);
+
   const [deleteLoading, setDeleteLoading] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [filterApplied, setFilterApplied] = useState(false);
 
-  const itemsPerPage = 10;
-
-  /* =========================
-      FETCH CATEGORIES FROM API
-  ========================== */
+  /* ================= FETCH ================= */
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await api.get("/participant-categories");
-      if (response.data.success && response.data.data) {
-        setCategories(response.data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
+      const res = await api.get("/participant-categories");
+      setCategories(res.data?.data || []);
+    } catch {
+      setCategories([]);
     }
   }, []);
 
-  /* =========================
-      FETCH PARTICIPANTS - CORRECT ENDPOINT
-  ========================== */
   const fetchParticipants = useCallback(async () => {
     setLoading(true);
     try {
-      // Gunakan endpoint yang benar: /participant-lists/1
-      const response = await api.get("/participant-lists/1");
+      const res = await api.get("/participant-lists/1");
+      let data = res.data?.data || [];
 
-      let data = response.data?.data || [];
-
-      // SEARCH FILTER
       if (searchTerm) {
+        const q = searchTerm.toLowerCase();
         data = data.filter(
           (p) =>
-            p.school_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.coach?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.school_address
-              ?.toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            p.coach_whatsapp?.includes(searchTerm),
+            p.school_name?.toLowerCase().includes(q) ||
+            p.coach?.toLowerCase().includes(q) ||
+            p.school_address?.toLowerCase().includes(q) ||
+            p.coach_whatsapp?.includes(q),
         );
       }
 
-      // CATEGORY FILTER
       if (selectedCategory) {
         data = data.filter(
           (p) => p.participant_category_id == selectedCategory,
         );
       }
 
-      // PAGINATION
-      const start = (currentPage - 1) * itemsPerPage;
-      const end = start + itemsPerPage;
-      const paginatedData = data.slice(start, end);
+      setTotalPages(Math.ceil(data.length / ITEMS_PER_PAGE));
 
-      setTotalPages(Math.ceil(data.length / itemsPerPage));
-      setParticipants(paginatedData);
-    } catch (error) {
-      console.error("Error fetching participants:", error);
+      const start = (currentPage - 1) * ITEMS_PER_PAGE;
+      setParticipants(data.slice(start, start + ITEMS_PER_PAGE));
+    } catch {
       setParticipants([]);
       setTotalPages(1);
     } finally {
@@ -100,86 +84,19 @@ const ParticipantsList = () => {
     }
   }, [searchTerm, selectedCategory, currentPage]);
 
-  /* =========================
-      INITIAL FETCH
-  ========================== */
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        await Promise.all([fetchCategories(), fetchParticipants()]);
-      } catch (error) {
-        console.error("Error loading initial data:", error);
-      }
-    };
-
-    loadInitialData();
+    Promise.all([fetchCategories(), fetchParticipants()]);
   }, [fetchCategories, fetchParticipants]);
 
-  /* =========================
-      DELETE PARTICIPANT
-  ========================== */
-  const handleDelete = async (id, schoolName) => {
-    if (!confirm(`Yakin ingin menghapus peserta "${schoolName}"?`)) return;
-
-    setDeleteLoading(id);
-    try {
-      const response = await api.delete(`/participants/${id}`);
-
-      if (response.data.success) {
-        setSuccessMessage(`Peserta "${schoolName}" berhasil dihapus`);
-        setTimeout(() => setSuccessMessage(""), 3000);
-        fetchParticipants();
-      }
-    } catch (error) {
-      console.error("Error deleting participant:", error);
-      alert(error.response?.data?.message || "Gagal menghapus peserta");
-    } finally {
-      setDeleteLoading(null);
-    }
-  };
-
-  /* =========================
-      FORMAT DATE
-  ========================== */
-  const formatDate = (dateString) => {
-    if (!dateString) return "-";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  /* =========================
-      FORMAT PHONE NUMBER
-  ========================== */
-  const formatPhone = (phone) => {
-    if (!phone) return "-";
-    return phone.replace(/(\d{4})(\d{4})(\d{4})/, "$1-$2-$3");
-  };
-
-  /* =========================
-      HANDLE SEARCH
-  ========================== */
-  const handleSearch = () => {
+  /* ================= ACTIONS ================= */
+  const applyFilter = () => {
     setCurrentPage(1);
     setFilterApplied(true);
     fetchParticipants();
   };
 
-  /* =========================
-      HANDLE FILTER
-  ========================== */
-  const handleFilter = () => {
-    setCurrentPage(1);
-    setFilterApplied(true);
-    fetchParticipants();
-  };
+  const handleFilter = applyFilter;
 
-  /* =========================
-      CLEAR FILTERS
-  ========================== */
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedCategory("");
@@ -188,35 +105,45 @@ const ParticipantsList = () => {
     fetchParticipants();
   };
 
-  /* =========================
-      PAGINATION HANDLERS
-  ========================== */
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
+  const handleDelete = async (id, name) => {
+    if (!confirm(`Yakin ingin menghapus peserta "${name}"?`)) return;
+
+    setDeleteLoading(id);
+    try {
+      const res = await api.delete(`/participants/${id}`);
+      if (res.data?.success) {
+        setSuccessMessage(`Peserta "${name}" berhasil dihapus`);
+        setTimeout(() => setSuccessMessage(""), 3000);
+        fetchParticipants();
+      }
+    } finally {
+      setDeleteLoading(null);
     }
   };
 
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
+  /* ================= UTILS ================= */
+  const formatDate = (d) =>
+    d
+      ? new Date(d).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "-";
 
-  /* =========================
-      RENDER LOADING
-  ========================== */
-  if (loading && participants.length === 0) {
+  const formatPhone = (p) =>
+    p ? p.replace(/(\d{4})(\d{4})(\d{4})/, "$1-$2-$3") : "-";
+
+  /* ================= LOADING ================= */
+  if (loading && !participants.length) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="mb-4"
-        >
-          <Loader className="text-blue-500" size={48} />
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+          <Loader size={48} className="text-blue-500" />
         </motion.div>
-        <p className="text-gray-400">Memuat data peserta...</p>
+        <p className="text-gray-400 mt-3">Memuat data peserta...</p>
       </div>
     );
   }
@@ -225,8 +152,7 @@ const ParticipantsList = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
+      transition={{ duration: 0.3 }}>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -237,8 +163,7 @@ const ParticipantsList = () => {
         </div>
         <Link
           to="/organizer/participants/create"
-          className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all"
-        >
+          className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all">
           <Plus size={20} />
           Tambah Peserta
         </Link>
@@ -249,8 +174,7 @@ const ParticipantsList = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl"
-        >
+          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
           <div className="flex items-start gap-3">
             <CheckCircle className="text-green-400 mt-0.5" size={20} />
             <p className="text-green-400">{successMessage}</p>
@@ -298,8 +222,7 @@ const ParticipantsList = () => {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all appearance-none"
-              >
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all appearance-none">
                 <option value="">Semua Kategori</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -314,15 +237,13 @@ const ParticipantsList = () => {
           <div className="flex items-end gap-2">
             <button
               onClick={handleFilter}
-              className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-            >
+              className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
               Terapkan Filter
             </button>
             {(searchTerm || selectedCategory || filterApplied) && (
               <button
                 onClick={clearFilters}
-                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium rounded-lg transition-colors"
-              >
+                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium rounded-lg transition-colors">
                 Reset
               </button>
             )}
@@ -373,15 +294,13 @@ const ParticipantsList = () => {
             {searchTerm || selectedCategory ? (
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
-              >
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors">
                 Reset Filter
               </button>
             ) : (
               <Link
                 to="/organizer/participants/create"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
                 <Plus size={16} />
                 Tambah Peserta Pertama
               </Link>
@@ -418,8 +337,7 @@ const ParticipantsList = () => {
                   {participants.map((participant) => (
                     <tr
                       key={participant.id}
-                      className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors"
-                    >
+                      className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
                       {/* School */}
                       <td className="p-4">
                         <div className="flex items-center gap-3">
@@ -493,8 +411,7 @@ const ParticipantsList = () => {
                               )
                             }
                             className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
-                            title="Lihat Detail"
-                          >
+                            title="Lihat Detail">
                             <Eye size={18} />
                           </button>
                           <button
@@ -504,8 +421,7 @@ const ParticipantsList = () => {
                               )
                             }
                             className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 rounded-lg transition-colors"
-                            title="Edit"
-                          >
+                            title="Edit">
                             <Edit size={18} />
                           </button>
                           <button
@@ -517,8 +433,7 @@ const ParticipantsList = () => {
                             }
                             disabled={deleteLoading === participant.id}
                             className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
-                            title="Hapus"
-                          >
+                            title="Hapus">
                             {deleteLoading === participant.id ? (
                               <Loader size={18} className="animate-spin" />
                             ) : (
@@ -538,8 +453,7 @@ const ParticipantsList = () => {
               {participants.map((participant) => (
                 <div
                   key={participant.id}
-                  className="p-4 border-b border-gray-800 hover:bg-gray-900/50"
-                >
+                  className="p-4 border-b border-gray-800 hover:bg-gray-900/50">
                   <div className="flex items-start gap-3 mb-3">
                     {participant.image ? (
                       <img
@@ -593,8 +507,7 @@ const ParticipantsList = () => {
                         navigate(`/organizer/participants/${participant.id}`)
                       }
                       className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
-                      title="Lihat Detail"
-                    >
+                      title="Lihat Detail">
                       <Eye size={18} />
                     </button>
                     <button
@@ -604,8 +517,7 @@ const ParticipantsList = () => {
                         )
                       }
                       className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 rounded-lg transition-colors"
-                      title="Edit"
-                    >
+                      title="Edit">
                       <Edit size={18} />
                     </button>
                     <button
@@ -614,8 +526,7 @@ const ParticipantsList = () => {
                       }
                       disabled={deleteLoading === participant.id}
                       className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
-                      title="Hapus"
-                    >
+                      title="Hapus">
                       {deleteLoading === participant.id ? (
                         <Loader size={18} className="animate-spin" />
                       ) : (
@@ -633,8 +544,7 @@ const ParticipantsList = () => {
                 <button
                   onClick={handlePrevPage}
                   disabled={currentPage === 1}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   <ChevronLeft size={18} />
                   Sebelumnya
                 </button>
@@ -660,8 +570,7 @@ const ParticipantsList = () => {
                           currentPage === page
                             ? "bg-blue-600 text-white"
                             : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                        }`}
-                      >
+                        }`}>
                         {page}
                       </button>
                     );
@@ -672,8 +581,7 @@ const ParticipantsList = () => {
                 <button
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   Selanjutnya
                   <ChevronRight size={18} />
                 </button>

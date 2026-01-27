@@ -151,8 +151,7 @@ const DashboardPage = () => {
           </p>
           <button
             onClick={() => navigate("/")}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all"
-          >
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all">
             Kembali ke Home
           </button>
         </div>
@@ -197,13 +196,12 @@ const DashboardPage = () => {
                 {/* Logout Button */}
                 <button
                   onClick={handleLogout}
-                  className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 transition-colors group"
-                  title="Logout"
-                >
-                  <LogOut
-                    size={20}
-                    className="text-red-400 group-hover:text-red-300"
-                  />
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20 active:bg-red-500/30 transition-all"
+                  title="Logout">
+                  <LogOut size={18} />
+                  <span className="text-sm font-medium hidden sm:inline">
+                    Logout
+                  </span>
                 </button>
               </div>
             </div>
@@ -227,8 +225,7 @@ const DashboardPage = () => {
                         activeTab === item.id
                           ? "bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-blue-400 border border-blue-500/30"
                           : "text-gray-400 hover:text-white hover:bg-gray-700/50"
-                      }`}
-                    >
+                      }`}>
                       <item.icon size={20} />
                       <span className="font-medium">{item.label}</span>
                       <ChevronRight
@@ -252,8 +249,7 @@ const DashboardPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="bg-gray-800/30 rounded-2xl border border-gray-700 p-6"
-            >
+              className="bg-gray-800/30 rounded-2xl border border-gray-700 p-6">
               {/* Outlet untuk menampilkan komponen */}
               <Outlet context={{ stats, formatCurrency, setStats }} />
             </motion.div>

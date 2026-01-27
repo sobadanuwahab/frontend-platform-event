@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -39,6 +39,8 @@ const EditParticipant = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  const hasFetched = useRef(false);
+
   const [formData, setFormData] = useState({
     school_name: "",
     school_address: "",
@@ -49,370 +51,18 @@ const EditParticipant = () => {
     participant_category_id: "",
   });
 
+  const handleWhatsAppChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "");
+    setFormData((p) => ({ ...p, coach_whatsapp: value }));
+  };
+
   const [imagePreview, setImagePreview] = useState("");
   const [originalImage, setOriginalImage] = useState("");
 
-  /* ================= FORMAT IMAGE URL ================= */
-  const formatImageUrl = (imagePath) => {
-    if (!imagePath) return null;
-
-    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-      return imagePath;
-    }
-
-    const baseUrl = "https://apipaskibra.my.id";
-
-    if (imagePath.includes("participants/")) {
-      return `${baseUrl}/storage/${imagePath}`;
-    }
-
-    if (imagePath.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      return `${baseUrl}/storage/participants/${imagePath}`;
-    }
-
-    return `${baseUrl}/storage/${imagePath}`;
-  };
-
-  /* ================= LOAD DATA ================= */
-  useEffect(() => {
-    if (id) {
-      loadAllData();
-    }
-  }, [id]);
-
-  useEffect(() => {
-    return () => {
-      if (imagePreview && imagePreview.startsWith("blob:")) {
-        URL.revokeObjectURL(imagePreview);
-      }
-    };
-  }, [imagePreview]);
-
-  const loadAllData = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      await Promise.all([
-        fetchCategories(),
-        fetchEvents(),
-        loadParticipantFromAPI(),
-      ]);
-    } catch (err) {
-      console.error("Error loading data:", err);
-      setError("Gagal memuat data. Silakan coba lagi.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ================= LOAD PARTICIPANT FROM API ================= */
-  const loadParticipantFromAPI = async () => {
-    try {
-      // console.log(`📥 Loading participant data from API for ID: ${id}`);
-
-      const response = await api.get(`/edit-participant/${id}`);
-
-      if (response.data.success || response.data.id) {
-        const data = response.data.data || response.data;
-        setParticipantData(data);
-        populateForm(data);
-
-        if (data.image) {
-          const imageUrl = formatImageUrl(data.image);
-          if (imageUrl) {
-            setImagePreview(imageUrl);
-            setOriginalImage(imageUrl);
-            // console.log("✅ Set image from API:", imageUrl);
-          }
-        }
-      } else {
-        throw new Error("Data peserta tidak ditemukan di API");
-      }
-    } catch (apiError) {
-      console.error("Error loading from API:", apiError);
-      setError("Gagal memuat data peserta dari server.");
-      throw apiError;
-    }
-  };
-
-  /* ================= FETCH CATEGORIES ================= */
-  const fetchCategories = async () => {
-    setLoadingCategories(true);
-    try {
-      const response = await api.get("/participant-categories");
-
-      let categoriesData = [];
-
-      if (response.data.success && response.data.data) {
-        if (Array.isArray(response.data.data)) {
-          categoriesData = response.data.data;
-        } else if (response.data.data.id) {
-          categoriesData = [response.data.data];
-        }
-      } else if (Array.isArray(response.data)) {
-        categoriesData = response.data;
-      }
-
-      if (categoriesData.length > 0) {
-        setCategories(categoriesData);
-      } else {
-        setCategories([]);
-      }
-    } catch (err) {
-      console.error("Error fetching categories:", err);
-      setCategories([]);
-    } finally {
-      setLoadingCategories(false);
-    }
-  };
-
-  /* ================= FETCH EVENTS ================= */
-  const fetchEvents = async () => {
-    setLoadingEvents(true);
-    try {
-      if (!user?.id) {
-        setEvents([]);
-        return;
-      }
-
-      const response = await api.get(`/list-event-by-user?user_id=${user.id}`);
-
-      let apiEvents = [];
-
-      if (response.data.success && response.data.data) {
-        if (Array.isArray(response.data.data)) {
-          apiEvents = response.data.data;
-        } else if (response.data.data.id) {
-          apiEvents = [response.data.data];
-        }
-      } else if (Array.isArray(response.data)) {
-        apiEvents = response.data;
-      }
-
-      if (apiEvents.length > 0) {
-        const formattedEvents = apiEvents.map((event) => ({
-          id: event.id || event.event_id,
-          name: event.name || event.event_name || "Event",
-          organized_by: event.organized_by || "Unknown",
-          start_date: event.start_date || event.start_time,
-          end_date: event.end_date || event.end_time,
-        }));
-        setEvents(formattedEvents);
-      } else {
-        setEvents([]);
-      }
-    } catch (err) {
-      console.error("Error fetching events:", err);
-      setEvents([]);
-    } finally {
-      setLoadingEvents(false);
-    }
-  };
-
-  /* ================= POPULATE FORM ================= */
-  const populateForm = (data) => {
-    setFormData({
-      school_name: data.school_name || "",
-      school_address: data.school_address || "",
-      coach: data.coach || "",
-      coach_whatsapp: data.coach_whatsapp || "",
-      image: null,
-      event_id: data.event_id ? data.event_id.toString() : "",
-      participant_category_id: data.participant_category_id
-        ? data.participant_category_id.toString()
-        : "",
-    });
-  };
-
-  /* ================= HANDLE IMAGE ================= */
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Ukuran gambar maksimal 5MB");
-      return;
-    }
-
-    const allowedTypes = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-      "image/svg+xml",
-      "image/bmp",
-      "image/tiff",
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      setError(
-        `Format file tidak didukung. Gunakan: JPG, JPEG, PNG, GIF, WebP, SVG, BMP, TIFF`,
-      );
-      return;
-    }
-
-    const blobUrl = URL.createObjectURL(file);
-    setFormData((prev) => ({ ...prev, image: file }));
-    setImagePreview(blobUrl);
-    setError("");
-  };
-
-  const removeImage = () => {
-    setFormData((prev) => ({ ...prev, image: null }));
-    setImagePreview(originalImage || "");
-  };
-
-  /* ================= FORMAT WHATSAPP NUMBER ================= */
-  const formatWhatsAppNumber = (value) => {
-    const numbers = value.replace(/\D/g, "");
-
-    if (numbers.startsWith("0")) {
-      return numbers;
-    } else if (numbers.startsWith("62")) {
-      return "0" + numbers.slice(2);
-    } else if (numbers.startsWith("+62")) {
-      return "0" + numbers.slice(3);
-    }
-
-    return numbers;
-  };
-
-  const handleWhatsAppChange = (e) => {
-    const value = e.target.value;
-    const formatted = formatWhatsAppNumber(value);
-    setFormData((prev) => ({ ...prev, coach_whatsapp: formatted }));
-  };
-
-  /* ================= HANDLE CHANGE ================= */
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setError("");
-  };
-
-  /* ================= HANDLE SUBMIT ================= */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError("");
-
-    // Validasi required fields
-    const requiredFields = [
-      { field: "participant_category_id", name: "Kategori Peserta" },
-      { field: "school_name", name: "Nama Sekolah" },
-      { field: "school_address", name: "Alamat Sekolah" },
-      { field: "coach", name: "Nama Pelatih" },
-      { field: "coach_whatsapp", name: "Nomor WhatsApp Pelatih" },
-    ];
-
-    for (const { field, name } of requiredFields) {
-      if (!formData[field] || formData[field].toString().trim() === "") {
-        setError(`${name} wajib diisi`);
-        setSubmitting(false);
-        return;
-      }
-    }
-
-    try {
-      const payload = new FormData();
-
-      // Append semua field ke FormData
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== null && value !== "") {
-          if (key === "image" && value instanceof File) {
-            payload.append(key, value);
-          } else {
-            payload.append(key, value.toString());
-          }
-        }
-      });
-
-      payload.append("_method", "PUT");
-
-      if (user?.id) {
-        payload.append("user_id", user.id.toString());
-      }
-
-      // console.log("🔄 Updating participant via API...");
-      const response = await api.post(`/edit-participant/${id}`, payload, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.data.success) {
-        // console.log(
-        //   "✅ Successfully updated participant via API:",
-        //   response.data,
-        // );
-        setSuccess(true);
-        setParticipantData(response.data.data || response.data);
-
-        setTimeout(() => {
-          navigate("/organizer/participants");
-        }, 1500);
-      } else {
-        throw new Error(response.data.message || "Gagal mengupdate peserta");
-      }
-    } catch (err) {
-      console.error("❌ Error updating participant:", err);
-
-      let errorMessage = "Terjadi kesalahan saat menyimpan data";
-
-      if (err.response) {
-        if (err.response.status === 401) {
-          errorMessage = "Sesi Anda telah berakhir. Silakan login kembali.";
-        } else if (err.response.status === 404) {
-          errorMessage = "Endpoint tidak ditemukan.";
-        } else if (err.response.status === 422) {
-          const validationErrors = err.response.data.errors;
-          const errorMessages = [];
-
-          for (const field in validationErrors) {
-            errorMessages.push(
-              `${field}: ${validationErrors[field].join(", ")}`,
-            );
-          }
-          errorMessage = `Validasi gagal:\n${errorMessages.join("\n")}`;
-        } else if (err.response.data?.message) {
-          errorMessage = err.response.data.message;
-        }
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-
-      setError(errorMessage);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  /* ================= DELETE PARTICIPANT ================= */
-  const handleDeleteParticipant = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus peserta ini?")) {
-      return;
-    }
-
-    try {
-      await api.delete(`/delete-participant/${id}`);
-      // console.log("✅ Participant deleted from API");
-
-      alert("Peserta berhasil dihapus");
-      navigate("/organizer/participants");
-    } catch (error) {
-      console.error("Error deleting participant:", error);
-      alert("Gagal menghapus peserta: " + (error.message || ""));
-    }
-  };
-
-  /* ================= FORMAT DATE ================= */
   const formatEventDate = (dateString) => {
+    if (!dateString) return "";
     try {
-      if (!dateString) return "";
-      const date = new Date(dateString);
-      return date.toLocaleDateString("id-ID", {
+      return new Date(dateString).toLocaleDateString("id-ID", {
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -422,49 +72,148 @@ const EditParticipant = () => {
     }
   };
 
-  /* ================= RENDER LOADING ================= */
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("File harus berupa gambar");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Ukuran gambar maksimal 5MB");
+      return;
+    }
+
+    setFormData((p) => ({ ...p, image: file }));
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setFormData((p) => ({ ...p, image: null }));
+    setImagePreview(originalImage || "");
+  };
+
+  const populateForm = (data) => {
+    setFormData({
+      school_name: data.school_name || "",
+      school_address: data.school_address || "",
+      coach: data.coach || "",
+      coach_whatsapp: data.coach_whatsapp || "",
+      image: null,
+      event_id: data.event_id?.toString() || "",
+      participant_category_id: data.participant_category_id?.toString() || "",
+    });
+  };
+
+  /* ================= LOAD DATA ================= */
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    loadAllData();
+  }, []);
+
+  const loadAllData = async () => {
+    try {
+      await Promise.all([fetchCategories(), fetchEvents(), fetchParticipant()]);
+    } catch {
+      setError("Gagal memuat data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchParticipant = async () => {
+    const res = await api.get(`/participant-lists/${id}`);
+    const data = res.data.data || res.data;
+
+    setParticipantData(data);
+    setFormData({
+      school_name: data.school_name || "",
+      school_address: data.school_address || "",
+      coach: data.coach || "",
+      coach_whatsapp: data.coach_whatsapp || "",
+      image: null,
+      event_id: data.event_id?.toString() || "",
+      participant_category_id: data.participant_category_id?.toString() || "",
+    });
+
+    if (data.image) {
+      const url = `https://apipaskibra.my.id/storage/${data.image}`;
+      setImagePreview(url);
+      setOriginalImage(url);
+    }
+  };
+
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    const res = await api.get("/participant-categories");
+    setCategories(res.data.data || []);
+    setLoadingCategories(false);
+  };
+
+  const fetchEvents = async () => {
+    if (!user?.id) {
+      setEvents([]);
+      return;
+    }
+
+    setLoadingEvents(true);
+    try {
+      const res = await api.get(`/list-event-by-user?user_id=${user.id}`);
+      setEvents(Array.isArray(res.data.data) ? res.data.data : []);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
+
+  /* ================= HANDLER ================= */
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((p) => ({ ...p, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const payload = new FormData();
+      Object.entries(formData).forEach(([k, v]) => {
+        if (v !== null && v !== "") payload.append(k, v);
+      });
+
+      payload.append("_method", "PUT");
+      payload.append("user_id", user.id);
+
+      await api.post(`/edit-participant/${id}`, payload);
+
+      navigate("/organizer/participants");
+    } catch (err) {
+      setError(err.response?.data?.message || "Gagal update peserta");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteParticipant = async () => {
+    if (!confirm("Yakin ingin menghapus peserta ini?")) return;
+
+    try {
+      await api.delete(`/delete-participant/${id}`);
+      navigate("/organizer/participants");
+    } catch (err) {
+      setError(err.response?.data?.message || "Gagal menghapus peserta");
+    }
+  };
+
+  /* ================= RENDER ================= */
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="mb-4"
-        >
-          <Loader className="text-blue-500" size={48} />
-        </motion.div>
-        <p className="text-gray-400">Memuat data peserta...</p>
-      </div>
-    );
-  }
-
-  if (!participantData && !loading) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <button
-            onClick={() => navigate("/organizer/participants")}
-            className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-          >
-            <ArrowLeft size={20} />
-            Kembali ke Daftar Peserta
-          </button>
-        </div>
-        <div className="text-center p-8 bg-gray-800/50 rounded-2xl border border-gray-700">
-          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">
-            Peserta Tidak Ditemukan
-          </h2>
-          <p className="text-gray-400 mb-6">
-            Peserta yang Anda cari tidak ditemukan atau telah dihapus.
-          </p>
-          <button
-            onClick={() => navigate("/organizer/participants")}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
-          >
-            Kembali ke Daftar Peserta
-          </button>
-        </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader className="animate-spin text-blue-500" size={48} />
       </div>
     );
   }
@@ -474,15 +223,13 @@ const EditParticipant = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="max-w-4xl mx-auto"
-    >
+      className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <button
             onClick={() => navigate("/organizer/participants")}
-            className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
-          >
+            className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors">
             <ArrowLeft size={20} />
             Kembali ke Daftar Peserta
           </button>
@@ -511,15 +258,13 @@ const EditParticipant = () => {
           <div className="flex gap-3">
             <button
               onClick={() => navigate(`/organizer/participants/${id}`)}
-              className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium flex items-center gap-2"
-            >
+              className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium flex items-center gap-2">
               <Eye size={16} />
               Lihat Detail
             </button>
             <button
               onClick={handleDeleteParticipant}
-              className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition-colors font-medium flex items-center gap-2"
-            >
+              className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition-colors font-medium flex items-center gap-2">
               <Trash2 size={16} />
               Hapus Peserta
             </button>
@@ -532,8 +277,7 @@ const EditParticipant = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl"
-        >
+          className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
           <div className="flex items-start gap-3">
             <AlertCircle className="text-red-400 mt-0.5" size={20} />
             <div className="flex-1">
@@ -551,8 +295,7 @@ const EditParticipant = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl"
-        >
+          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
           <div className="flex items-start gap-3">
             <CheckCircle className="text-green-400 mt-0.5" size={20} />
             <div className="flex-1">
@@ -585,8 +328,7 @@ const EditParticipant = () => {
                   onChange={handleChange}
                   required
                   disabled={loadingCategories || submitting}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
-                >
+                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none">
                   <option value="">-- Pilih Kategori --</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -635,8 +377,7 @@ const EditParticipant = () => {
                       value={formData.event_id}
                       onChange={handleChange}
                       disabled={submitting}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
-                    >
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none">
                       <option value="">-- Pilih Event (Opsional) --</option>
                       {events.map((event) => (
                         <option key={event.id} value={event.id}>
@@ -801,8 +542,7 @@ const EditParticipant = () => {
                           type="button"
                           onClick={removeImage}
                           disabled={submitting}
-                          className="flex-1 px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
+                          className="flex-1 px-3 py-2 bg-red-500/80 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                           <X size={14} />
                           Hapus
                         </button>
@@ -870,8 +610,7 @@ const EditParticipant = () => {
             type="button"
             onClick={() => navigate("/organizer/participants")}
             disabled={submitting}
-            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
-          >
+            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50">
             Batal
           </button>
 
@@ -886,16 +625,14 @@ const EditParticipant = () => {
                 }
                 setError("");
               }}
-              className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors"
-            >
+              className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors">
               Reset
             </button>
 
             <button
               type="submit"
               disabled={submitting || loadingCategories || loadingEvents}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
               {submitting ? (
                 <>
                   <Loader className="animate-spin" size={18} />

@@ -80,13 +80,6 @@ const OrganizerPage = () => {
     },
   ];
 
-  const stats = [
-    { label: "Total Peserta", value: "24", icon: Users, color: "bg-blue-500" },
-    { label: "Event Aktif", value: "3", icon: Calendar, color: "bg-green-500" },
-    { label: "Pending", value: "8", icon: Bell, color: "bg-yellow-500" },
-    { label: "Selesai", value: "16", icon: Trophy, color: "bg-purple-500" },
-  ];
-
   const handleNavigation = (path) => {
     navigate(path);
   };
@@ -171,26 +164,23 @@ const OrganizerPage = () => {
                   </div>
                   <div className="relative group">
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold shadow-md ${roleColors.bg}`}
-                    >
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold shadow-md ${roleColors.bg}`}>
                       <User size={20} />
                     </div>
                     <div
-                      className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-900 ${roleColors.dot}`}
-                    ></div>
+                      className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-900 ${roleColors.dot}`}></div>
                   </div>
                 </div>
 
                 {/* Logout Button */}
                 <button
                   onClick={handleLogout}
-                  className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 transition-colors group"
-                  title="Logout"
-                >
-                  <LogOut
-                    size={20}
-                    className="text-red-400 group-hover:text-red-300"
-                  />
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20 active:bg-red-500/30 transition-all"
+                  title="Logout">
+                  <LogOut size={18} />
+                  <span className="text-sm font-medium hidden sm:inline">
+                    Logout
+                  </span>
                 </button>
               </div>
             </div>
@@ -214,8 +204,7 @@ const OrganizerPage = () => {
                         activeTab === item.id
                           ? "bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-blue-400 border border-blue-500/30"
                           : "text-gray-400 hover:text-white hover:bg-gray-700/50"
-                      }`}
-                    >
+                      }`}>
                       <item.icon size={20} />
                       <span className="font-medium">{item.label}</span>
                       <ChevronRight
@@ -235,15 +224,13 @@ const OrganizerPage = () => {
                 <div className="space-y-3">
                   <button
                     onClick={() => navigate("/organizer/participants/create")}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
-                  >
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium">
                     <PlusCircle size={20} />
                     <span>Tambah Peserta Baru</span>
                   </button>
                   <button
                     onClick={() => navigate("/organizer/events/create")}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
-                  >
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
                     <Calendar size={20} />
                     <span>Buat Event Baru</span>
                   </button>
@@ -257,8 +244,7 @@ const OrganizerPage = () => {
               key={activeTab}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
+              transition={{ duration: 0.3 }}>
               <Outlet />
             </motion.div>
           </div>

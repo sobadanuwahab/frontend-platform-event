@@ -8,8 +8,13 @@ import RegisterPage from "./pages/auth/RegisterPage";
 import Home from "./pages/Home";
 import VotingPage from "./pages/VotingPage";
 import TicketPage from "./pages/TicketPage";
-import JudgingPage from "./pages/JudgingPage";
+import JudgingPage from "./pages/judge/JudgingPage";
 import ResultsPage from "./pages/ResultsPage";
+
+// Import Judging Components (untuk outlet JudgingPage)
+import ScoreForm from "./pages/judge/form/ScoreForm";
+import RankingPage from "./pages/judge/RankingPage";
+import CriteriaPage from "./pages/judge/CriteriaPage";
 
 // Import Admin Pages & Components
 import DashboardPage from "./pages/admin/DashboardPage";
@@ -43,18 +48,25 @@ function App() {
           <Route path="/auth/login" element={<LoginPage />} />
           <Route path="/auth/register" element={<RegisterPage />} />
 
-          {/* MAIN ROUTES dengan Layout */}
+          {/* PUBLIC ROUTES (Tanpa auth) - hanya untuk guest */}
           <Route path="/" element={<Layout />}>
-            {/* Home biasa - Layout akan handle auto-redirect */}
             <Route index element={<Home />} />
             <Route path="home" element={<Home />} />
             <Route path="results" element={<ResultsPage />} />
+          </Route>
 
-            {/* PROTECTED ROUTES */}
+          {/* USER ROUTES dengan Layout Global - HANYA untuk role "user" */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <Layout />
+              </ProtectedRoute>
+            }>
             <Route
               path="ticket"
               element={
-                <ProtectedRoute allowedRoles={["user", "admin"]}>
+                <ProtectedRoute allowedRoles={["user"]}>
                   <TicketPage />
                 </ProtectedRoute>
               }
@@ -62,64 +74,34 @@ function App() {
             <Route
               path="voting"
               element={
-                <ProtectedRoute allowedRoles={["user", "admin"]}>
+                <ProtectedRoute allowedRoles={["user"]}>
                   <VotingPage />
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="judging"
-              element={
-                <ProtectedRoute allowedRoles={["juri", "admin"]}>
-                  <JudgingPage />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* 404 */}
-            <Route
-              path="*"
-              element={
-                <div className="min-h-screen flex items-center justify-center p-4">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold text-gray-800 mb-4">
-                      404
-                    </h1>
-                    <p className="text-gray-600 mb-8">
-                      Halaman tidak ditemukan
-                    </p>
-                    <a
-                      href="/"
-                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      Kembali ke Beranda
-                    </a>
-                  </div>
-                </div>
-              }
-            />
           </Route>
 
-          {/* ADMIN ROUTES dengan Layout Khusus */}
-          {/* OPTION 1: Gunakan route /admin/dashboard untuk kompatibilitas */}
+          {/* JUDGING ROUTES dengan Layout Khusus (Dashboard Sendiri) - untuk "juri" dan "admin" */}
           <Route
-            path="/admin/dashboard"
+            path="/judging"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
-                <DashboardPage />
+              <ProtectedRoute allowedRoles={["juri", "admin"]}>
+                <JudgingPage />
               </ProtectedRoute>
-            }
-          />
+            }>
+            <Route index element={<ScoreForm />} />
+            <Route path="ranking" element={<RankingPage />} />
+            <Route path="criteria" element={<CriteriaPage />} />
+          </Route>
 
-          {/* OPTION 2: Route /admin dengan nested routes */}
+          {/* ADMIN ROUTES dengan Layout Khusus - HANYA untuk "admin" */}
           <Route
             path="/admin"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
                 <DashboardPage />
               </ProtectedRoute>
-            }
-          >
+            }>
             <Route index element={<OverviewTab />} />
             <Route path="events" element={<EventsTab />} />
             <Route path="users" element={<UserManagementTab />} />
@@ -129,15 +111,26 @@ function App() {
             <Route path="settings" element={<SettingsTab />} />
           </Route>
 
-          {/* ORGANIZER ROUTES dengan Layout Khusus */}
+          {/* Tambahkan route /admin/dashboard untuk kompatibilitas */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <DashboardPage>
+                  <OverviewTab />
+                </DashboardPage>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ORGANIZER ROUTES dengan Layout Khusus - HANYA untuk "organizer" */}
           <Route
             path="/organizer"
             element={
               <ProtectedRoute allowedRoles={["organizer"]}>
                 <OrganizerPage />
               </ProtectedRoute>
-            }
-          >
+            }>
             <Route index element={<Dashboard />} />
             <Route path="participants" element={<ParticipantsList />} />
             <Route path="participants/create" element={<CreateParticipant />} />
@@ -146,6 +139,24 @@ function App() {
             <Route path="events/create" element={<CreateEvent />} />
             <Route path="events/edit/:id" element={<EditEvent />} />
           </Route>
+
+          {/* Global 404 untuk routes yang tidak ditangkap */}
+          <Route
+            path="*"
+            element={
+              <div className="min-h-screen flex items-center justify-center p-4 bg-gray-900">
+                <div className="text-center">
+                  <h1 className="text-4xl font-bold text-white mb-4">404</h1>
+                  <p className="text-gray-300 mb-8">Halaman tidak ditemukan</p>
+                  <a
+                    href="/"
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Kembali ke Beranda
+                  </a>
+                </div>
+              </div>
+            }
+          />
         </Routes>
       </Router>
     </AuthProvider>

@@ -12,7 +12,6 @@ import {
   User,
   Phone,
   Award,
-  ArrowLeft,
   Loader,
   Image as ImageIcon,
   CalendarDays,
@@ -27,7 +26,7 @@ const CreateParticipant = () => {
 
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [loadingEvents, setLoadingEvents] = useState(true);
 
   const [categories, setCategories] = useState([]);
   const [events, setEvents] = useState([]);
@@ -48,149 +47,55 @@ const CreateParticipant = () => {
 
   const [imagePreview, setImagePreview] = useState("");
 
-  /* ================= FETCH CATEGORIES FROM API ================= */
-  const fetchCategories = async () => {
-    setLoadingCategories(true);
+  const formatEventDate = (dateString) => {
+    if (!dateString) return "";
     try {
-      const response = await api.get("/participant-categories");
-
-      let categoriesData = [];
-      if (response.data.success && response.data.data) {
-        if (Array.isArray(response.data.data)) {
-          categoriesData = response.data.data;
-        }
-      } else if (Array.isArray(response.data)) {
-        categoriesData = response.data;
-      }
-
-      if (categoriesData.length > 0) {
-        setCategories(categoriesData);
-      } else {
-        setCategories([
-          { id: 1, name: "SMP" },
-          { id: 2, name: "SMA" },
-          { id: 3, name: "SMK" },
-          { id: 4, name: "Universitas" },
-        ]);
-      }
-    } catch (err) {
-      console.error("Error fetching categories:", err);
-      setCategories([
-        { id: 1, name: "SMP" },
-        { id: 2, name: "SMA" },
-        { id: 3, name: "SMK" },
-        { id: 4, name: "Universitas" },
-      ]);
-    } finally {
-      setLoadingCategories(false);
+      return new Date(dateString).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return "";
     }
   };
 
-  /* ================= FETCH EVENTS FROM API ================= */
+  /* ================= FETCH ================= */
+  useEffect(() => {
+    if (!user?.id) return setLoading(false);
+
+    const loadData = async () => {
+      try {
+        await Promise.all([fetchCategories(), fetchEvents()]);
+      } catch {
+        setError("Gagal memuat data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user?.id]);
+
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    const res = await api.get("/participant-categories");
+    setCategories(res.data.data || []);
+    setLoadingCategories(false);
+  };
+
   const fetchEvents = async () => {
     setLoadingEvents(true);
     try {
-      if (!user?.id) {
+      const res = await api.get(`/list-event-by-user?user_id=${user.id}`);
+
+      if (!res.data?.success || !Array.isArray(res.data.data)) {
         setEvents([]);
         return;
       }
 
-      let allEvents = [];
-
-      // 1. Ambil dari API
-      try {
-        const response = await api.get(
-          `/list-event-by-user?user_id=${user.id}`,
-        );
-
-        if (response.data.success && response.data.data) {
-          let apiEvents = [];
-
-          if (Array.isArray(response.data.data)) {
-            apiEvents = response.data.data;
-          } else if (response.data.data.id) {
-            apiEvents = [response.data.data];
-          }
-
-          // Format events dari API
-          const formattedApiEvents = apiEvents.map((event) => {
-            let displayName = "";
-
-            if (event.name) {
-              displayName = event.name;
-            } else if (event.event_name) {
-              displayName = event.event_name;
-            } else if (event.organized_by && event.location) {
-              displayName = `${event.organized_by} - ${event.location}`;
-            } else {
-              displayName = `Event ID: ${event.id}`;
-            }
-
-            return {
-              id: event.id || event.event_id,
-              name: displayName,
-              organized_by: event.organized_by || "Unknown",
-              location: event.location || "Unknown",
-              start_date:
-                event.start_date || event.start_time || event.date_start,
-              end_date: event.end_date || event.end_time || event.date_end,
-              from_api: true,
-            };
-          });
-
-          allEvents = [...allEvents, ...formattedApiEvents];
-          // console.log(`✅ Loaded ${formattedApiEvents.length} events from API`);
-        }
-      } catch (apiError) {
-        console.error("Error fetching events from API:", apiError);
-      }
-
-      // 2. Ambil dari localStorage (untuk event yang baru dibuat)
-      try {
-        const storedEvents = localStorage.getItem("user_created_events");
-        if (storedEvents) {
-          const localStorageEvents = JSON.parse(storedEvents);
-
-          // Filter hanya events milik user ini
-          const userLocalEvents = localStorageEvents.filter(
-            (event) => event.user_id == user.id,
-          );
-
-          const formattedLocalEvents = userLocalEvents.map((event) => ({
-            id: event.id,
-            name: event.name || `Event ID: ${event.id}`,
-            organized_by: event.organized_by || user?.name || "User",
-            location: event.location || "Unknown",
-            start_date: event.start_date,
-            end_date: event.end_date,
-            from_localStorage: true,
-          }));
-
-          allEvents = [...allEvents, ...formattedLocalEvents];
-          // console.log(
-          //   `✅ Loaded ${formattedLocalEvents.length} events from localStorage`,
-          // );
-        }
-      } catch (localStorageError) {
-        console.error(
-          "Error reading events from localStorage:",
-          localStorageError,
-        );
-      }
-
-      // 3. Hapus duplikat berdasarkan ID
-      const uniqueEvents = [];
-      const seenIds = new Set();
-
-      allEvents.forEach((event) => {
-        if (!seenIds.has(event.id)) {
-          seenIds.add(event.id);
-          uniqueEvents.push(event);
-        }
-      });
-
-      // console.log(`📊 Total unique events: ${uniqueEvents.length}`);
-      setEvents(uniqueEvents);
+      // 🔥 SIMPAN DATA MENTAH DARI BACKEND
+      setEvents(res.data.data);
     } catch (err) {
       console.error("Error fetching events:", err);
       setEvents([]);
@@ -199,46 +104,10 @@ const CreateParticipant = () => {
     }
   };
 
-  /* ================= FORMAT DATE ================= */
-  const formatEventDate = (dateString) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-    } catch {
-      return "Tanggal belum ditentukan";
-    }
-  };
-
-  /* ================= INITIAL FETCH ================= */
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        await Promise.all([fetchCategories(), fetchEvents()]);
-      } catch (err) {
-        console.error("Error loading data:", err);
-        setError("Gagal memuat beberapa data. Silakan coba refresh halaman.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user?.id) {
-      loadData();
-    } else {
-      setLoading(false);
-    }
-  }, [user?.id]);
-
-  /* ================= FORM HANDLERS ================= */
+  /* ================= HANDLER ================= */
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((p) => ({ ...p, [name]: value }));
     setError("");
   };
 
@@ -246,66 +115,48 @@ const CreateParticipant = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validasi ukuran file (max 5MB)
+    if (!file.type.startsWith("image/")) {
+      setError("File harus berupa gambar");
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       setError("Ukuran gambar maksimal 5MB");
       return;
     }
 
-    // Validasi tipe file
-    if (!file.type.startsWith("image/")) {
-      setError("File harus berupa gambar (JPG, PNG, JPEG)");
-      return;
-    }
-
-    setFormData((prev) => ({ ...prev, image: file }));
+    setFormData((p) => ({ ...p, image: file }));
     setImagePreview(URL.createObjectURL(file));
-    setError("");
   };
 
   const removeImage = () => {
-    setFormData((prev) => ({ ...prev, image: null }));
+    setFormData((p) => ({ ...p, image: null }));
     setImagePreview("");
   };
 
-  const formatWhatsAppNumber = (value) => {
-    const numbers = value.replace(/\D/g, "");
-
-    if (numbers.startsWith("0")) {
-      return numbers;
-    } else if (numbers.startsWith("62")) {
-      return "0" + numbers.slice(2);
-    } else if (numbers.startsWith("+62")) {
-      return "0" + numbers.slice(3);
-    }
-
-    return numbers;
-  };
-
   const handleWhatsAppChange = (e) => {
-    const value = e.target.value;
-    const formatted = formatWhatsAppNumber(value);
-    setFormData((prev) => ({ ...prev, coach_whatsapp: formatted }));
+    const value = e.target.value.replace(/\D/g, "");
+    setFormData((p) => ({ ...p, coach_whatsapp: value }));
   };
 
-  /* ================= HANDLE SUBMIT ================= */
+  /* ================= SUBMIT ================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setError("");
 
-    // Validasi required fields
-    const requiredFields = [
-      { field: "participant_category_id", name: "Kategori Peserta" },
-      { field: "school_name", name: "Nama Sekolah" },
-      { field: "school_address", name: "Alamat Sekolah" },
-      { field: "coach", name: "Nama Pelatih" },
-      { field: "coach_whatsapp", name: "Nomor WhatsApp Pelatih" },
+    const required = [
+      "participant_category_id",
+      "event_id",
+      "school_name",
+      "school_address",
+      "coach",
+      "coach_whatsapp",
     ];
 
-    for (const { field, name } of requiredFields) {
-      if (!formData[field] || formData[field].toString().trim() === "") {
-        setError(`${name} wajib diisi`);
+    for (const field of required) {
+      if (!formData[field]) {
+        setError("Semua field wajib diisi");
         setSubmitting(false);
         return;
       }
@@ -313,99 +164,25 @@ const CreateParticipant = () => {
 
     try {
       const payload = new FormData();
+      Object.entries(formData).forEach(([k, v]) => v && payload.append(k, v));
+      payload.append("user_id", user.id);
 
-      // Append semua field ke FormData
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== null && value !== "") {
-          if (key === "image" && value instanceof File) {
-            payload.append(key, value);
-          } else {
-            payload.append(key, value.toString());
-          }
-        }
-      });
+      await api.post("/create-participant", payload);
+      setSuccess(true);
 
-      // Tambahkan user_id jika ada
-      if (user?.id) {
-        payload.append("user_id", user.id.toString());
-      }
-
-      const response = await api.post("/create-participant", payload, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.data.success) {
-        // console.log("🎉 Participant created via API!");
-        setSuccess(true);
-
-        // Reset form setelah berhasil
-        setTimeout(() => {
-          setFormData({
-            school_name: "",
-            school_address: "",
-            coach: "",
-            coach_whatsapp: "",
-            image: null,
-            event_id: "",
-            participant_category_id: "",
-          });
-          setImagePreview("");
-        }, 1500);
-
-        // Redirect setelah 2 detik
-        setTimeout(() => {
-          navigate("/organizer/participants");
-        }, 2000);
-      } else {
-        throw new Error(response.data.message || "Gagal menambahkan peserta");
-      }
+      setTimeout(() => navigate("/organizer/participants"), 1500);
     } catch (err) {
-      console.error("❌ Error submitting participant:", err);
-
-      let errorMessage = "Terjadi kesalahan saat menyimpan data";
-
-      if (err.response) {
-        if (err.response.status === 401) {
-          errorMessage = "Sesi Anda telah berakhir. Silakan login kembali.";
-        } else if (err.response.status === 422) {
-          // Validation errors from Laravel
-          const validationErrors = err.response.data.errors;
-          const errorMessages = [];
-
-          for (const field in validationErrors) {
-            errorMessages.push(
-              `${field}: ${validationErrors[field].join(", ")}`,
-            );
-          }
-
-          errorMessage = `Validasi gagal:\n${errorMessages.join("\n")}`;
-        } else if (err.response.data?.message) {
-          errorMessage = err.response.data.message;
-        }
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-
-      setError(errorMessage);
+      setError(err.response?.data?.message || "Gagal menyimpan data peserta");
     } finally {
       setSubmitting(false);
     }
   };
 
-  /* ================= RENDER LOADING ================= */
+  /* ================= RENDER ================= */
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="mb-4"
-        >
-          <Loader className="text-blue-500" size={48} />
-        </motion.div>
-        <p className="text-gray-400">Memuat data...</p>
+      <div className="min-h-[60vh] flex justify-center items-center">
+        <Loader className="animate-spin text-blue-500" size={48} />
       </div>
     );
   }
@@ -415,8 +192,7 @@ const CreateParticipant = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="max-w-4xl mx-auto"
-    >
+      className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
@@ -427,24 +203,6 @@ const CreateParticipant = () => {
         <p className="text-gray-400">
           Isi semua informasi peserta di bawah ini
         </p>
-
-        {/* User Info */}
-        {/* {user && (
-          <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <p className="text-sm text-blue-400">
-              <span className="font-medium">User Login:</span> {user.name}
-              <span className="mx-2">•</span>
-              <span className="font-medium">ID:</span> {user.id}
-            </p>
-            <p className="text-xs text-blue-300 mt-1">
-              {loadingEvents
-                ? "Memuat event..."
-                : events.length > 0
-                  ? `Menampilkan ${events.length} event yang tersedia`
-                  : "Belum ada event. Silakan buat event terlebih dahulu."}
-            </p>
-          </div>
-        )} */}
       </div>
 
       {/* Error Alert */}
@@ -452,8 +210,7 @@ const CreateParticipant = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl"
-        >
+          className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
           <div className="flex items-start gap-3">
             <AlertCircle className="text-red-400 mt-0.5" size={20} />
             <div className="flex-1">
@@ -471,8 +228,7 @@ const CreateParticipant = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl"
-        >
+          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
           <div className="flex items-start gap-3">
             <CheckCircle className="text-green-400 mt-0.5" size={20} />
             <div className="flex-1">
@@ -505,8 +261,7 @@ const CreateParticipant = () => {
                   onChange={handleChange}
                   required
                   disabled={loadingCategories || submitting}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
-                >
+                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none">
                   <option value="">-- Pilih Kategori --</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -527,8 +282,7 @@ const CreateParticipant = () => {
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 <div className="flex items-center gap-2">
                   <CalendarDays size={16} />
-                  Pilih Event
-                  <span className="text-xs text-gray-500">(Opsional)</span>
+                  Pilih Event *
                 </div>
               </label>
 
@@ -547,8 +301,7 @@ const CreateParticipant = () => {
                   <button
                     type="button"
                     onClick={() => navigate("/organizer/events/create")}
-                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-                  >
+                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2">
                     <PlusCircle size={18} />
                     Buat Event Baru
                   </button>
@@ -559,17 +312,26 @@ const CreateParticipant = () => {
                     name="event_id"
                     value={formData.event_id}
                     onChange={handleChange}
+                    required
                     disabled={submitting}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
-                  >
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none">
                     <option value="">-- Pilih Event --</option>
-                    {events.map((event) => (
-                      <option key={event.id} value={event.id}>
-                        {event.name}
-                        {event.start_date &&
-                          ` (${formatEventDate(event.start_date)})`}
-                      </option>
-                    ))}
+                    {events.map((event) => {
+                      const eventLabel =
+                        event.name ??
+                        event.event_name ??
+                        event.title ??
+                        event.organized_by ??
+                        `Event #${event.id}`;
+
+                      return (
+                        <option key={event.id} value={event.id}>
+                          {eventLabel}
+                          {event.start_date &&
+                            ` (${formatEventDate(event.start_date)})`}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               )}
@@ -684,8 +446,7 @@ const CreateParticipant = () => {
                     type="button"
                     onClick={removeImage}
                     disabled={submitting}
-                    className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full transition-colors disabled:opacity-50"
-                  >
+                    className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full transition-colors disabled:opacity-50">
                     <X size={16} />
                   </button>
                 </div>
@@ -725,15 +486,13 @@ const CreateParticipant = () => {
             type="button"
             onClick={() => navigate("/organizer/participants")}
             disabled={submitting}
-            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
-          >
+            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50">
             Batal
           </button>
           <button
             type="submit"
             disabled={submitting || loadingCategories || loadingEvents}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             {submitting ? (
               <>
                 <Loader className="animate-spin" size={18} />

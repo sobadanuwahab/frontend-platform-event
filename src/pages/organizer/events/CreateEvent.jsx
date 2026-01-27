@@ -4,20 +4,11 @@ import { motion } from "framer-motion";
 import {
   Save,
   X,
-  Upload,
   AlertCircle,
   CheckCircle,
-  Calendar,
-  Building,
-  MapPin,
   Info,
-  FileText,
-  ArrowLeft,
   Loader,
   Image as ImageIcon,
-  User,
-  Database,
-  Bug,
 } from "lucide-react";
 import api from "../../../services/api";
 import { useAuth } from "../../../context/AuthContext";
@@ -121,378 +112,69 @@ const CreateEvent = () => {
 
     setSubmitting(true);
     setError("");
-    setDebugInfo([]);
-    addDebugLog("=== START EVENT CREATION ===");
+    setSuccess(false);
 
     try {
-      // Validation
-      const errors = [];
-      addDebugLog("Validating form data...");
+      // ================= VALIDATION =================
+      if (!formData.name.trim()) throw new Error("Nama event wajib diisi");
+      if (!formData.organized_by.trim())
+        throw new Error("Penyelenggara wajib diisi");
+      if (!formData.location.trim()) throw new Error("Lokasi wajib diisi");
+      if (!formData.start_date || !formData.end_date)
+        throw new Error("Tanggal event wajib diisi");
 
-      if (!formData.name.trim()) {
-        errors.push("Nama event wajib diisi");
-      }
-      if (!formData.organized_by.trim()) {
-        errors.push("Penyelenggara wajib diisi");
-      }
-      if (!formData.location.trim()) {
-        errors.push("Lokasi wajib diisi");
-      }
-      if (!formData.start_date) {
-        errors.push("Tanggal mulai wajib diisi");
-      }
-      if (!formData.end_date) {
-        errors.push("Tanggal selesai wajib diisi");
+      if (new Date(formData.end_date) < new Date(formData.start_date)) {
+        throw new Error("Tanggal selesai tidak boleh sebelum tanggal mulai");
       }
 
-      if (formData.start_date && formData.end_date) {
-        const startDate = new Date(formData.start_date);
-        const endDate = new Date(formData.end_date);
-
-        if (endDate < startDate) {
-          errors.push("Tanggal selesai tidak boleh sebelum tanggal mulai");
-        }
-      }
-
-      if (errors.length > 0) {
-        addDebugLog(`Validation failed: ${errors.join(", ")}`);
-        throw new Error(errors.join(", "));
-      }
-
-      // ========== PREPARE FORM DATA ==========
-      addDebugLog("Preparing form data...");
+      // ================= FORM DATA =================
       const submitData = new FormData();
-
-      // Berdasarkan log, API mungkin mengharapkan field dengan nama berbeda
-      // Coba format yang berbeda-beda
-
-      // Format 1: Field sesuai dengan database
       submitData.append("name", formData.name.trim());
       submitData.append("organized_by", formData.organized_by.trim());
       submitData.append("location", formData.location.trim());
-
-      // Format 2: Field dengan nama alternatif
-      submitData.append("event_name", formData.name.trim()); // Alternatif
-      submitData.append("organizer", formData.organized_by.trim()); // Alternatif
-      submitData.append("event_location", formData.location.trim()); // Alternatif
-
-      // Field opsional
-      submitData.append("event_info", formData.event_info.trim() || "");
-      submitData.append("description", formData.event_info.trim() || ""); // Alternatif
-
-      submitData.append("term_condition", formData.term_condition.trim() || "");
-      submitData.append("terms", formData.term_condition.trim() || ""); // Alternatif
-
-      // Tanggal
+      submitData.append("event_info", formData.event_info || "");
+      submitData.append("term_condition", formData.term_condition || "");
       submitData.append("start_date", formData.start_date);
       submitData.append("end_date", formData.end_date);
-      submitData.append("start_time", formData.start_date); // Alternatif
-      submitData.append("end_time", formData.end_date); // Alternatif
+      submitData.append("user_id", user.id);
 
-      // User ID - sangat penting
-      submitData.append("user_id", user.id.toString());
-      submitData.append("created_by", user.id.toString()); // Alternatif
-      submitData.append("organizer_id", user.id.toString()); // Alternatif
-
-      addDebugLog(
-        `Form data prepared: name="${formData.name}", user_id=${user.id}`,
-      );
-
-      // ========== HANDLE IMAGE UPLOAD ==========
       if (formData.image) {
-        addDebugLog(`Adding image: ${formData.image.name}`);
         submitData.append("image", formData.image);
-        submitData.append("image_url", formData.image); // Alternatif
-        submitData.append("banner_image", formData.image); // Alternatif
-      } else {
-        addDebugLog("No image selected");
       }
 
-      // ========== DEBUG: Log form data content ==========
-      // console.log("📋 FormData contents:");
-      addDebugLog("FormData contents:");
-      for (let pair of submitData.entries()) {
-        const value =
-          typeof pair[1] === "object" ? pair[1].name || "File" : pair[1];
-        // console.log(`${pair[0]}: ${value}`);
-        addDebugLog(`Field: ${pair[0]} = ${value}`);
-      }
-
-      // ========== SEND TO API ==========
-      // Coba endpoint alternatif jika diperlukan
-      const endpointsToTry = [
-        "/create-event",
-        "/store-event",
-        "/events/store",
-        "/event/create",
-      ];
-
-      let response = null;
-      let lastError = null;
-
-      for (const endpoint of endpointsToTry) {
-        try {
-          addDebugLog(`Trying endpoint: ${endpoint}`);
-          // console.log(`🚀 Sending POST to: ${endpoint}`);
-
-          response = await api.post(endpoint, submitData, {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-            timeout: 30000,
-          });
-
-          addDebugLog(`✅ Success! Response Status: ${response.status}`);
-          break; // Keluar dari loop jika sukses
-        } catch (err) {
-          lastError = err;
-          addDebugLog(
-            `❌ Endpoint ${endpoint} failed: ${err.response?.status || err.message}`,
-          );
-
-          if (err.response?.status === 422) {
-            // Log validation errors
-            if (err.response.data?.errors) {
-              const validationErrors = err.response.data.errors;
-              for (const field in validationErrors) {
-                addDebugLog(
-                  `Validation error for ${field}: ${validationErrors[field].join(", ")}`,
-                );
-              }
-            }
-          }
-
-          // Lanjut ke endpoint berikutnya
-          continue;
-        }
-      }
-
-      if (!response) {
-        throw lastError || new Error("All endpoints failed");
-      }
-
-      // console.log("✅ API Response:", response.data);
-      addDebugLog(`API Response: ${JSON.stringify(response.data)}`);
-
-      // Cek berbagai format response yang mungkin
-      if (
-        response.data.success ||
-        response.data.message?.includes("success") ||
-        response.data.id
-      ) {
-        const eventId =
-          response.data.data?.id || response.data.id || response.data.event_id;
-        addDebugLog(`✅ Event created successfully! Event ID: ${eventId}`);
-        // console.log("🎉 Event created successfully! Event ID:", eventId);
-
-        // ========== SIMPAN KE LOCALSTORAGE ==========
-        try {
-          const newEvent = {
-            id: eventId || `event-${Date.now()}`,
-            name: formData.name,
-            organized_by: formData.organized_by,
-            location: formData.location,
-            event_info: formData.event_info,
-            term_condition: formData.term_condition,
-            start_date: formData.start_date,
-            end_date: formData.end_date,
-            user_id: user.id,
-            created_at: new Date().toISOString(),
-            _source: "api",
-          };
-
-          const storedEvents = localStorage.getItem("user_created_events");
-          const eventsArray = storedEvents ? JSON.parse(storedEvents) : [];
-          eventsArray.push(newEvent);
-          localStorage.setItem(
-            "user_created_events",
-            JSON.stringify(eventsArray),
-          );
-
-          addDebugLog("✅ Event saved to localStorage as backup");
-        } catch (storageError) {
-          addDebugLog(
-            `⚠️ Failed to save to localStorage: ${storageError.message}`,
-          );
-        }
-
-        setSuccess(true);
-
-        // Reset form dan redirect
-        setTimeout(() => {
-          setFormData({
-            name: "",
-            organized_by: "",
-            location: "",
-            event_info: "",
-            term_condition: "",
-            start_date: today,
-            end_date: tomorrow,
-            image: null,
-            user_id: user.id,
-          });
-          setImagePreview("");
-          addDebugLog("✅ Form reset completed");
-
-          // Redirect setelah 2 detik
-          setTimeout(() => {
-            addDebugLog("Redirecting to /organizer/events");
-            navigate("/organizer/events");
-          }, 2000);
-        }, 1500);
-      } else {
-        const errorMsg = response.data.message || "Gagal membuat event";
-        addDebugLog(`❌ API returned error: ${errorMsg}`);
-        throw new Error(errorMsg);
-      }
-    } catch (error) {
-      console.error("❌ Error creating event:", error);
-      addDebugLog(`❌ Error caught: ${error.message}`);
-
-      let errorMessage = "Terjadi kesalahan saat membuat event";
-
-      if (error.response?.status === 401) {
-        errorMessage = "Sesi Anda telah berakhir. Silakan login kembali.";
-        addDebugLog("❌ Authentication failed, redirecting to login");
-        setTimeout(() => {
-          navigate("/auth/login");
-        }, 2000);
-      } else if (error.response?.status === 413) {
-        errorMessage = "File gambar terlalu besar. Maksimal 5MB.";
-        addDebugLog("❌ File too large");
-      } else if (error.response?.status === 422) {
-        // Validation errors from Laravel
-        addDebugLog("❌ Validation errors (422)");
-        const validationErrors = error.response.data.errors;
-
-        if (validationErrors) {
-          const errorMessages = [];
-          for (const field in validationErrors) {
-            errorMessages.push(
-              `${field}: ${validationErrors[field].join(", ")}`,
-            );
-            addDebugLog(
-              `Validation: ${field} = ${validationErrors[field].join(", ")}`,
-            );
-          }
-          errorMessage = `Validasi gagal: ${errorMessages.join("; ")}`;
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        }
-      } else if (error.response?.status === 405) {
-        errorMessage = "Method tidak diizinkan. Coba gunakan endpoint lain.";
-        addDebugLog("❌ Method not allowed (405)");
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-        addDebugLog(`Server message: ${errorMessage}`);
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      setError(errorMessage);
-    } finally {
-      setSubmitting(false);
-      addDebugLog("=== END EVENT CREATION ===");
-    }
-  };
-
-  /* ================= TEST API ENDPOINT (SEDERHANA) ================= */
-  const testApiEndpoint = async () => {
-    if (!user) {
-      alert("Please login first");
-      return;
-    }
-
-    try {
-      addDebugLog("Testing API with minimal data...");
-
-      // Data minimal untuk testing
-      const testData = new FormData();
-      testData.append("name", `Test Event ${Date.now()}`);
-      testData.append("organized_by", "Test Organizer");
-      testData.append("location", "Test Location");
-      testData.append("start_date", today);
-      testData.append("end_date", tomorrow);
-      testData.append("user_id", user.id.toString());
-
-      // console.log("Testing with data:");
-      for (let pair of testData.entries()) {
-        // console.log(`${pair[0]}: ${pair[1]}`);
-      }
-
-      const response = await api.post("/create-event", testData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // ================= API CALL =================
+      const response = await api.post("/create-event", submitData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
 
-      addDebugLog(`Test response: ${JSON.stringify(response.data)}`);
-      alert(
-        `✅ Test successful!\n\nResponse: ${JSON.stringify(response.data, null, 2)}`,
-      );
-    } catch (testError) {
-      addDebugLog(
-        `Test failed: ${testError.response?.status || testError.message}`,
-      );
-
-      let errorMsg = "Test failed";
-      if (testError.response?.data?.errors) {
-        const errors = testError.response.data.errors;
-        errorMsg = `Validation errors:\n${Object.keys(errors)
-          .map((key) => `• ${key}: ${errors[key].join(", ")}`)
-          .join("\n")}`;
-      } else if (testError.response?.data?.message) {
-        errorMsg = testError.response.data.message;
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || "Gagal membuat event");
       }
 
-      alert(`❌ Test failed:\n\n${errorMsg}`);
-    }
-  };
+      setSuccess(true);
 
-  /* ================= CHECK ENDPOINTS ================= */
-  const checkEndpoints = async () => {
-    const endpoints = [
-      { method: "GET", url: "/list-event-by-user" },
-      { method: "POST", url: "/create-event" },
-      { method: "GET", url: "/events" },
-      { method: "GET", url: "/api/events" },
-    ];
+      // Redirect setelah sukses
+      setTimeout(() => {
+        navigate("/organizer/events");
+      }, 1500);
+    } catch (err) {
+      console.error(err);
 
-    const results = [];
-
-    for (const endpoint of endpoints) {
-      try {
-        let response;
-        if (endpoint.method === "GET") {
-          response = await api.get(endpoint.url);
-        } else if (endpoint.method === "POST") {
-          // Untuk POST, coba dengan data minimal
-          const testData = new FormData();
-          testData.append("test", "1");
-          response = await api.post(endpoint.url, testData);
-        }
-
-        results.push({
-          endpoint: `${endpoint.method} ${endpoint.url}`,
-          status: response.status,
-          success: response.status >= 200 && response.status < 300,
-        });
-      } catch (err) {
-        results.push({
-          endpoint: `${endpoint.method} ${endpoint.url}`,
-          status: err.response?.status || "ERROR",
-          success: false,
-          error: err.message,
-        });
+      if (err.response?.status === 422) {
+        const errors = err.response.data.errors;
+        const messages = Object.values(errors).flat().join(", ");
+        setError(`Validasi gagal: ${messages}`);
+      } else if (err.response?.status === 401) {
+        setError("Sesi berakhir, silakan login ulang");
+        navigate("/auth/login");
+      } else {
+        setError(err.message || "Terjadi kesalahan");
       }
+    } finally {
+      setSubmitting(false);
     }
-
-    const message = results
-      .map(
-        (r) =>
-          `${r.success ? "✅" : "❌"} ${r.endpoint} - ${r.status}${r.error ? ` (${r.error})` : ""}`,
-      )
-      .join("\n");
-
-    alert(`Endpoint Check Results:\n\n${message}`);
   };
 
   /* ================= HANDLE INPUT CHANGE ================= */
@@ -529,77 +211,20 @@ const CreateEvent = () => {
     addDebugLog("Image removed");
   };
 
-  /* ================= VIEW DEBUG INFO ================= */
-  const viewDebugInfo = () => {
-    if (debugInfo.length > 0) {
-      const infoText = debugInfo.join("\n");
-      alert(`Debug Information:\n\n${infoText}`);
-    } else {
-      alert("No debug information available. Try submitting the form first.");
-    }
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto"
-    >
+      className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        {/* <button
-          onClick={() => navigate("/organizer/events")}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6"
-        >
-          <ArrowLeft size={20} />
-          <span>Kembali ke Daftar Event</span>
-        </button> */}
-
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">Buat Event Baru</h1>
             <p className="text-gray-400">
               Buat event Paskibra Championship baru untuk diikuti peserta
             </p>
-            {/* {user && (
-              <div className="mt-2 text-sm text-gray-500">
-                <div className="flex items-center gap-2">
-                  <span>
-                    Dibuat oleh:{" "}
-                    <span className="text-blue-400">{user.name}</span>
-                  </span>
-                  <span className="text-gray-600">•</span>
-                  <span>
-                    ID: <span className="text-blue-400">{user.id}</span>
-                  </span>
-                </div>
-              </div>
-            )} */}
           </div>
-
-          {/* <div className="flex gap-2">
-            <button
-              onClick={viewDebugInfo}
-              className="px-4 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 transition-colors flex items-center gap-2 text-sm"
-            >
-              <Bug size={16} />
-              Debug Info
-            </button>
-            <button
-              onClick={checkEndpoints}
-              className="px-4 py-2 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 text-yellow-400 transition-colors flex items-center gap-2 text-sm"
-            >
-              <Database size={16} />
-              Check Endpoints
-            </button>
-            <button
-              onClick={testApiEndpoint}
-              className="px-4 py-2 rounded-xl bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-400 transition-colors flex items-center gap-2 text-sm"
-            >
-              <Database size={16} />
-              Test API
-            </button>
-          </div> */}
         </div>
       </div>
 
@@ -615,8 +240,7 @@ const CreateEvent = () => {
           </p>
           <button
             onClick={() => navigate("/auth/login")}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
-          >
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
             Login Sekarang
           </button>
         </div>
@@ -638,8 +262,7 @@ const CreateEvent = () => {
                 {debugInfo.slice(-10).map((log, index) => (
                   <div
                     key={index}
-                    className="py-1 border-b border-gray-800/50 last:border-b-0"
-                  >
+                    className="py-1 border-b border-gray-800/50 last:border-b-0">
                     {log}
                   </div>
                 ))}
@@ -685,32 +308,6 @@ const CreateEvent = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* User Information */}
-              {/* <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-700">
-                <h3 className="text-lg font-bold mb-3 text-gray-300 flex items-center gap-2">
-                  <User size={20} />
-                  Informasi Pembuat
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">Nama Organizer</p>
-                    <p className="text-gray-300 font-medium">{user.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">User ID</p>
-                    <p className="text-blue-400 font-mono font-medium">
-                      {user.id}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 p-3 bg-blue-500/10 rounded-lg">
-                  <p className="text-xs text-blue-300">
-                    <strong>Note:</strong> Event akan dikaitkan dengan User ID
-                    Anda
-                  </p>
-                </div>
-              </div> */}
-
               {/* Basic Information */}
               <div>
                 <h3 className="text-lg font-bold mb-4 text-gray-300 border-b border-gray-700 pb-2">
@@ -879,8 +476,7 @@ const CreateEvent = () => {
                     {/* Upload Area */}
                     <label
                       htmlFor="event-image-upload"
-                      className={`flex-1 cursor-pointer ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}
-                    >
+                      className={`flex-1 cursor-pointer ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}>
                       <div className="border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors h-full">
                         <div className="flex flex-col items-center space-y-4">
                           <ImageIcon size={32} className="text-gray-400" />
@@ -915,8 +511,7 @@ const CreateEvent = () => {
                               type="button"
                               onClick={removeImage}
                               disabled={submitting}
-                              className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white disabled:opacity-50"
-                            >
+                              className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white disabled:opacity-50">
                               <X size={16} />
                             </button>
                           </div>
@@ -933,8 +528,7 @@ const CreateEvent = () => {
                   type="button"
                   onClick={() => navigate("/organizer/events")}
                   disabled={submitting}
-                  className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
-                >
+                  className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50">
                   Batal
                 </button>
 
@@ -958,16 +552,14 @@ const CreateEvent = () => {
                       addDebugLog("Form reset manually");
                     }}
                     disabled={submitting}
-                    className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
-                  >
+                    className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50">
                     Reset Form
                   </button>
 
                   <button
                     type="submit"
                     disabled={submitting || success}
-                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                  >
+                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
                     {submitting ? (
                       <>
                         <Loader className="animate-spin h-5 w-5 border-t-2 border-b-2 border-white" />
@@ -999,19 +591,6 @@ const CreateEvent = () => {
                   <p>• Gambar opsional, maksimal 5MB</p>
                   <p>• Event akan langsung muncul di daftar organizer</p>
                 </div>
-                {/* <div className="mt-3 text-xs text-gray-500">
-                  <p>
-                    <strong>User ID:</strong> {user.id}
-                  </p>
-                  <p>
-                    <strong>Status:</strong>{" "}
-                    {submitting
-                      ? "Submitting..."
-                      : success
-                        ? "Success!"
-                        : "Ready"}
-                  </p>
-                </div> */}
               </div>
             </div>
           </div>

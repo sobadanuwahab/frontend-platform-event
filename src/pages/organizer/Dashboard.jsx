@@ -11,7 +11,6 @@ import {
   Clock,
   AlertCircle,
   CheckCircle,
-  TrendingUp,
   PlusCircle,
   FileText,
 } from "lucide-react";
@@ -30,7 +29,7 @@ const Dashboard = () => {
   }, []);
 
   const fetchDashboardData = async () => {
-    setLoading(true);
+    setLoading(false);
     setApiStatus("loading");
 
     try {
@@ -72,52 +71,6 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       setApiStatus("error");
-
-      // Fallback data untuk development
-      if (process.env.NODE_ENV === "development") {
-        setStats({
-          total: 24,
-          active: 16,
-          pending: 8,
-          events: 3,
-        });
-
-        setRecentParticipants([
-          {
-            id: 1,
-            school_name: "SMAN 3 Cilegon",
-            school_address: "Cilegon Mancak, Banten",
-            coach: "Udin Coach",
-            coach_whatsapp: "081278523645",
-            status: "active",
-            created_at: new Date().toISOString(),
-            event: { name: "Event Paskibra SMAN 1 Cilegon" },
-            participant_category: { name: "SMA" },
-          },
-          {
-            id: 2,
-            school_name: "SMAN 1 Jakarta",
-            school_address: "Jakarta Pusat",
-            coach: "Budi Santoso",
-            coach_whatsapp: "081234567890",
-            status: "pending",
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-            event: { name: "Event Paskibra Jawa Barat" },
-            participant_category: { name: "SMA" },
-          },
-          {
-            id: 3,
-            school_name: "SMAN 5 Bandung",
-            school_address: "Bandung, Jawa Barat",
-            coach: "Ahmad Wijaya",
-            coach_whatsapp: "081345678901",
-            status: "active",
-            created_at: new Date(Date.now() - 172800000).toISOString(),
-            event: { name: "Event Paskibra Nasional" },
-            participant_category: { name: "SMA" },
-          },
-        ]);
-      }
     } finally {
       setLoading(false);
     }
@@ -286,12 +239,10 @@ const Dashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
-            className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6 hover:border-blue-500/30 transition-colors group"
-          >
+            className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6 hover:border-blue-500/30 transition-colors group">
             <div className="flex items-center justify-between mb-4">
               <div
-                className={`p-3 rounded-xl bg-gradient-to-br ${stat.color} group-hover:scale-110 transition-transform`}
-              >
+                className={`p-3 rounded-xl bg-gradient-to-br ${stat.color} group-hover:scale-110 transition-transform`}>
                 <stat.icon size={24} className="text-white" />
               </div>
               <span className="text-sm text-green-400 font-medium bg-green-500/10 px-3 py-1 rounded-full">
@@ -324,8 +275,7 @@ const Dashboard = () => {
               </div>
               <button
                 onClick={handleViewAllParticipants}
-                className="text-sm text-blue-400 hover:text-blue-300 font-medium hover:underline"
-              >
+                className="text-sm text-blue-400 hover:text-blue-300 font-medium hover:underline">
                 Lihat Semua →
               </button>
             </div>
@@ -346,8 +296,7 @@ const Dashboard = () => {
                 </p>
                 <button
                   onClick={handleAddParticipant}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
-                >
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
                   Tambah Peserta Pertama
                 </button>
               </div>
@@ -357,8 +306,7 @@ const Dashboard = () => {
                 return (
                   <div
                     key={participant.id}
-                    className="p-6 hover:bg-gray-800/30 transition-colors"
-                  >
+                    className="p-6 hover:bg-gray-800/30 transition-colors">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex items-start gap-4">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-600/20 to-cyan-600/20 flex items-center justify-center flex-shrink-0">
@@ -371,8 +319,7 @@ const Dashboard = () => {
                                 "Nama Sekolah Tidak Tersedia"}
                             </h3>
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text}`}
-                            >
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text}`}>
                               {statusColor.label}
                             </span>
                           </div>
@@ -420,8 +367,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex flex-col items-end">
                           <span
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text} mb-1`}
-                          >
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text} mb-1`}>
                             {statusColor.label}
                           </span>
                           <span className="text-xs text-gray-400 flex items-center gap-1">
@@ -465,8 +411,7 @@ const Dashboard = () => {
             </p>
             <button
               onClick={handleAddParticipant}
-              className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
-            >
+              className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
               Tambah Peserta
             </button>
           </div>
@@ -482,8 +427,7 @@ const Dashboard = () => {
             </p>
             <button
               onClick={handleCreateEvent}
-              className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 transition-all font-medium"
-            >
+              className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 transition-all font-medium">
               Buat Event
             </button>
           </div>
@@ -499,8 +443,7 @@ const Dashboard = () => {
             </p>
             <button
               onClick={handleGenerateReport}
-              className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
-            >
+              className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium">
               Buat Laporan
             </button>
           </div>
