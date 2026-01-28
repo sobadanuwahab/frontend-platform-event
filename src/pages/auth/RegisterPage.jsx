@@ -1,3 +1,4 @@
+// src/pages/auth/RegisterPage.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthLayout from "./components/AuthLayout";
@@ -9,70 +10,36 @@ const RegisterPage = () => {
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
 
-  const handleRegister = async (formData) => {
-    setIsLoading(true);
-
-    try {
-      console.log("Processing registration...", formData);
-
-      // Simpan data user ke localStorage
-      const registeredUserData = {
-        name: formData.name,
-        email: formData.email,
-        whatsapp: formData.whatsapp,
-        role: "user",
-        loggedIn: true,
-        joinDate: new Date().toLocaleDateString("id-ID"),
-        points: 100,
-        isEmailVerified: true, // Setelah verifikasi email berhasil
-      };
-
-      // Simpan user data ke localStorage
-      localStorage.setItem("user", JSON.stringify(registeredUserData));
-
-      // Simpan token dummy untuk authentication
-      localStorage.setItem("authToken", "dummy-auth-token-" + Date.now());
-
-      // Set coin balance default
-      localStorage.setItem("coinBalance", "0");
-
-      // Tampilkan notifikasi sukses
-      setToast({
-        message: "Registrasi berhasil! Selamat bergabung di VOTIX.",
-        type: "success",
-      });
-
-      // Tunggu 2 detik untuk user baca notifikasi
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Redirect ke home
-      navigate("/");
-    } catch (error) {
-      console.error("Registration error:", error);
-      setToast({
-        message: "Registrasi gagal. Silakan coba lagi.",
-        type: "error",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSuccess = async (formData) => {
-    await handleRegister(formData);
+  const handleRegisterSuccess = async (userData) => {
+    setIsLoading(false);
+    setToast({
+      message: "Registrasi berhasil! Anda akan diarahkan ke halaman login.",
+      type: "success",
+    });
   };
 
   return (
     <>
       <AuthLayout
         title="Buat Akun Baru"
-        subtitle="Daftar untuk mulai memberikan voting dan mendukung tim favorit Anda"
+        subtitle="Daftar dan verifikasi email untuk mulai voting"
         type="register">
-        <RegisterForm
-          onSubmit={handleSuccess}
-          isLoading={isLoading}
-          onSuccess={handleSuccess}
-        />
+        <div className="mb-4 p-4 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <div className="text-orange-600">🔐</div>
+            <div>
+              <p className="text-orange-700 font-medium">
+                Verifikasi Email Diperlukan
+              </p>
+              <p className="text-orange-600 text-sm mt-1">
+                Kami akan mengirim kode OTP 6 digit ke email Anda untuk
+                memastikan keamanan akun.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <RegisterForm isLoading={isLoading} onSuccess={handleRegisterSuccess} />
       </AuthLayout>
 
       {/* Toast Notification */}

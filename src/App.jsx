@@ -9,6 +9,7 @@ import Home from "./pages/guest/Home";
 import VotingPage from "./pages/guest/VotingPage";
 import TicketPage from "./pages/guest/TicketPage";
 import ResultsPage from "./pages/guest/ResultsPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 import JudgingPage from "./pages/judge/JudgingPage";
 
@@ -54,6 +55,7 @@ function App() {
             <Route index element={<Home />} />
             <Route path="home" element={<Home />} />
             <Route path="results" element={<ResultsPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
           </Route>
 
           {/* USER ROUTES dengan Layout Global - HANYA untuk role "user" */}
