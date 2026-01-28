@@ -184,7 +184,6 @@ const DashboardPage = () => {
                   <p className="font-medium text-white text-sm">
                     {user?.name || "Administrator"}
                   </p>
-                  <p className="text-xs text-gray-400">Super Admin</p>
                 </div>
                 <div className="relative group">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 flex items-center justify-center text-white font-semibold shadow-md">

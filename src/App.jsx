@@ -5,10 +5,10 @@ import Layout from "./components/Layout/Layout";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 
-import Home from "./pages/public/Home";
-import VotingPage from "./pages/public/VotingPage";
-import TicketPage from "./pages/public/TicketPage";
-import ResultsPage from "./pages/public/ResultsPage";
+import Home from "./pages/guest/Home";
+import VotingPage from "./pages/guest/VotingPage";
+import TicketPage from "./pages/guest/TicketPage";
+import ResultsPage from "./pages/guest/ResultsPage";
 
 import JudgingPage from "./pages/judge/JudgingPage";
 

@@ -158,9 +158,6 @@ const OrganizerPage = () => {
                     <p className="font-medium text-white text-sm">
                       {user?.name || "Organizer"}
                     </p>
-                    <p className="text-xs text-gray-400">
-                      {getDisplayRole(user?.role)}
-                    </p>
                   </div>
                   <div className="relative group">
                     <div
