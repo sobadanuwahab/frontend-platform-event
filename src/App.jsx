@@ -5,11 +5,12 @@ import Layout from "./components/Layout/Layout";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 
-import Home from "./pages/Home";
-import VotingPage from "./pages/VotingPage";
-import TicketPage from "./pages/TicketPage";
+import Home from "./pages/public/Home";
+import VotingPage from "./pages/public/VotingPage";
+import TicketPage from "./pages/public/TicketPage";
+import ResultsPage from "./pages/public/ResultsPage";
+
 import JudgingPage from "./pages/judge/JudgingPage";
-import ResultsPage from "./pages/ResultsPage";
 
 // Import Judging Components (untuk outlet JudgingPage)
 import ScoreForm from "./pages/judge/form/ScoreForm";

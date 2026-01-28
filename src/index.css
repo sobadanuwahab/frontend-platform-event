@@ -513,6 +513,17 @@ body.mobile-menu-open {
   }
 }
 
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 @keyframes scale-in {
   from {
     transform: scale(0.8);
@@ -609,6 +620,10 @@ body.mobile-menu-open {
 
 .animate-slide-in-down {
   animation: slide-in-down 0.6s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
 }
 
 .animate-scale-in {
