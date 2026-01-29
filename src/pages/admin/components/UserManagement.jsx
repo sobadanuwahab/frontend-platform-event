@@ -6,9 +6,6 @@ import {
   Edit,
   Trash2,
   Eye,
-  Coins,
-  CheckCircle,
-  XCircle,
   RefreshCw,
   Download,
   Shield,
@@ -28,20 +25,20 @@ const API_URL = "https://apipaskibra.my.id/api";
 const UserManagementTab = () => {
   // Ambil props dari outlet context
   const context = useOutletContext();
-  const stats = context?.stats || {
-    totalUsers: 0,
-    totalCoinsSold: 0,
-    totalTicketSold: 0,
-    totalVotes: 0,
-    revenue: 0,
-    activeUsers: 0,
-    pendingTransactions: 0,
-    completedTransaction: 0,
-    completedTransactions: 0,
-    totalParticipants: 0,
-    activeParticipants: 0,
-    pendingParticipants: 0,
-  };
+  // const stats = context?.stats || {
+  //   totalUsers: 0,
+  //   totalCoinsSold: 0,
+  //   totalTicketSold: 0,
+  //   totalVotes: 0,
+  //   revenue: 0,
+  //   activeUsers: 0,
+  //   pendingTransactions: 0,
+  //   completedTransaction: 0,
+  //   completedTransactions: 0,
+  //   totalParticipants: 0,
+  //   activeParticipants: 0,
+  //   pendingParticipants: 0,
+  // };
 
   const setStats =
     context?.setStats ||
@@ -89,7 +86,7 @@ const UserManagementTab = () => {
     try {
       setLoadingRoles(true);
       const token = getAuthToken();
-      console.log("Fetching user roles from API...");
+      // console.log("Fetching user roles from API...");
 
       const response = await fetch(`${API_URL}/user-roles`, {
         method: "GET",
@@ -101,7 +98,7 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      console.log("API Response for user roles:", data);
+      // console.log("API Response for user roles:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengambil data roles");
@@ -118,7 +115,7 @@ const UserManagementTab = () => {
         rolesData = data.roles;
       }
 
-      console.log("Mapped roles data:", rolesData);
+      // console.log("Mapped roles data:", rolesData);
       setUserRoles(rolesData);
 
       // Simpan ke localStorage untuk cache
@@ -150,7 +147,7 @@ const UserManagementTab = () => {
 
       const token = getAuthToken();
 
-      console.log("Fetching users from API...");
+      // console.log("Fetching users from API...");
       const response = await fetch(`${API_URL}/users`, {
         method: "GET",
         headers: {
@@ -161,7 +158,7 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      console.log("API Response for users:", data);
+      // console.log("API Response for users:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengambil data users");
@@ -178,7 +175,7 @@ const UserManagementTab = () => {
         usersData = data.users;
       }
 
-      console.log("Mapped users data:", usersData);
+      // console.log("Mapped users data:", usersData);
 
       // Ambil roles dari state atau cache
       let rolesList =
@@ -186,19 +183,19 @@ const UserManagementTab = () => {
           ? userRoles
           : JSON.parse(localStorage.getItem("cached_user_roles") || "[]");
 
-      console.log("Roles list for mapping:", rolesList);
+      // console.log("Roles list for mapping:", rolesList);
 
       // Buat mapping dari role string ke ID
       const roleNameToIdMap = {};
       rolesList.forEach((role) => {
-        roleNameToIdMap[role.role] = role.id; // Perhatikan: fieldnya "role" bukan "name"
+        roleNameToIdMap[role.role] = role.id;
       });
 
-      console.log("Role name to ID map:", roleNameToIdMap);
+      // console.log("Role name to ID map:", roleNameToIdMap);
 
       // Format users
       const formattedUsers = usersData.map((user, index) => {
-        console.log(`User ${index} data:`, user);
+        // console.log(`User ${index} data:`, user);
 
         const userRoleName = user.role || "user";
         const roleId = roleNameToIdMap[userRoleName] || 1; // Default ke user (ID 1)
@@ -284,7 +281,7 @@ const UserManagementTab = () => {
         status: formData.status,
       };
 
-      console.log("Creating user with data:", requestData);
+      // console.log("Creating user with data:", requestData);
 
       const response = await fetch(`${API_URL}/users`, {
         method: "POST",
@@ -297,7 +294,7 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      console.log("Create user response:", data);
+      // console.log("Create user response:", data);
 
       if (!response.ok) {
         if (data.errors) {
@@ -354,8 +351,8 @@ const UserManagementTab = () => {
         requestData.password_confirmation = formData.password_confirmation;
       }
 
-      console.log("Updating user with data:", requestData);
-      console.log("Updating user ID:", selectedUser.id);
+      // console.log("Updating user with data:", requestData);
+      // console.log("Updating user ID:", selectedUser.id);
 
       // COBA beberapa kemungkinan endpoint:
       const endpointsToTry = [
@@ -370,7 +367,7 @@ const UserManagementTab = () => {
       for (const endpoint of endpointsToTry) {
         for (const method of ["PUT", "PATCH", "POST"]) {
           try {
-            console.log(`Trying ${method} ${endpoint}`);
+            // console.log(`Trying ${method} ${endpoint}`);
 
             const config = {
               method: method,
@@ -390,12 +387,12 @@ const UserManagementTab = () => {
             response = await fetch(endpoint, config);
 
             if (response.ok) {
-              console.log(`Success with ${method} ${endpoint}`);
+              // console.log(`Success with ${method} ${endpoint}`);
               break;
             }
           } catch (err) {
             lastError = err;
-            console.log(`Failed with ${method} ${endpoint}:`, err.message);
+            // console.log(`Failed with ${method} ${endpoint}:`, err.message);
           }
         }
         if (response && response.ok) break;
@@ -404,7 +401,7 @@ const UserManagementTab = () => {
       // Jika semua gagal
       if (!response || !response.ok) {
         // Coba endpoint alternatif dengan format berbeda
-        console.log("Trying alternative format...");
+        // console.log("Trying alternative format...");
 
         // COBA 1: endpoint dengan query parameter
         try {
@@ -450,7 +447,7 @@ const UserManagementTab = () => {
       }
 
       const data = await response.json();
-      console.log("Update user response:", data);
+      // console.log("Update user response:", data);
 
       if (!response.ok) {
         if (data.errors) {
@@ -509,7 +506,7 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      console.log("Delete user response:", data);
+      // console.log("Delete user response:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal menghapus user");
@@ -547,7 +544,7 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      console.log("Update status response:", data);
+      // console.log("Update status response:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengupdate status");
@@ -684,8 +681,8 @@ const UserManagementTab = () => {
     const initializeData = async () => {
       if (!isMounted) return;
 
-      console.log("Initializing data...");
-      console.log("Context available:", !!context);
+      // console.log("Initializing data...");
+      // console.log("Context available:", !!context);
 
       // Ambil roles dulu
       await fetchUserRoles();
@@ -732,8 +729,7 @@ const UserManagementTab = () => {
         <p className="text-red-600 mb-4">{error}</p>
         <button
           onClick={refreshAllData}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 mx-auto"
-        >
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 mx-auto">
           <RefreshCw size={16} />
           Coba Lagi
         </button>
@@ -766,14 +762,12 @@ const UserManagementTab = () => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6"
-        >
+          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white">Tambah User Baru</h3>
             <button
               onClick={() => setShowAddForm(false)}
-              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white"
-            >
+              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white">
               <X size={20} />
             </button>
           </div>
@@ -842,8 +836,7 @@ const UserManagementTab = () => {
                     value={formData.user_role_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                  >
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white">
                     <option value="">Pilih Role</option>
                     {userRoles.map((role) => (
                       <option key={role.id} value={role.id}>
@@ -894,8 +887,7 @@ const UserManagementTab = () => {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                >
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white">
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -906,15 +898,13 @@ const UserManagementTab = () => {
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700"
-              >
+                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700">
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-              >
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
                 {actionLoading ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
@@ -937,8 +927,7 @@ const UserManagementTab = () => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6"
-        >
+          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white">Edit User</h3>
             <button
@@ -946,8 +935,7 @@ const UserManagementTab = () => {
                 setShowEditForm(false);
                 setSelectedUser(null);
               }}
-              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white"
-            >
+              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white">
               <X size={20} />
             </button>
           </div>
@@ -1013,8 +1001,7 @@ const UserManagementTab = () => {
                     value={formData.user_role_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                  >
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white">
                     <option value="">Pilih Role</option>
                     {userRoles.map((role) => (
                       <option key={role.id} value={role.id}>
@@ -1070,8 +1057,7 @@ const UserManagementTab = () => {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                >
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white">
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -1085,15 +1071,13 @@ const UserManagementTab = () => {
                   setShowEditForm(false);
                   setSelectedUser(null);
                 }}
-                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700"
-              >
+                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700">
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-              >
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
                 {actionLoading ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
@@ -1139,8 +1123,7 @@ const UserManagementTab = () => {
                 onChange={(e) =>
                   setFilters({ ...filters, role: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer"
-              >
+                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer">
                 <option value="all">Semua Role</option>
                 {userRoles.map((role) => (
                   <option key={role.id} value={role.name}>
@@ -1160,8 +1143,7 @@ const UserManagementTab = () => {
                 onChange={(e) =>
                   setFilters({ ...filters, status: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer"
-              >
+                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer">
                 <option value="all">Semua Status</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -1174,8 +1156,7 @@ const UserManagementTab = () => {
 
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-            >
+              className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
               <UserPlus size={18} />
               Tambah User
             </button>
@@ -1183,16 +1164,14 @@ const UserManagementTab = () => {
             <button
               onClick={refreshAllData}
               className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              title="Refresh"
-            >
+              title="Refresh">
               <RefreshCw size={18} />
             </button>
 
             <button
               onClick={handleExportData}
               className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
-              title="Export Data"
-            >
+              title="Export Data">
               <Download size={18} />
             </button>
           </div>
@@ -1203,8 +1182,7 @@ const UserManagementTab = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden"
-      >
+        className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
         {sortedUsers.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-500 mb-4">
@@ -1220,8 +1198,7 @@ const UserManagementTab = () => {
             </p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto"
-            >
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto">
               <Plus size={18} />
               Tambah User Pertama
             </button>
@@ -1241,12 +1218,12 @@ const UserManagementTab = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Role
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Coins
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    </th> */}
+                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Status
-                    </th>
+                    </th> */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Bergabung
                     </th>
@@ -1298,21 +1275,20 @@ const UserManagementTab = () => {
                           <div className="flex items-center gap-2">
                             <Shield size={16} className={roleColor.icon} />
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${roleColor.bg} ${roleColor.text}`}
-                            >
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${roleColor.bg} ${roleColor.text}`}>
                               {user.role_display_name?.toUpperCase() || "USER"}
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        {/* <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <Coins size={16} className="text-yellow-400" />
                             <span className="font-bold text-white">
                               {user.coinBalance || 0}
                             </span>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
+                        </td> */}
+                        {/* <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             {user.status === "active" ? (
                               <CheckCircle
@@ -1336,7 +1312,7 @@ const UserManagementTab = () => {
                               {user.status === "active" ? "AKTIF" : "NONAKTIF"}
                             </button>
                           </div>
-                        </td>
+                        </td> */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <Calendar size={14} className="text-gray-400" />
@@ -1353,25 +1329,22 @@ const UserManagementTab = () => {
                             <button
                               onClick={() => handleEditClick(user)}
                               className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg"
-                              title="Edit"
-                            >
+                              title="Edit">
                               <Edit size={18} />
                             </button>
                             <button
                               onClick={() => handleDeleteUser(user.id)}
                               disabled={actionLoading}
                               className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg"
-                              title="Delete"
-                            >
+                              title="Delete">
                               <Trash2 size={18} />
                             </button>
                             <button
                               className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg"
                               title="View Details"
                               onClick={() => {
-                                console.log("View user details:", user);
-                              }}
-                            >
+                                // console.log("View user details:", user);
+                              }}>
                               <Eye size={18} />
                             </button>
                           </div>
