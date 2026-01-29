@@ -114,70 +114,48 @@ const Header = () => {
 
   const isUnverifiedUser = user && verificationStatusLoaded && !isVerifiedUser;
 
-  // Menu items untuk navigation - dengan kontrol akses
+  // Menu items untuk navigation - SEMUA menu ditampilkan untuk semua user
   const getNavItems = () => {
-    const baseItems = [
+    return [
       {
         to: "/",
         label: "HOME",
         alwaysShow: true,
       },
-    ];
-
-    // Menu untuk user yang belum verify
-    if (isUnverifiedUser) {
-      return [
-        ...baseItems,
-        {
-          to: "/results",
-          label: "HASIL",
-          alwaysShow: true,
-        },
-        {
-          to: "/verify-email",
-          label: "VERIFIKASI EMAIL",
-          icon: <Mail size={16} />,
-          highlight: true,
-          badge: (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full animate-pulse">
-              !
-            </span>
-          ),
-        },
-      ];
-    }
-
-    // Menu untuk user yang sudah verify atau guest
-    const verifiedItems = [
-      ...baseItems,
       {
         to: "/voting",
         label: "VOTING",
-        requiresVerification: true,
-        badge: isVerifiedUser && (
-          <span className="ml-1 px-1.5 py-0.5 text-xs bg-teal-500 text-white rounded-full">
-            ✓
-          </span>
-        ),
+        showToAllUsers: true, // Selalu ditampilkan, akses dikontrol di halaman tujuan
+        highlightUnverified: true, // Tampilkan indikator jika belum verified
       },
       {
         to: "/ticket",
         label: "TICKET",
-        requiresVerification: true,
-        badge: isVerifiedUser && (
-          <span className="ml-1 px-1.5 py-0.5 text-xs bg-teal-500 text-white rounded-full">
-            ✓
-          </span>
-        ),
+        showToAllUsers: true, // Selalu ditampilkan, akses dikontrol di halaman tujuan
+        highlightUnverified: true, // Tampilkan indikator jika belum verified
       },
       {
         to: "/results",
         label: "HASIL",
         alwaysShow: true,
       },
+      // Menu verifikasi hanya ditampilkan jika user belum verify
+      ...(isUnverifiedUser
+        ? [
+            {
+              to: "/verify-email",
+              label: "VERIFIKASI EMAIL",
+              icon: <Mail size={16} />,
+              highlight: true,
+              badge: (
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full animate-pulse">
+                  !
+                </span>
+              ),
+            },
+          ]
+        : []),
     ];
-
-    return verifiedItems;
   };
 
   const navItems = getNavItems();
@@ -260,38 +238,21 @@ const Header = () => {
     return () => document.removeEventListener("click", handleClickOutside);
   }, [isMobileMenuOpen]);
 
-  // Fungsi untuk menentukan apakah menu item bisa diakses
-  const canAccessMenuItem = (item) => {
-    if (item.alwaysShow) return true;
-
-    if (!user && item.requiresVerification) return false;
-    if (isUnverifiedUser && item.requiresVerification) return false;
-
-    return true;
-  };
-
   // Fungsi untuk handle click pada menu item
   const handleMenuItemClick = (item, e) => {
-    if (!canAccessMenuItem(item)) {
-      e.preventDefault();
-      e.stopPropagation();
+    // Untuk menu yang membutuhkan login
+    if (!user && item.showToAllUsers) {
+      // Tidak perlu redirect, biarkan user tetap bisa lihat halaman
+      // Akan ada validasi di dalam halaman untuk redirect ke login jika perlu
+      if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+      return;
+    }
 
-      if (isUnverifiedUser && item.requiresVerification) {
-        navigate("/verify-email", {
-          state: {
-            message:
-              "Anda perlu verifikasi email terlebih dahulu untuk mengakses fitur ini",
-            returnTo: item.to,
-          },
-        });
-      } else if (!user) {
-        navigate("/auth/login", {
-          state: {
-            returnTo: item.to,
-            message: "Silakan login terlebih dahulu untuk mengakses fitur ini",
-          },
-        });
-      }
+    // Untuk user yang belum verify yang mengakses menu tertentu
+    if (isUnverifiedUser && item.highlightUnverified) {
+      // Biarkan user tetap bisa akses halaman
+      // Validasi akan dilakukan di dalam halaman (button payment/action)
+      if (isMobileMenuOpen) setIsMobileMenuOpen(false);
       return;
     }
 
@@ -328,7 +289,7 @@ const Header = () => {
                 <span className="text-orange-400">X</span>
               </h1>
               <p className="text-xs sm:text-sm md:text-base mt-1 text-gray-300 leading-tight font-medium tracking-wide">
-                Voting & Tiket Event Platform
+                Voting & Tiket Contest Paskibra Since 2026
               </p>
             </div>
           </div>
@@ -341,7 +302,7 @@ const Header = () => {
                 onClick={handleBackToHome}
                 className="px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-bold rounded-lg hover:from-orange-700 hover:to-orange-700 transition-all duration-200 text-sm flex items-center space-x-2 shadow-lg active:scale-[0.98]">
                 <ArrowLeft size={16} />
-                <span>KE HOME</span>
+                <span>BACK HOME</span>
               </button>
             ) : (
               <>
@@ -349,8 +310,9 @@ const Header = () => {
                 {(user?.role === "user" || !user) && (
                   <nav className="flex items-center space-x-1 mr-6">
                     {navItems.map((item) => {
-                      const accessible = canAccessMenuItem(item);
                       const isActive = location.pathname === item.to;
+                      const showUnverifiedIndicator =
+                        isUnverifiedUser && item.highlightUnverified;
 
                       return (
                         <div
@@ -358,31 +320,34 @@ const Header = () => {
                           className="relative group"
                           onClick={(e) => handleMenuItemClick(item, e)}>
                           <NavLink
-                            to={accessible ? item.to : "#"}
+                            to={item.to}
                             className={`
                               relative px-4 py-2 font-bold text-sm uppercase tracking-wider 
                               transition-all duration-200 rounded-lg flex items-center gap-2
-                              ${!accessible ? "cursor-not-allowed" : "cursor-pointer"}
+                              cursor-pointer
                               ${
                                 isActive
                                   ? item.highlight
                                     ? "text-white bg-gradient-to-r from-yellow-600/20 to-orange-600/20"
                                     : "text-white bg-gradient-to-r from-teal-600/20 to-cyan-600/20"
-                                  : !accessible
-                                    ? "text-gray-500 bg-gray-800/50"
-                                    : item.highlight
-                                      ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10"
-                                      : "text-gray-400 hover:text-white hover:bg-gray-800"
+                                  : item.highlight
+                                    ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10"
+                                    : "text-gray-400 hover:text-white hover:bg-gray-800"
                               }
                             `}>
                             {item.icon && <span>{item.icon}</span>}
                             <span className="relative z-10 flex items-center">
                               {item.label}
                               {item.badge && item.badge}
+                              {showUnverifiedIndicator && (
+                                <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-bold">
+                                  !
+                                </span>
+                              )}
                             </span>
 
-                            {!accessible && (
-                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                            {showUnverifiedIndicator && (
+                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
                             )}
 
                             {isActive && !item.highlight && (
@@ -390,13 +355,11 @@ const Header = () => {
                             )}
                           </NavLink>
 
-                          {/* Tooltip untuk menu yang tidak bisa diakses */}
-                          {!accessible && (
-                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                              {isUnverifiedUser
-                                ? "Verifikasi email dulu untuk akses"
-                                : "Login terlebih dahulu"}
-                              <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                          {/* Tooltip untuk menu yang belum diverifikasi */}
+                          {showUnverifiedIndicator && (
+                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 px-3 py-2 bg-yellow-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                              ⚠️ Verifikasi email untuk akses fitur lengkap
+                              <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-yellow-900 rotate-45"></div>
                             </div>
                           )}
                         </div>
@@ -604,8 +567,9 @@ const Header = () => {
                       </p>
                       <nav className="space-y-2">
                         {navItems.map((item) => {
-                          const accessible = canAccessMenuItem(item);
                           const isActive = location.pathname === item.to;
+                          const showUnverifiedIndicator =
+                            isUnverifiedUser && item.highlightUnverified;
 
                           return (
                             <button
@@ -614,26 +578,29 @@ const Header = () => {
                               className={`
                                 w-full p-3 rounded-xl transition-all duration-200 font-bold text-lg
                                 uppercase tracking-wider flex items-center justify-center gap-2
-                                ${!accessible ? "cursor-not-allowed" : "cursor-pointer"}
+                                cursor-pointer
                                 ${
                                   isActive
                                     ? item.highlight
                                       ? "text-white bg-gradient-to-r from-yellow-600 to-orange-600"
                                       : "text-white bg-gradient-to-r from-teal-600 to-cyan-600"
-                                    : !accessible
-                                      ? "text-gray-500 bg-gray-800/50"
-                                      : item.highlight
-                                        ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10"
-                                        : "text-gray-300 hover:text-white hover:bg-gray-800"
+                                    : item.highlight
+                                      ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10"
+                                      : "text-gray-300 hover:text-white hover:bg-gray-800"
                                 }
                               `}>
                               {item.icon && <span>{item.icon}</span>}
                               <span className="flex items-center">
                                 {item.label}
                                 {item.badge && item.badge}
+                                {showUnverifiedIndicator && (
+                                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-bold">
+                                    !
+                                  </span>
+                                )}
                               </span>
-                              {!accessible && (
-                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                              {showUnverifiedIndicator && (
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
                               )}
                             </button>
                           );
