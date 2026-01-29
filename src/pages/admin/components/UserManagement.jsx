@@ -653,7 +653,8 @@ const UserManagementTab = () => {
         <p className="text-red-600 mb-4">{error}</p>
         <button
           onClick={refreshAllData}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 mx-auto">
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 mx-auto"
+        >
           <RefreshCw size={16} />
           Coba Lagi
         </button>
@@ -681,12 +682,14 @@ const UserManagementTab = () => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6">
+          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6"
+        >
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white">Tambah User Baru</h3>
             <button
               onClick={() => setShowAddForm(false)}
-              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white">
+              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white"
+            >
               <X size={20} />
             </button>
           </div>
@@ -755,7 +758,8 @@ const UserManagementTab = () => {
                     value={formData.user_role_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white">
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                  >
                     <option value="">Pilih Role</option>
                     {userRoles.map((role) => (
                       <option key={role.id} value={role.id}>
@@ -806,7 +810,8 @@ const UserManagementTab = () => {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white">
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -817,13 +822,15 @@ const UserManagementTab = () => {
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700">
+                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700"
+              >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
                 {actionLoading ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
@@ -846,7 +853,8 @@ const UserManagementTab = () => {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6">
+          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6"
+        >
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-white">Edit User</h3>
             <button
@@ -854,7 +862,8 @@ const UserManagementTab = () => {
                 setShowEditForm(false);
                 setSelectedUser(null);
               }}
-              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white">
+              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white"
+            >
               <X size={20} />
             </button>
           </div>
@@ -920,7 +929,8 @@ const UserManagementTab = () => {
                     value={formData.user_role_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white">
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                  >
                     <option value="">Pilih Role</option>
                     {userRoles.map((role) => (
                       <option key={role.id} value={role.id}>
@@ -967,7 +977,8 @@ const UserManagementTab = () => {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white">
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -981,13 +992,15 @@ const UserManagementTab = () => {
                   setShowEditForm(false);
                   setSelectedUser(null);
                 }}
-                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700">
+                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700"
+              >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={actionLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
                 {actionLoading ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
@@ -1033,7 +1046,8 @@ const UserManagementTab = () => {
                 onChange={(e) =>
                   setFilters({ ...filters, role: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer min-w-[150px]">
+                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer min-w-[150px]"
+              >
                 <option value="all">Semua Role</option>
                 {getUniqueRolesForFilter().map((role) => (
                   <option key={role.name} value={role.name}>
@@ -1054,7 +1068,8 @@ const UserManagementTab = () => {
                 onChange={(e) =>
                   setFilters({ ...filters, status: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer">
+                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer"
+              >
                 <option value="all">Semua Status</option>
                 <option value="active">Aktif</option>
                 <option value="inactive">Nonaktif</option>
@@ -1072,7 +1087,8 @@ const UserManagementTab = () => {
                 onChange={(e) =>
                   setFilters({ ...filters, sortBy: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer">
+                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer"
+              >
                 <option value="newest">Terbaru</option>
                 <option value="oldest">Terlama</option>
                 <option value="name">Nama A-Z</option>
@@ -1085,7 +1101,8 @@ const UserManagementTab = () => {
 
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+              className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+            >
               <UserPlus size={18} />
               Tambah User
             </button>
@@ -1093,14 +1110,16 @@ const UserManagementTab = () => {
             <button
               onClick={refreshAllData}
               className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              title="Refresh">
+              title="Refresh"
+            >
               <RefreshCw size={18} />
             </button>
 
             <button
               onClick={handleExportData}
               className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
-              title="Export Data">
+              title="Export Data"
+            >
               <Download size={18} />
             </button>
           </div>
@@ -1115,7 +1134,8 @@ const UserManagementTab = () => {
                 ?.display_name || filters.role}
               <button
                 onClick={() => setFilters({ ...filters, role: "all" })}
-                className="ml-2 text-blue-600 hover:text-blue-800">
+                className="ml-2 text-blue-600 hover:text-blue-800"
+              >
                 ✕
               </button>
             </span>
@@ -1125,7 +1145,8 @@ const UserManagementTab = () => {
               Status: {filters.status === "active" ? "Aktif" : "Nonaktif"}
               <button
                 onClick={() => setFilters({ ...filters, status: "all" })}
-                className="ml-2 text-green-600 hover:text-green-800">
+                className="ml-2 text-green-600 hover:text-green-800"
+              >
                 ✕
               </button>
             </span>
@@ -1135,7 +1156,8 @@ const UserManagementTab = () => {
               onClick={() =>
                 setFilters({ role: "all", status: "all", sortBy: "newest" })
               }
-              className="text-sm text-gray-400 hover:text-white">
+              className="text-sm text-gray-400 hover:text-white"
+            >
               Reset semua filter
             </button>
           )}
@@ -1146,7 +1168,8 @@ const UserManagementTab = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden">
+        className="bg-gray-800 rounded-xl shadow-sm border border-gray-700 overflow-hidden"
+      >
         {sortedUsers.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-500 mb-4">
@@ -1167,13 +1190,15 @@ const UserManagementTab = () => {
                 onClick={() =>
                   setFilters({ role: "all", status: "all", sortBy: "newest" })
                 }
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto">
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto"
+              >
                 Reset Filter
               </button>
             ) : (
               <button
                 onClick={() => setShowAddForm(true)}
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto">
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto"
+              >
                 <Plus size={18} />
                 Tambah User Pertama
               </button>
@@ -1245,7 +1270,8 @@ const UserManagementTab = () => {
                           <div className="flex items-center gap-2">
                             <Shield size={16} className={roleColor.icon} />
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${roleColor.bg} ${roleColor.text}`}>
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${roleColor.bg} ${roleColor.text}`}
+                            >
                               {user.role_display_name?.toUpperCase() || "USER"}
                             </span>
                           </div>
@@ -1266,22 +1292,25 @@ const UserManagementTab = () => {
                             <button
                               onClick={() => handleEditClick(user)}
                               className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg"
-                              title="Edit">
+                              title="Edit"
+                            >
                               <Edit size={18} />
                             </button>
                             <button
                               onClick={() => handleDeleteUser(user.id)}
                               disabled={actionLoading}
                               className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg"
-                              title="Delete">
+                              title="Delete"
+                            >
                               <Trash2 size={18} />
                             </button>
                             <button
                               className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg"
                               title="View Details"
                               onClick={() => {
-                                console.log("View user details:", user);
-                              }}>
+                                // console.log("View user details:", user);
+                              }}
+                            >
                               <Eye size={18} />
                             </button>
                           </div>

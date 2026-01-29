@@ -19,10 +19,10 @@ const LoginPage = () => {
   useEffect(() => {
     if (user && !authLoading) {
       const redirectPath = getRedirectPathByRole(user.role);
-      console.log(
-        "LoginPage - User already logged in, redirecting to:",
-        redirectPath,
-      );
+      // console.log(
+      //   "LoginPage - User already logged in, redirecting to:",
+      //   redirectPath,
+      // );
       navigate(redirectPath, { replace: true });
     }
   }, [user, authLoading, navigate, getRedirectPathByRole]);
@@ -32,11 +32,11 @@ const LoginPage = () => {
     setErrorMessage("");
 
     try {
-      console.log("LoginPage - Attempting login with:", formData);
+      // console.log("LoginPage - Attempting login with:", formData);
       const result = await login(formData.email, formData.password);
 
       if (result.success) {
-        console.log("LoginPage - Login successful, redirecting...");
+        // console.log("LoginPage - Login successful, redirecting...");
 
         // Gunakan navigate dengan replace: true untuk immediate redirect
         const redirectPath = result.redirectPath || "/";
@@ -84,7 +84,8 @@ const LoginPage = () => {
     <AuthLayout
       title="Selamat Datang Kembali"
       subtitle="Masuk ke akun Anda untuk melanjutkan voting dan melihat hasil terkini"
-      type="login">
+      type="login"
+    >
       <>
         {errorMessage && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
@@ -93,7 +94,8 @@ const LoginPage = () => {
                 className="w-5 h-5 text-red-600"
                 fill="none"
                 stroke="currentColor"
-                viewBox="0 0 24 24">
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

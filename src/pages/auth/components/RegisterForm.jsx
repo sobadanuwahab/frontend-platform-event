@@ -156,7 +156,7 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
         setOtpExpiry(expiryTime);
         startResendTimer();
 
-        console.log("✅ Registration successful:", result.data);
+        // console.log("✅ Registration successful:", result.data);
       } else {
         // Tampilkan error dari backend jika ada
         if (result.errors) {
@@ -200,7 +200,7 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
         setOtpExpiry(expiryTime);
         startResendTimer(120);
 
-        console.log("✅ OTP resent successful:", result.data);
+        // console.log("✅ OTP resent successful:", result.data);
       } else {
         // Tampilkan error dari backend
         if (result.errors) {
@@ -464,7 +464,8 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
                 type="button"
                 onClick={handleResendOTP}
                 disabled={isSendingEmail || !canResend || emailLocked}
-                className="text-sm text-orange-600 hover:text-orange-700 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center gap-1">
+                className="text-sm text-orange-600 hover:text-orange-700 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center gap-1"
+              >
                 {isSendingEmail ? (
                   <>
                     <div className="w-3 h-3 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
@@ -504,7 +505,8 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
                 setOtpExpiry(null);
                 setRegisteredEmail("");
               }}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+            >
               Ganti Email
             </button>
 
@@ -514,7 +516,8 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
               disabled={
                 isVerifying || verificationCode.length !== 6 || emailLocked
               }
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]">
+              className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+            >
               {isVerifying ? (
                 <div className="flex items-center justify-center">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
@@ -674,7 +677,8 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
                     formData.password.length >= 6
                       ? "bg-teal-500"
                       : "bg-gray-300"
-                  }`}></div>
+                  }`}
+                ></div>
                 <span className="text-xs text-gray-500">
                   Minimal 6 karakter
                 </span>
@@ -719,7 +723,8 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
                     formData.password_confirmation.length >= 6
                       ? "bg-teal-500"
                       : "bg-gray-300"
-                  }`}></div>
+                  }`}
+                ></div>
                 <span className="text-xs text-gray-500">
                   Password harus sama
                 </span>
@@ -738,13 +743,15 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
             />
             <label
               htmlFor="terms"
-              className="text-sm text-gray-600 leading-tight">
+              className="text-sm text-gray-600 leading-tight"
+            >
               Saya menyetujui{" "}
               <a
                 href="/terms"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-orange-600 hover:text-orange-700 transition-colors font-medium">
+                className="text-orange-600 hover:text-orange-700 transition-colors font-medium"
+              >
                 Syarat & Ketentuan
               </a>{" "}
               dan{" "}
@@ -752,7 +759,8 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
                 href="/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-orange-600 hover:text-orange-700 transition-colors font-medium">
+                className="text-orange-600 hover:text-orange-700 transition-colors font-medium"
+              >
                 Kebijakan Privasi
               </a>
             </label>
@@ -762,7 +770,8 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
           <button
             type="submit"
             disabled={isLoading || isSendingEmail}
-            className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium rounded-xl hover:from-orange-600 hover:to-orange-700 hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]">
+            className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium rounded-xl hover:from-orange-600 hover:to-orange-700 hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-[0.98]"
+          >
             {isLoading || isSendingEmail ? (
               <span className="flex items-center justify-center">
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
@@ -783,7 +792,8 @@ const RegisterForm = ({ onSubmit, isLoading, onSuccess }) => {
               <button
                 type="button"
                 onClick={() => navigate("/auth/login")}
-                className="text-orange-600 font-medium hover:text-orange-700 transition-colors">
+                className="text-orange-600 font-medium hover:text-orange-700 transition-colors"
+              >
                 Login di sini
               </button>
             </p>

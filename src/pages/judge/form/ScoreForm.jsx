@@ -1103,7 +1103,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
               {/* Category Header */}
               <div
                 onClick={() => toggleCategory(category.category)}
-                className="w-full p-6 text-left hover:bg-gray-50 transition-colors flex justify-between items-center cursor-pointer">
+                className="w-full p-6 text-left hover:bg-gray-50 transition-colors flex justify-between items-center cursor-pointer"
+              >
                 <div className="flex items-center gap-3">
                   <div className="text-gray-500">
                     {isCategoryExpanded ? (
@@ -1135,7 +1136,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                           : catQuality.color === "blue"
                             ? "bg-blue-100 text-blue-700"
                             : "bg-green-100 text-green-700"
-                    }`}>
+                    }`}
+                  >
                     {catQuality.label}
                   </div>
 
@@ -1151,7 +1153,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                           : catPercentage >= 70
                             ? "text-yellow-600"
                             : "text-red-600"
-                      }`}>
+                      }`}
+                    >
                       {catPercentage}%
                     </div>
                   </div>
@@ -1165,7 +1168,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                         quickFillCategory(category.category, "kurang");
                       }}
                       className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded-md hover:bg-red-100 font-medium"
-                      title="Set semua ke Kurang">
+                      title="Set semua ke Kurang"
+                    >
                       Kurang
                     </button>
                     <button
@@ -1175,7 +1179,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                         quickFillCategory(category.category, "cukup");
                       }}
                       className="px-3 py-1 text-xs bg-yellow-50 text-yellow-700 rounded-md hover:bg-yellow-100 font-medium"
-                      title="Set semua ke Cukup">
+                      title="Set semua ke Cukup"
+                    >
                       Cukup
                     </button>
                     <button
@@ -1185,7 +1190,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                         quickFillCategory(category.category, "baik");
                       }}
                       className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 font-medium"
-                      title="Set semua ke Baik">
+                      title="Set semua ke Baik"
+                    >
                       Baik
                     </button>
                     <button
@@ -1195,7 +1201,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                         quickFillCategory(category.category, "baikSekali");
                       }}
                       className="px-3 py-1 text-xs bg-green-50 text-green-700 rounded-md hover:bg-green-100 font-medium"
-                      title="Set semua ke Baik Sekali">
+                      title="Set semua ke Baik Sekali"
+                    >
                       Baik Sekali
                     </button>
                   </div>
@@ -1230,7 +1237,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                                   subCat.subCategory,
                                 )
                               }
-                              className="w-full p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex justify-between items-center cursor-pointer mb-2">
+                              className="w-full p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors flex justify-between items-center cursor-pointer mb-2"
+                            >
                               <div className="flex items-center gap-3">
                                 <div className="text-gray-500">
                                   {isSubExpanded ? (
@@ -1280,7 +1288,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
     return (
       <div
         key={item.id}
-        className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+        className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
+      >
         {/* Item Header */}
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -1301,7 +1310,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                       : itemQuality.color === "blue"
                         ? "bg-blue-100 text-blue-700"
                         : "bg-green-100 text-green-700"
-              }`}>
+              }`}
+            >
               <div className="text-xl">{currentValue}</div>
               <div className="text-xs">poin</div>
             </div>
@@ -1319,7 +1329,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                   : itemQuality.color === "blue"
                     ? "bg-blue-50 text-blue-700"
                     : "bg-green-50 text-green-700"
-            }`}>
+            }`}
+          >
             <div
               className={`w-2 h-2 rounded-full ${
                 itemQuality.color === "red"
@@ -1329,7 +1340,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                     : itemQuality.color === "blue"
                       ? "bg-blue-500"
                       : "bg-green-500"
-              }`}></div>
+              }`}
+            ></div>
             {itemQuality.label} ({Math.round((currentValue / item.max) * 100)}%)
           </div>
         </div>
@@ -1347,7 +1359,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                 handleScoreChange(item.id, kurangValues[middleIndex][1]);
               }
             }}
-            className="px-2 py-2 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium">
+            className="px-2 py-2 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium"
+          >
             Kurang
           </button>
           <button
@@ -1361,7 +1374,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                 handleScoreChange(item.id, cukupValues[middleIndex][1]);
               }
             }}
-            className="px-2 py-2 text-xs bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors font-medium">
+            className="px-2 py-2 text-xs bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors font-medium"
+          >
             Cukup
           </button>
           <button
@@ -1376,13 +1390,15 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                 handleScoreChange(item.id, baikValues[middleIndex][1]);
               }
             }}
-            className="px-2 py-2 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium">
+            className="px-2 py-2 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+          >
             Baik
           </button>
           <button
             type="button"
             onClick={() => handleScoreChange(item.id, item.max)}
-            className="px-2 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors font-medium">
+            className="px-2 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors font-medium"
+          >
             Baik Sekali
           </button>
         </div>
@@ -1418,7 +1434,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                             ? "bg-green-600 text-white ring-green-300"
                             : "bg-green-50 text-green-700 hover:bg-green-100"
                   }`}
-                  title={label}>
+                  title={label}
+                >
                   {value}
                 </button>
               );
@@ -1507,7 +1524,7 @@ const ScoreForm = ({ teams = [], userData = null }) => {
       timestamp: new Date().toISOString(),
     };
 
-    console.log("DATA NILAI LKBB:", payload);
+    // console.log("DATA NILAI LKBB:", payload);
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
   };
@@ -1555,7 +1572,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                   }
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                required>
+                required
+              >
                 <option value="">-- Pilih Tim --</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
@@ -1605,7 +1623,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                 activeTab === "pbb"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}>
+              }`}
+            >
               PERATURAN BARIS BERBARIS (PBB)
             </button>
             <button
@@ -1614,7 +1633,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                 activeTab === "variasi"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}>
+              }`}
+            >
               VARIASI & KREATIFITAS
             </button>
             <button
@@ -1623,7 +1643,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                 activeTab === "variasi"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}>
+              }`}
+            >
               VARIASI & KREATIFITAS
             </button>
           </div>
@@ -1652,7 +1673,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                     : getPercentage() >= 70
                       ? "text-yellow-600"
                       : "text-red-600"
-                }`}>
+                }`}
+              >
                 {getPercentage()}%
               </div>
             </div>
@@ -1660,7 +1682,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
               <button
                 type="button"
                 onClick={handleReset}
-                className="px-4 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 text-sm font-medium">
+                className="px-4 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 text-sm font-medium"
+              >
                 Reset
               </button>
             </div>
@@ -1675,7 +1698,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
           <button
             type="button"
             onClick={handleReset}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors">
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+          >
             <RefreshCw size={18} />
             Reset Semua Nilai
           </button>
@@ -1688,7 +1712,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
               !teamName || !teamCode
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700"
-            }`}>
+            }`}
+          >
             <Save size={18} />
             Simpan Penilaian LKBB
           </button>
@@ -1702,7 +1727,8 @@ const ScoreForm = ({ teams = [], userData = null }) => {
                 <svg
                   className="h-5 w-5 text-green-400"
                   viewBox="0 0 20 20"
-                  fill="currentColor">
+                  fill="currentColor"
+                >
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"

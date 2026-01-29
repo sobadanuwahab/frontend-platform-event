@@ -9,7 +9,7 @@ import Home from "./pages/guest/Home";
 import VotingPage from "./pages/guest/VotingPage";
 import TicketPage from "./pages/guest/TicketPage";
 import ResultsPage from "./pages/guest/ResultsPage";
-import VerifyEmailPage from "./pages/VerifyEmailPage";
+import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 
 import JudgingPage from "./pages/judge/JudgingPage";
 
@@ -65,7 +65,8 @@ function App() {
               <ProtectedRoute allowedRoles={["user"]}>
                 <Layout />
               </ProtectedRoute>
-            }>
+            }
+          >
             <Route
               path="ticket"
               element={
@@ -91,7 +92,8 @@ function App() {
               <ProtectedRoute allowedRoles={["juri", "admin"]}>
                 <JudgingPage />
               </ProtectedRoute>
-            }>
+            }
+          >
             <Route index element={<ScoreForm />} />
             <Route path="ranking" element={<RankingPage />} />
             <Route path="criteria" element={<CriteriaPage />} />
@@ -104,7 +106,8 @@ function App() {
               <ProtectedRoute allowedRoles={["admin"]}>
                 <DashboardPage />
               </ProtectedRoute>
-            }>
+            }
+          >
             <Route index element={<OverviewTab />} />
             <Route path="events" element={<EventsTab />} />
             <Route path="users" element={<UserManagementTab />} />
@@ -133,7 +136,8 @@ function App() {
               <ProtectedRoute allowedRoles={["organizer"]}>
                 <OrganizerPage />
               </ProtectedRoute>
-            }>
+            }
+          >
             <Route index element={<Dashboard />} />
             <Route path="participants" element={<ParticipantsList />} />
             <Route path="participants/create" element={<CreateParticipant />} />
@@ -153,7 +157,8 @@ function App() {
                   <p className="text-gray-300 mb-8">Halaman tidak ditemukan</p>
                   <a
                     href="/"
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
                     Kembali ke Beranda
                   </a>
                 </div>

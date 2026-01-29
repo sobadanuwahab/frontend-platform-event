@@ -79,7 +79,7 @@ const EditEvent = () => {
           image: null,
         });
 
-        console.log("EVENT RAW FROM API:", event);
+        // console.log("EVENT RAW FROM API:", event);
 
         if (event.image) {
           const imgUrl = `https://apipaskibra.my.id/storage/${event.image}`;
@@ -187,7 +187,8 @@ const EditEvent = () => {
         </p>
         <button
           onClick={() => navigate("/organizer/events")}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600">
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600"
+        >
           Kembali ke Daftar Event
         </button>
       </div>
@@ -199,12 +200,14 @@ const EditEvent = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto">
+      className="max-w-4xl mx-auto"
+    >
       {/* Header */}
       <div className="mb-8">
         <button
           onClick={() => navigate("/organizer/events")}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6">
+          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6"
+        >
           <ArrowLeft size={20} />
           <span>Kembali ke Daftar Event</span>
         </button>
@@ -237,13 +240,15 @@ const EditEvent = () => {
           <div className="flex gap-2">
             <button
               onClick={() => navigate(`/organizer/events/${id}`)}
-              className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium flex items-center gap-2">
+              className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium flex items-center gap-2"
+            >
               <Eye size={16} />
               Lihat Detail
             </button>
             <button
               onClick={handleChange}
-              className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition-colors font-medium flex items-center gap-2">
+              className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition-colors font-medium flex items-center gap-2"
+            >
               <Trash2 size={16} />
               Hapus
             </button>
@@ -505,7 +510,8 @@ const EditEvent = () => {
                 {/* Upload Area */}
                 <label
                   htmlFor="event-image-upload"
-                  className={`flex-1 cursor-pointer ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}>
+                  className={`flex-1 cursor-pointer ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
                   <div className="border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors h-full">
                     <div className="flex flex-col items-center space-y-4">
                       <ImageIcon size={32} className="text-gray-400" />
@@ -584,7 +590,8 @@ const EditEvent = () => {
                               onClick={removeImage}
                               disabled={submitting}
                               className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white disabled:opacity-50"
-                              title="Hapus gambar baru">
+                              title="Hapus gambar baru"
+                            >
                               <X size={16} />
                             </button>
                           )}
@@ -620,7 +627,8 @@ const EditEvent = () => {
                                   href={imagePreview}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-xs text-blue-400 hover:text-blue-300 underline">
+                                  className="text-xs text-blue-400 hover:text-blue-300 underline"
+                                >
                                   Lihat gambar asli
                                 </a>
                               </div>
@@ -663,7 +671,8 @@ const EditEvent = () => {
               type="button"
               onClick={() => navigate("/organizer/events")}
               disabled={submitting}
-              className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50">
+              className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
+            >
               Batal
             </button>
 
@@ -679,14 +688,16 @@ const EditEvent = () => {
                   addDebugLog("Form reset to original values");
                 }}
                 disabled={submitting}
-                className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50">
+                className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
+              >
                 Reset
               </button>
 
               <button
                 type="submit"
                 disabled={submitting || success}
-                className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
                 {submitting ? (
                   <>
                     <Loader className="animate-spin h-5 w-5 border-t-2 border-b-2 border-white" />

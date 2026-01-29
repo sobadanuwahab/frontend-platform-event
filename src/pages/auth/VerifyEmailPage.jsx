@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   Mail,
   ArrowLeft,
@@ -10,7 +10,7 @@ import {
   Clock,
   Key,
 } from "lucide-react";
-import { verifyEmailOTP, resendEmailOTP } from "../services/EmailService";
+import { verifyEmailOTP, resendEmailOTP } from "../../services/EmailService";
 
 const VerifyEmailPage = () => {
   const navigate = useNavigate();
@@ -217,7 +217,8 @@ const VerifyEmailPage = () => {
         <div className="mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          >
             <ArrowLeft size={20} />
             <span>Kembali</span>
           </button>
@@ -262,7 +263,8 @@ const VerifyEmailPage = () => {
                 isSuccess
                   ? "bg-green-900/30 border border-green-700/30"
                   : "bg-yellow-900/30 border border-yellow-700/30"
-              }`}>
+              }`}
+            >
               <div className="flex items-start gap-3">
                 {isSuccess ? (
                   <CheckCircle
@@ -348,7 +350,8 @@ const VerifyEmailPage = () => {
                 <button
                   onClick={handleResendOTP}
                   disabled={isSending}
-                  className="text-sm text-yellow-400 hover:text-yellow-300 disabled:text-gray-500 flex items-center gap-1">
+                  className="text-sm text-yellow-400 hover:text-yellow-300 disabled:text-gray-500 flex items-center gap-1"
+                >
                   <RefreshCw size={14} />
                   <span>Kirim ulang kode</span>
                 </button>
@@ -361,7 +364,8 @@ const VerifyEmailPage = () => {
             <button
               onClick={handleVerifyOTP}
               disabled={isVerifying || otp.length !== 6}
-              className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]">
+              className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+            >
               {isVerifying ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -378,7 +382,8 @@ const VerifyEmailPage = () => {
             <button
               onClick={handleResendOTP}
               disabled={isSending || !canResend}
-              className="w-full py-3 bg-gray-800 border border-gray-700 text-gray-300 font-medium rounded-lg hover:bg-gray-700 hover:text-white transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full py-3 bg-gray-800 border border-gray-700 text-gray-300 font-medium rounded-lg hover:bg-gray-700 hover:text-white transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {isSending ? (
                 <>
                   <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
@@ -413,13 +418,15 @@ const VerifyEmailPage = () => {
           <div className="mt-4 flex justify-center gap-4">
             <button
               onClick={() => navigate("/")}
-              className="text-teal-400 hover:text-teal-300 font-medium">
+              className="text-teal-400 hover:text-teal-300 font-medium"
+            >
               Kembali ke Beranda
             </button>
             <span className="text-gray-600">|</span>
             <button
               onClick={() => navigate("/auth/login")}
-              className="text-orange-400 hover:text-orange-300 font-medium">
+              className="text-orange-400 hover:text-orange-300 font-medium"
+            >
               Login dengan akun lain
             </button>
           </div>

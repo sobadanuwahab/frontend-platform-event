@@ -15,7 +15,6 @@ import {
   ChevronRight,
   Menu,
   X,
-  Bell,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -235,7 +234,8 @@ const OrganizerPage = () => {
               <button
                 onClick={toggleSidebar}
                 className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50 active:bg-gray-700/50 transition-all"
-                title={sidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}>
+                title={sidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}
+              >
                 {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
             </div>
@@ -254,18 +254,21 @@ const OrganizerPage = () => {
                 </div>
                 <div className="relative">
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-semibold shadow-md ${roleColors.bg}`}>
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-semibold shadow-md ${roleColors.bg}`}
+                  >
                     <User size={18} />
                   </div>
                   <div
-                    className={`absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${roleColors.dot}`}></div>
+                    className={`absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-gray-900 ${roleColors.dot}`}
+                  ></div>
                 </div>
 
                 {/* Logout Button */}
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20 active:bg-red-500/30 transition-all"
-                  title="Logout">
+                  title="Logout"
+                >
                   <LogOut size={18} />
                   <span className="text-sm font-medium hidden sm:inline">
                     Logout
@@ -283,11 +286,13 @@ const OrganizerPage = () => {
         <div
           className={`hidden lg:flex transition-all duration-300 flex-shrink-0 ${
             sidebarOpen ? "w-72" : "w-0"
-          }`}>
+          }`}
+        >
           <div
             className={`w-72 bg-gray-800/50 border-r border-gray-700 flex flex-col flex-shrink-0 transition-opacity duration-300 ${
               sidebarOpen ? "opacity-100" : "opacity-0"
-            }`}>
+            }`}
+          >
             <div className="p-5 flex-1 overflow-y-auto">
               <div className="mb-6">
                 <h2 className="text-lg font-bold mb-4">Menu Navigasi</h2>
@@ -300,7 +305,8 @@ const OrganizerPage = () => {
                         activeTab === item.id
                           ? "bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-blue-400 border border-blue-500/30"
                           : "text-gray-400 hover:text-white hover:bg-gray-700/50 active:bg-gray-600/50"
-                      }`}>
+                      }`}
+                    >
                       <item.icon size={18} />
                       <span className="font-medium">{item.label}</span>
                       <ChevronRight
@@ -320,13 +326,15 @@ const OrganizerPage = () => {
                 <div className="space-y-3">
                   <button
                     onClick={() => navigate("/organizer/participants/create")}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium">
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
+                  >
                     <PlusCircle size={18} />
                     <span>Tambah Peserta</span>
                   </button>
                   <button
                     onClick={() => navigate("/organizer/events/create")}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
+                  >
                     <Calendar size={18} />
                     <span>Buat Event</span>
                   </button>
@@ -352,10 +360,12 @@ const OrganizerPage = () => {
                     return (
                       <div
                         key={stat.label}
-                        className="bg-gray-800/50 border border-gray-700 p-3 rounded-xl">
+                        className="bg-gray-800/50 border border-gray-700 p-3 rounded-xl"
+                      >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`p-2 rounded-lg bg-gradient-to-r ${colorClasses[stat.color]}`}>
+                            className={`p-2 rounded-lg bg-gradient-to-r ${colorClasses[stat.color]}`}
+                          >
                             <Icon size={16} />
                           </div>
                           <div>
@@ -380,7 +390,8 @@ const OrganizerPage = () => {
                   {recentActivities.map((activity) => (
                     <div
                       key={activity.id}
-                      className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/50">
+                      className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/50"
+                    >
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-semibold text-sm text-white">
                           {activity.name}
@@ -412,7 +423,8 @@ const OrganizerPage = () => {
         <div
           className={`fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 lg:hidden ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}>
+          }`}
+        >
           <div className="bg-gray-800/95 backdrop-blur-md border-r border-gray-700 h-full p-5 overflow-y-auto">
             {/* Close Button for Mobile */}
             <div className="flex justify-between items-center mb-6">
@@ -420,7 +432,8 @@ const OrganizerPage = () => {
               <button
                 onClick={() => setSidebarOpen(false)}
                 className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50 active:bg-gray-700/50 transition-all"
-                title="Tutup Sidebar">
+                title="Tutup Sidebar"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -437,7 +450,8 @@ const OrganizerPage = () => {
                     activeTab === item.id
                       ? "bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-blue-400 border border-blue-500/30"
                       : "text-gray-400 hover:text-white hover:bg-gray-700/50 active:bg-gray-600/50"
-                  }`}>
+                  }`}
+                >
                   <item.icon size={20} />
                   <span className="font-medium">{item.label}</span>
                   <ChevronRight
@@ -459,7 +473,8 @@ const OrganizerPage = () => {
                     navigate("/organizer/participants/create");
                     setSidebarOpen(false);
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium">
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
+                >
                   <PlusCircle size={20} />
                   <span>Tambah Peserta</span>
                 </button>
@@ -468,7 +483,8 @@ const OrganizerPage = () => {
                     navigate("/organizer/events/create");
                     setSidebarOpen(false);
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
+                >
                   <Calendar size={20} />
                   <span>Buat Event</span>
                 </button>
@@ -494,10 +510,12 @@ const OrganizerPage = () => {
                   return (
                     <div
                       key={stat.label}
-                      className="bg-gray-800/50 border border-gray-700 p-3 rounded-xl">
+                      className="bg-gray-800/50 border border-gray-700 p-3 rounded-xl"
+                    >
                       <div className="flex flex-col items-center text-center">
                         <div
-                          className={`p-2 rounded-lg mb-2 bg-gradient-to-r ${colorClasses[stat.color]}`}>
+                          className={`p-2 rounded-lg mb-2 bg-gradient-to-r ${colorClasses[stat.color]}`}
+                        >
                           <Icon size={18} />
                         </div>
                         <p className="text-xs text-gray-400 mb-1">
@@ -520,7 +538,8 @@ const OrganizerPage = () => {
                 {recentActivities.map((activity) => (
                   <div
                     key={activity.id}
-                    className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/50">
+                    className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/50"
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <p className="font-semibold text-sm text-white">
                         {activity.name}
@@ -542,20 +561,23 @@ const OrganizerPage = () => {
         {/* Main Content Area dengan scroll sendiri */}
         <div
           ref={mainContentRef}
-          className="flex-1 flex flex-col overflow-hidden">
+          className="flex-1 flex flex-col overflow-hidden"
+        >
           <div className="flex-1 overflow-y-auto">
             <div className="container mx-auto px-4 py-6">
               <div className="flex gap-6">
                 <div
                   className={`flex-1 transition-all duration-300 ${
                     sidebarOpen && !isMobile ? "lg:ml-0" : ""
-                  }`}>
+                  }`}
+                >
                   <motion.div
                     key={location.pathname}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="space-y-6">
+                    className="space-y-6"
+                  >
                     {/* Dynamic Content dari Outlet */}
                     <Outlet />
 

@@ -166,7 +166,7 @@ const VotingPage = () => {
     // Update total votes
     setTotalVotes((prev) => prev + 1);
 
-    console.log("Voted for team:", teamId, "Coin balance:", newBalance);
+    // console.log("Voted for team:", teamId, "Coin balance:", newBalance);
   };
 
   const filteredTeams = teams.filter(
@@ -202,7 +202,8 @@ const VotingPage = () => {
               </div>
               <button
                 onClick={() => navigate("/ticket")}
-                className="px-6 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-teal-700 transition-all shadow-md hover:shadow-lg active:scale-[0.98]">
+                className="px-6 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-semibold rounded-xl hover:from-teal-600 hover:to-teal-700 transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+              >
                 Beli Coin
               </button>
             </div>
@@ -433,7 +434,8 @@ const VotingPage = () => {
             Punya pertanyaan?{" "}
             <button
               onClick={() => navigate("/ticket")}
-              className="text-teal-600 hover:text-teal-700 font-medium underline">
+              className="text-teal-600 hover:text-teal-700 font-medium underline"
+            >
               Kembali ke Pembelian Coin
             </button>
           </p>
