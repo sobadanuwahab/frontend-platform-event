@@ -23,23 +23,7 @@ import { motion } from "framer-motion";
 const API_URL = "https://apipaskibra.my.id/api";
 
 const UserManagementTab = () => {
-  // Ambil props dari outlet context
   const context = useOutletContext();
-  // const stats = context?.stats || {
-  //   totalUsers: 0,
-  //   totalCoinsSold: 0,
-  //   totalTicketSold: 0,
-  //   totalVotes: 0,
-  //   revenue: 0,
-  //   activeUsers: 0,
-  //   pendingTransactions: 0,
-  //   completedTransaction: 0,
-  //   completedTransactions: 0,
-  //   totalParticipants: 0,
-  //   activeParticipants: 0,
-  //   pendingParticipants: 0,
-  // };
-
   const setStats =
     context?.setStats ||
     (() => {
@@ -64,7 +48,7 @@ const UserManagementTab = () => {
     whatsapp: "",
     password: "",
     password_confirmation: "",
-    user_role_id: 3, // Default ke user
+    user_role_id: 3,
     status: "active",
   });
 
@@ -86,7 +70,6 @@ const UserManagementTab = () => {
     try {
       setLoadingRoles(true);
       const token = getAuthToken();
-      // console.log("Fetching user roles from API...");
 
       const response = await fetch(`${API_URL}/user-roles`, {
         method: "GET",
@@ -98,13 +81,11 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      // console.log("API Response for user roles:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengambil data roles");
       }
 
-      // Mapping response untuk user roles
       let rolesData = [];
 
       if (data.data && Array.isArray(data.data)) {
@@ -115,22 +96,31 @@ const UserManagementTab = () => {
         rolesData = data.roles;
       }
 
-      // console.log("Mapped roles data:", rolesData);
-      setUserRoles(rolesData);
+      const formattedRoles = rolesData.map((role) => ({
+        id: role.id,
+        name: role.role || role.name,
+        display_name:
+          role.display_name ||
+          (role.role === "admin"
+            ? "Admin"
+            : role.role === "judge"
+              ? "Juri"
+              : role.role === "user"
+                ? "User"
+                : role.role || "Unknown"),
+      }));
 
-      // Simpan ke localStorage untuk cache
-      localStorage.setItem("cached_user_roles", JSON.stringify(rolesData));
+      setUserRoles(formattedRoles);
+      localStorage.setItem("cached_user_roles", JSON.stringify(formattedRoles));
     } catch (err) {
       console.error("Error fetching user roles:", err);
-      // Coba ambil dari cache dulu
       const cached = localStorage.getItem("cached_user_roles");
       if (cached) {
         setUserRoles(JSON.parse(cached));
       } else {
-        // Fallback ke roles default
         setUserRoles([
           { id: 1, name: "admin", display_name: "Admin" },
-          { id: 2, name: "juri", display_name: "Juri" },
+          { id: 2, name: "judge", display_name: "Juri" },
           { id: 3, name: "user", display_name: "User" },
         ]);
       }
@@ -144,10 +134,8 @@ const UserManagementTab = () => {
     try {
       setLoading(true);
       setError(null);
-
       const token = getAuthToken();
 
-      // console.log("Fetching users from API...");
       const response = await fetch(`${API_URL}/users`, {
         method: "GET",
         headers: {
@@ -158,13 +146,11 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      // console.log("API Response for users:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengambil data users");
       }
 
-      // Mapping response berdasarkan struktur API
       let usersData = [];
 
       if (data.data && Array.isArray(data.data)) {
@@ -175,56 +161,33 @@ const UserManagementTab = () => {
         usersData = data.users;
       }
 
-      // console.log("Mapped users data:", usersData);
-
-      // Ambil roles dari state atau cache
-      let rolesList =
-        userRoles.length > 0
-          ? userRoles
-          : JSON.parse(localStorage.getItem("cached_user_roles") || "[]");
-
-      // console.log("Roles list for mapping:", rolesList);
-
-      // Buat mapping dari role string ke ID
-      const roleNameToIdMap = {};
-      rolesList.forEach((role) => {
-        roleNameToIdMap[role.role] = role.id;
-      });
-
-      // console.log("Role name to ID map:", roleNameToIdMap);
-
-      // Format users
-      const formattedUsers = usersData.map((user, index) => {
-        // console.log(`User ${index} data:`, user);
-
+      const formattedUsers = usersData.map((user) => {
         const userRoleName = user.role || "user";
-        const roleId = roleNameToIdMap[userRoleName] || 1; // Default ke user (ID 1)
-
-        // Cari role object berdasarkan ID
-        let roleData = rolesList.find((r) => r.id === roleId) || {
-          id: roleId,
-          role: userRoleName,
-          display_name: userRoleName,
-        };
-
-        // Untuk role 'juri' (dari user) mapping ke 'judge' (dari roles)
-        if (userRoleName === "juri" && !roleNameToIdMap[userRoleName]) {
-          const judgeRole = rolesList.find((r) => r.role === "judge");
-          if (judgeRole) {
-            roleData = judgeRole;
-          }
-        }
+        const userRole = userRoles.find(
+          (r) =>
+            r.name === userRoleName ||
+            (userRoleName === "juri" && r.name === "judge"),
+        );
 
         return {
           id: user.id || user.user_id,
           name: user.name || user.username || user.full_name || "User",
           email: user.email,
           whatsapp: user.whatsapp || user.phone || user.telepon || "-",
-          role_name: userRoleName,
-          role_display_name: roleData.display_name || roleData.role,
-          role_object: roleData,
-          // Untuk form edit, kita perlu ID yang benar
-          user_role_id: roleData.id,
+          role_name: userRole ? userRole.name : userRoleName,
+          role_display_name: userRole
+            ? userRole.display_name
+            : userRoleName === "admin"
+              ? "Admin"
+              : userRoleName === "juri"
+                ? "Juri"
+                : userRoleName === "judge"
+                  ? "Juri"
+                  : userRoleName === "user"
+                    ? "User"
+                    : userRoleName,
+          role_object: userRole,
+          user_role_id: userRole ? userRole.id : 3,
           joinDate: user.created_at
             ? new Date(user.created_at).toLocaleDateString("id-ID")
             : user.createdAt
@@ -243,7 +206,6 @@ const UserManagementTab = () => {
 
       setUsers(formattedUsers);
 
-      // Update stats jika setStats tersedia
       if (setStats && typeof setStats === "function") {
         setStats((prevStats) => ({
           ...prevStats,
@@ -251,8 +213,6 @@ const UserManagementTab = () => {
           activeUsers: formattedUsers.filter((u) => u.status === "active")
             .length,
         }));
-      } else {
-        console.warn("setStats is not a function, cannot update stats");
       }
     } catch (err) {
       console.error("Error fetching users:", err);
@@ -268,7 +228,6 @@ const UserManagementTab = () => {
     e.preventDefault();
     try {
       setActionLoading(true);
-
       const token = getAuthToken();
 
       const requestData = {
@@ -281,8 +240,6 @@ const UserManagementTab = () => {
         status: formData.status,
       };
 
-      // console.log("Creating user with data:", requestData);
-
       const response = await fetch(`${API_URL}/users`, {
         method: "POST",
         headers: {
@@ -294,7 +251,6 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      // console.log("Create user response:", data);
 
       if (!response.ok) {
         if (data.errors) {
@@ -306,7 +262,6 @@ const UserManagementTab = () => {
 
       alert("User berhasil dibuat!");
 
-      // Reset form
       setFormData({
         name: "",
         email: "",
@@ -318,8 +273,6 @@ const UserManagementTab = () => {
       });
 
       setShowAddForm(false);
-
-      // Refresh data
       await Promise.all([fetchUserRoles(), fetchUsers()]);
     } catch (err) {
       console.error("Error creating user:", err);
@@ -334,7 +287,6 @@ const UserManagementTab = () => {
     e.preventDefault();
     try {
       setActionLoading(true);
-
       const token = getAuthToken();
 
       const requestData = {
@@ -345,16 +297,11 @@ const UserManagementTab = () => {
         status: formData.status,
       };
 
-      // Only include password if provided
       if (formData.password) {
         requestData.password = formData.password;
         requestData.password_confirmation = formData.password_confirmation;
       }
 
-      // console.log("Updating user with data:", requestData);
-      // console.log("Updating user ID:", selectedUser.id);
-
-      // COBA beberapa kemungkinan endpoint:
       const endpointsToTry = [
         `${API_URL}/user/${selectedUser.id}`,
         `${API_URL}/user/update/${selectedUser.id}`,
@@ -363,12 +310,9 @@ const UserManagementTab = () => {
       let response = null;
       let lastError = null;
 
-      // Coba berbagai endpoint dan method
       for (const endpoint of endpointsToTry) {
         for (const method of ["PUT", "PATCH", "POST"]) {
           try {
-            // console.log(`Trying ${method} ${endpoint}`);
-
             const config = {
               method: method,
               headers: {
@@ -379,31 +323,23 @@ const UserManagementTab = () => {
               body: JSON.stringify(requestData),
             };
 
-            // Untuk POST dengan parameter di body
             if (method === "POST") {
-              requestData._method = "PUT"; // Laravel style
+              requestData._method = "PUT";
             }
 
             response = await fetch(endpoint, config);
 
             if (response.ok) {
-              // console.log(`Success with ${method} ${endpoint}`);
               break;
             }
           } catch (err) {
             lastError = err;
-            // console.log(`Failed with ${method} ${endpoint}:`, err.message);
           }
         }
         if (response && response.ok) break;
       }
 
-      // Jika semua gagal
       if (!response || !response.ok) {
-        // Coba endpoint alternatif dengan format berbeda
-        // console.log("Trying alternative format...");
-
-        // COBA 1: endpoint dengan query parameter
         try {
           response = await fetch(`${API_URL}/user?id=${selectedUser.id}`, {
             method: "PUT",
@@ -417,29 +353,8 @@ const UserManagementTab = () => {
         } catch (err) {
           lastError = err;
         }
-
-        // COBA 2: endpoint yang lebih spesifik
-        if (!response || !response.ok) {
-          try {
-            response = await fetch(
-              `${API_URL}/admin/users/${selectedUser.id}`,
-              {
-                method: "PUT",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                  Accept: "application/json",
-                },
-                body: JSON.stringify(requestData),
-              },
-            );
-          } catch (err) {
-            lastError = err;
-          }
-        }
       }
 
-      // Jika masih gagal
       if (!response || !response.ok) {
         throw new Error(
           `Tidak dapat menemukan endpoint update. Status: ${response?.status || "no response"}`,
@@ -447,7 +362,6 @@ const UserManagementTab = () => {
       }
 
       const data = await response.json();
-      // console.log("Update user response:", data);
 
       if (!response.ok) {
         if (data.errors) {
@@ -459,7 +373,6 @@ const UserManagementTab = () => {
 
       alert("User berhasil diupdate!");
 
-      // Reset form
       setFormData({
         name: "",
         email: "",
@@ -472,8 +385,6 @@ const UserManagementTab = () => {
 
       setShowEditForm(false);
       setSelectedUser(null);
-
-      // Refresh data
       await Promise.all([fetchUserRoles(), fetchUsers()]);
     } catch (err) {
       console.error("Error updating user:", err);
@@ -493,7 +404,6 @@ const UserManagementTab = () => {
 
     try {
       setActionLoading(true);
-
       const token = getAuthToken();
 
       const response = await fetch(`${API_URL}/user/${userId}`, {
@@ -506,15 +416,12 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      // console.log("Delete user response:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal menghapus user");
       }
 
       alert("User berhasil dihapus!");
-
-      // Refresh data
       await Promise.all([fetchUserRoles(), fetchUsers()]);
     } catch (err) {
       console.error("Error deleting user:", err);
@@ -530,7 +437,6 @@ const UserManagementTab = () => {
 
     try {
       setActionLoading(true);
-
       const token = getAuthToken();
 
       const response = await fetch(`${API_URL}/users/${userId}/status`, {
@@ -544,15 +450,12 @@ const UserManagementTab = () => {
       });
 
       const data = await response.json();
-      // console.log("Update status response:", data);
 
       if (!response.ok) {
         throw new Error(data.message || "Gagal mengupdate status");
       }
 
       alert(`Status user berhasil diubah menjadi ${newStatus}`);
-
-      // Refresh data
       await fetchUsers();
     } catch (err) {
       console.error("Error updating status:", err);
@@ -565,11 +468,8 @@ const UserManagementTab = () => {
   // Handle edit button click
   const handleEditClick = (user) => {
     setSelectedUser(user);
-
-    // Cari role_id yang benar berdasarkan role_name user
     let roleId = user.user_role_id;
 
-    // Jika tidak ada, cari dari roles list
     if (!roleId && userRoles.length > 0) {
       const userRoleName = user.role_name;
       const role = userRoles.find(
@@ -577,7 +477,7 @@ const UserManagementTab = () => {
           r.role === userRoleName ||
           (userRoleName === "juri" && r.role === "judge"),
       );
-      roleId = role ? role.id : 1; // Default ke user
+      roleId = role ? role.id : 1;
     }
 
     setFormData({
@@ -586,7 +486,7 @@ const UserManagementTab = () => {
       whatsapp: user.whatsapp,
       password: "",
       password_confirmation: "",
-      user_role_id: roleId || 1, // Pastikan ada nilai
+      user_role_id: roleId || 1,
       status: user.status,
     });
     setShowEditForm(true);
@@ -641,6 +541,28 @@ const UserManagementTab = () => {
     linkElement.click();
   };
 
+  // Get unique roles for filter dropdown
+  const getUniqueRolesForFilter = () => {
+    if (userRoles.length > 0) {
+      return userRoles;
+    }
+
+    const uniqueRoleNames = [...new Set(users.map((user) => user.role_name))];
+    return uniqueRoleNames.map((roleName) => ({
+      name: roleName,
+      display_name:
+        roleName === "admin"
+          ? "Admin"
+          : roleName === "judge"
+            ? "Juri"
+            : roleName === "juri"
+              ? "Juri"
+              : roleName === "user"
+                ? "User"
+                : roleName,
+    }));
+  };
+
   // Get color based on role
   const getRoleColor = (roleName) => {
     if (!roleName)
@@ -653,6 +575,7 @@ const UserManagementTab = () => {
     switch (roleName.toLowerCase()) {
       case "admin":
         return { bg: "bg-red-100", text: "text-red-800", icon: "text-red-500" };
+      case "judge":
       case "juri":
         return {
           bg: "bg-purple-100",
@@ -681,33 +604,34 @@ const UserManagementTab = () => {
     const initializeData = async () => {
       if (!isMounted) return;
 
-      // console.log("Initializing data...");
-      // console.log("Context available:", !!context);
-
-      // Ambil roles dulu
       await fetchUserRoles();
-
-      // Tunggu sebentar untuk memastikan state sudah update
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Baru ambil users
       if (isMounted) {
         await fetchUsers();
       }
     };
 
-    // Jalankan sekali
     initializeData();
 
-    // Cleanup function
     return () => {
       isMounted = false;
     };
-  }, []); // Empty dependency array
+  }, []);
 
   // Refresh all data
   const refreshAllData = async () => {
     await Promise.all([fetchUserRoles(), fetchUsers()]);
+  };
+
+  // Fungsi handleSubmit untuk form (tambahkan di sini)
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (showAddForm) {
+      handleCreateUser(e);
+    } else if (showEditForm) {
+      handleUpdateUser(e);
+    }
   };
 
   if (loading) {
@@ -749,11 +673,6 @@ const UserManagementTab = () => {
             Kelola pengguna sistem ({users.length} total users,{" "}
             {users.filter((u) => u.status === "active").length} aktif)
           </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-lg text-sm">
-            Admin Access
-          </span>
         </div>
       </div>
 
@@ -840,7 +759,7 @@ const UserManagementTab = () => {
                     <option value="">Pilih Role</option>
                     {userRoles.map((role) => (
                       <option key={role.id} value={role.id}>
-                        {role.display_name || role.name}
+                        {role.display_name}
                       </option>
                     ))}
                   </select>
@@ -1005,16 +924,7 @@ const UserManagementTab = () => {
                     <option value="">Pilih Role</option>
                     {userRoles.map((role) => (
                       <option key={role.id} value={role.id}>
-                        {/* Tampilkan 'judge' sebagai 'Juri' untuk user friendly */}
-                        {role.role === "judge"
-                          ? "Juri"
-                          : role.role === "organizer"
-                            ? "Organizer"
-                            : role.role === "admin"
-                              ? "Admin"
-                              : role.role === "user"
-                                ? "User"
-                                : role.role}
+                        {role.display_name}
                       </option>
                     ))}
                   </select>
@@ -1123,11 +1033,11 @@ const UserManagementTab = () => {
                 onChange={(e) =>
                   setFilters({ ...filters, role: e.target.value })
                 }
-                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer">
+                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer min-w-[150px]">
                 <option value="all">Semua Role</option>
-                {userRoles.map((role) => (
-                  <option key={role.id} value={role.name}>
-                    {role.display_name || role.name}
+                {getUniqueRolesForFilter().map((role) => (
+                  <option key={role.name} value={role.name}>
+                    {role.display_name}
                   </option>
                 ))}
               </select>
@@ -1137,6 +1047,7 @@ const UserManagementTab = () => {
               />
             </div>
 
+            {/* Status Filter */}
             <div className="relative">
               <select
                 value={filters.status}
@@ -1145,8 +1056,26 @@ const UserManagementTab = () => {
                 }
                 className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer">
                 <option value="all">Semua Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Nonaktif</option>
+              </select>
+              <ChevronDown
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
+                size={16}
+              />
+            </div>
+
+            {/* Sort Filter */}
+            <div className="relative">
+              <select
+                value={filters.sortBy}
+                onChange={(e) =>
+                  setFilters({ ...filters, sortBy: e.target.value })
+                }
+                className="pl-3 pr-8 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white appearance-none cursor-pointer">
+                <option value="newest">Terbaru</option>
+                <option value="oldest">Terlama</option>
+                <option value="name">Nama A-Z</option>
               </select>
               <ChevronDown
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -1176,6 +1105,41 @@ const UserManagementTab = () => {
             </button>
           </div>
         </div>
+
+        {/* Active Filters Info */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {filters.role !== "all" && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              Role:{" "}
+              {getUniqueRolesForFilter().find((r) => r.name === filters.role)
+                ?.display_name || filters.role}
+              <button
+                onClick={() => setFilters({ ...filters, role: "all" })}
+                className="ml-2 text-blue-600 hover:text-blue-800">
+                ✕
+              </button>
+            </span>
+          )}
+          {filters.status !== "all" && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              Status: {filters.status === "active" ? "Aktif" : "Nonaktif"}
+              <button
+                onClick={() => setFilters({ ...filters, status: "all" })}
+                className="ml-2 text-green-600 hover:text-green-800">
+                ✕
+              </button>
+            </span>
+          )}
+          {(filters.role !== "all" || filters.status !== "all") && (
+            <button
+              onClick={() =>
+                setFilters({ role: "all", status: "all", sortBy: "newest" })
+              }
+              className="text-sm text-gray-400 hover:text-white">
+              Reset semua filter
+            </button>
+          )}
+        </div>
       </div>
 
       {/* User Table */}
@@ -1194,14 +1158,26 @@ const UserManagementTab = () => {
             <p className="text-gray-400 mb-6">
               {searchTerm
                 ? "Tidak ditemukan user dengan kata kunci tersebut"
-                : "Belum ada user yang terdaftar"}
+                : filters.role !== "all" || filters.status !== "all"
+                  ? "Tidak ada user dengan filter yang dipilih"
+                  : "Belum ada user yang terdaftar"}
             </p>
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto">
-              <Plus size={18} />
-              Tambah User Pertama
-            </button>
+            {filters.role !== "all" || filters.status !== "all" ? (
+              <button
+                onClick={() =>
+                  setFilters({ role: "all", status: "all", sortBy: "newest" })
+                }
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto">
+                Reset Filter
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 mx-auto">
+                <Plus size={18} />
+                Tambah User Pertama
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -1218,12 +1194,6 @@ const UserManagementTab = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Role
                     </th>
-                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Coins
-                    </th> */}
-                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                      Status
-                    </th> */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                       Bergabung
                     </th>
@@ -1280,39 +1250,6 @@ const UserManagementTab = () => {
                             </span>
                           </div>
                         </td>
-                        {/* <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <Coins size={16} className="text-yellow-400" />
-                            <span className="font-bold text-white">
-                              {user.coinBalance || 0}
-                            </span>
-                          </div>
-                        </td> */}
-                        {/* <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            {user.status === "active" ? (
-                              <CheckCircle
-                                size={16}
-                                className="text-green-400"
-                              />
-                            ) : (
-                              <XCircle size={16} className="text-red-400" />
-                            )}
-                            <button
-                              onClick={() =>
-                                handleUpdateStatus(user.id, user.status)
-                              }
-                              disabled={actionLoading}
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                user.status === "active"
-                                  ? "bg-green-900/30 text-green-400 hover:bg-green-900/50"
-                                  : "bg-red-900/30 text-red-400 hover:bg-red-900/50"
-                              }`}
-                            >
-                              {user.status === "active" ? "AKTIF" : "NONAKTIF"}
-                            </button>
-                          </div>
-                        </td> */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <Calendar size={14} className="text-gray-400" />
@@ -1343,7 +1280,7 @@ const UserManagementTab = () => {
                               className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg"
                               title="View Details"
                               onClick={() => {
-                                // console.log("View user details:", user);
+                                console.log("View user details:", user);
                               }}>
                               <Eye size={18} />
                             </button>
@@ -1360,6 +1297,7 @@ const UserManagementTab = () => {
             <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
               <p className="text-sm text-gray-400">
                 Menampilkan {sortedUsers.length} dari {users.length} users
+                {filters.role !== "all" && ` (Filter: ${filters.role})`}
               </p>
               <div className="flex gap-2">
                 <button className="px-3 py-1 border border-gray-600 text-gray-300 rounded hover:bg-gray-700">
