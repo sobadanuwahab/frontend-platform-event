@@ -529,17 +529,17 @@ const UserManagementTab = () => {
   });
 
   // Export data
-  const handleExportData = () => {
-    const dataStr = JSON.stringify(sortedUsers, null, 2);
-    const dataUri =
-      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
-    const exportFileDefaultName = `users-export-${new Date().toISOString().split("T")[0]}.json`;
+  // const handleExportData = () => {
+  //   const dataStr = JSON.stringify(sortedUsers, null, 2);
+  //   const dataUri =
+  //     "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+  //   const exportFileDefaultName = `users-export-${new Date().toISOString().split("T")[0]}.json`;
 
-    const linkElement = document.createElement("a");
-    linkElement.setAttribute("href", dataUri);
-    linkElement.setAttribute("download", exportFileDefaultName);
-    linkElement.click();
-  };
+  //   const linkElement = document.createElement("a");
+  //   linkElement.setAttribute("href", dataUri);
+  //   linkElement.setAttribute("download", exportFileDefaultName);
+  //   linkElement.click();
+  // };
 
   // Get unique roles for filter dropdown
   const getUniqueRolesForFilter = () => {
@@ -625,14 +625,14 @@ const UserManagementTab = () => {
   };
 
   // Fungsi handleSubmit untuk form (tambahkan di sini)
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (showAddForm) {
-      handleCreateUser(e);
-    } else if (showEditForm) {
-      handleUpdateUser(e);
-    }
-  };
+  // const handleSubmit = (e) => {
+  //   e.preventDefault();
+  //   if (showAddForm) {
+  //     handleCreateUser(e);
+  //   } else if (showEditForm) {
+  //     handleUpdateUser(e);
+  //   }
+  // };
 
   if (loading) {
     return (
@@ -676,177 +676,6 @@ const UserManagementTab = () => {
           </p>
         </div>
       </div>
-
-      {/* Add User Form */}
-      {showAddForm && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-6"
-        >
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-white">Tambah User Baru</h3>
-            <button
-              onClick={() => setShowAddForm(false)}
-              className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <form onSubmit={handleCreateUser} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Nama Lengkap *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                  placeholder="Masukkan nama lengkap"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                  placeholder="user@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  WhatsApp *
-                </label>
-                <input
-                  type="tel"
-                  name="whatsapp"
-                  value={formData.whatsapp}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                  placeholder="081234567890"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Role *
-                </label>
-                {loadingRoles ? (
-                  <div className="flex items-center space-x-2">
-                    <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
-                    <span className="text-sm text-gray-400">
-                      Memuat roles...
-                    </span>
-                  </div>
-                ) : (
-                  <select
-                    name="user_role_id"
-                    value={formData.user_role_id}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                  >
-                    <option value="">Pilih Role</option>
-                    {userRoles.map((role) => (
-                      <option key={role.id} value={role.id}>
-                        {role.display_name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Password *
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                  placeholder="Minimal 6 karakter"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Konfirmasi Password *
-                </label>
-                <input
-                  type="password"
-                  name="password_confirmation"
-                  value={formData.password_confirmation}
-                  onChange={handleInputChange}
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400"
-                  placeholder="Ulangi password"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4">
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={actionLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-              >
-                {actionLoading ? (
-                  <>
-                    <RefreshCw size={16} className="animate-spin" />
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    Simpan User
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      )}
 
       {/* Edit User Form */}
       {showEditForm && selectedUser && (
@@ -1100,14 +929,6 @@ const UserManagementTab = () => {
             </div>
 
             <button
-              onClick={() => setShowAddForm(true)}
-              className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-            >
-              <UserPlus size={18} />
-              Tambah User
-            </button>
-
-            <button
               onClick={refreshAllData}
               className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
               title="Refresh"
@@ -1115,13 +936,13 @@ const UserManagementTab = () => {
               <RefreshCw size={18} />
             </button>
 
-            <button
+            {/* <button
               onClick={handleExportData}
               className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
               title="Export Data"
             >
               <Download size={18} />
-            </button>
+            </button> */}
           </div>
         </div>
 
