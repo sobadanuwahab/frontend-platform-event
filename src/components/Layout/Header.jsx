@@ -9,7 +9,7 @@ import {
   MailCheck,
   Loader,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { NavLink } from "react-router-dom";
 import LogoImage from "../../assets/images/logo.png";
@@ -26,6 +26,10 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Tambahkan ref untuk mobile menu
+  const mobileMenuRef = useRef(null);
+  const mobileMenuButtonRef = useRef(null);
+
   const isAuthPage = location.pathname.includes("/auth");
   const isVerifyPage = location.pathname.includes("/verify-email");
 
@@ -41,19 +45,10 @@ const Header = () => {
     try {
       const response = await checkEmailVerificationStatus(user.email);
 
-      console.log("📊 Verification check result:", {
-        success: response.success,
-        is_verified: response.data?.is_verified,
-        source: response.data?.source,
-        email: user.email,
-      });
-
       if (response.success && response.data?.is_verified === true) {
         setIsVerifiedUser(true);
-        console.log("✅ User is VERIFIED");
       } else {
         setIsVerifiedUser(false);
-        console.log("❌ User is NOT VERIFIED or cannot determine");
       }
     } catch (error) {
       console.error("Error checking verification status:", error);
@@ -64,28 +59,11 @@ const Header = () => {
       const hasVerifiedInLocalStorage = localStorageVerifyFlag === "true";
 
       setIsVerifiedUser(hasVerifiedInLocalStorage);
-
-      if (hasVerifiedInLocalStorage) {
-        console.log("✅ Fallback: Verified (from localStorage)");
-      } else {
-        console.log("❌ Fallback: Not verified");
-      }
     } finally {
       setIsCheckingVerification(false);
       setVerificationStatusLoaded(true);
     }
   };
-
-  // Debug useEffect
-  useEffect(() => {
-    console.log("🔍 DEBUG Header State:", {
-      userEmail: user?.email,
-      isVerifiedUser,
-      verificationStatusLoaded,
-      localStorageFlag: localStorage.getItem(`email_verified_${user?.email}`),
-      userData: localStorage.getItem("user_data"),
-    });
-  }, [user, isVerifiedUser, verificationStatusLoaded]);
 
   // Cek status verifikasi saat user berubah
   useEffect(() => {
@@ -114,7 +92,7 @@ const Header = () => {
 
   const isUnverifiedUser = user && verificationStatusLoaded && !isVerifiedUser;
 
-  // Menu items untuk navigation - SEMUA menu ditampilkan untuk semua user
+  // Menu items untuk navigation
   const getNavItems = () => {
     return [
       {
@@ -125,21 +103,20 @@ const Header = () => {
       {
         to: "/voting",
         label: "VOTING",
-        showToAllUsers: true, // Selalu ditampilkan, akses dikontrol di halaman tujuan
-        highlightUnverified: true, // Tampilkan indikator jika belum verified
+        showToAllUsers: true,
+        highlightUnverified: true,
       },
       {
         to: "/ticket",
         label: "TICKET",
-        showToAllUsers: true, // Selalu ditampilkan, akses dikontrol di halaman tujuan
-        highlightUnverified: true, // Tampilkan indikator jika belum verified
+        showToAllUsers: true,
+        highlightUnverified: true,
       },
       {
         to: "/results",
         label: "HASIL",
         alwaysShow: true,
       },
-      // Menu verifikasi hanya ditampilkan jika user belum verify
       ...(isUnverifiedUser
         ? [
             {
@@ -191,6 +168,26 @@ const Header = () => {
     };
   }, [isMobileMenuOpen]);
 
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        isMobileMenuOpen &&
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target) &&
+        mobileMenuButtonRef.current &&
+        !mobileMenuButtonRef.current.contains(event.target)
+      ) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
+
   const handleNavigation = (to) => {
     if (location.pathname === to) return;
 
@@ -206,10 +203,8 @@ const Header = () => {
     handleNavigation("/auth/register");
   };
 
-  // Navigasi ke halaman verifikasi email
   const handleVerifyEmail = () => {
-    if (isVerifyPage) return; // Jika sudah di halaman verifikasi, tidak perlu navigasi
-
+    if (isVerifyPage) return;
     handleNavigation("/verify-email");
   };
 
@@ -226,32 +221,19 @@ const Header = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  // Menutup mobile menu saat klik di luar
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (isMobileMenuOpen && !e.target.closest(".mobile-menu-container")) {
-        setIsMobileMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [isMobileMenuOpen]);
-
   // Fungsi untuk handle click pada menu item
   const handleMenuItemClick = (item, e) => {
-    // Untuk menu yang membutuhkan login
+    if (e) {
+      e.stopPropagation(); // Mencegah event bubbling
+    }
+
     if (!user && item.showToAllUsers) {
       // Tidak perlu redirect, biarkan user tetap bisa lihat halaman
-      // Akan ada validasi di dalam halaman untuk redirect ke login jika perlu
       if (isMobileMenuOpen) setIsMobileMenuOpen(false);
       return;
     }
 
-    // Untuk user yang belum verify yang mengakses menu tertentu
     if (isUnverifiedUser && item.highlightUnverified) {
-      // Biarkan user tetap bisa akses halaman
-      // Validasi akan dilakukan di dalam halaman (button payment/action)
       if (isMobileMenuOpen) setIsMobileMenuOpen(false);
       return;
     }
@@ -265,13 +247,15 @@ const Header = () => {
         sticky top-0 z-50 transition-all duration-300 w-full
         bg-black border-b border-gray-800
         ${scrolled ? "bg-black/95 backdrop-blur-sm" : ""}
-      `}>
+      `}
+    >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between py-4">
           {/* Logo & Brand */}
           <div
             onClick={handleBackToHome}
-            className="flex items-center gap-3 cursor-pointer group">
+            className="flex items-center gap-3 cursor-pointer group"
+          >
             <div className="relative flex items-center">
               <img
                 src={LogoImage}
@@ -300,7 +284,8 @@ const Header = () => {
             {isAuthPage ? (
               <button
                 onClick={handleBackToHome}
-                className="px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-bold rounded-lg hover:from-orange-700 hover:to-orange-700 transition-all duration-200 text-sm flex items-center space-x-2 shadow-lg active:scale-[0.98]">
+                className="px-5 py-2.5 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-bold rounded-lg hover:from-orange-700 hover:to-orange-700 transition-all duration-200 text-sm flex items-center space-x-2 shadow-lg active:scale-[0.98]"
+              >
                 <ArrowLeft size={16} />
                 <span>BACK HOME</span>
               </button>
@@ -318,7 +303,8 @@ const Header = () => {
                         <div
                           key={item.to}
                           className="relative group"
-                          onClick={(e) => handleMenuItemClick(item, e)}>
+                          onClick={(e) => handleMenuItemClick(item, e)}
+                        >
                           <NavLink
                             to={item.to}
                             className={`
@@ -334,7 +320,8 @@ const Header = () => {
                                     ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10"
                                     : "text-gray-400 hover:text-white hover:bg-gray-800"
                               }
-                            `}>
+                            `}
+                          >
                             {item.icon && <span>{item.icon}</span>}
                             <span className="relative z-10 flex items-center">
                               {item.label}
@@ -397,7 +384,8 @@ const Header = () => {
                               isVerifyPage
                                 ? "text-gray-500 cursor-default"
                                 : "text-yellow-400 hover:text-yellow-300 underline"
-                            }`}>
+                            }`}
+                          >
                             <Mail size={12} className="mr-1" />
                             {isVerifyPage
                               ? "Sedang Verifikasi..."
@@ -416,7 +404,8 @@ const Header = () => {
                         isVerifiedUser
                           ? "bg-gradient-to-r from-teal-600 to-cyan-600"
                           : "bg-gradient-to-r from-yellow-600 to-orange-600"
-                      } ${isUnverifiedUser && !isVerifyPage ? "cursor-pointer hover:opacity-90 transition-opacity" : ""}`}>
+                      } ${isUnverifiedUser && !isVerifyPage ? "cursor-pointer hover:opacity-90 transition-opacity" : ""}`}
+                    >
                       {isVerifiedUser ? <User size={18} /> : <Mail size={18} />}
                       {isUnverifiedUser && !isVerifyPage && (
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border border-white"></div>
@@ -424,7 +413,8 @@ const Header = () => {
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 text-white font-bold rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all duration-200 text-sm flex items-center space-x-2 shadow-lg active:scale-[0.98]">
+                      className="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 text-white font-bold rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all duration-200 text-sm flex items-center space-x-2 shadow-lg active:scale-[0.98]"
+                    >
                       <LogOut size={16} />
                       <span>LOGOUT</span>
                     </button>
@@ -433,12 +423,14 @@ const Header = () => {
                   <div className="flex items-center space-x-4">
                     <button
                       onClick={handleLogin}
-                      className="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-bold rounded-lg hover:from-orange-700 hover:to-orange-700 transition-all duration-200 text-sm shadow-lg active:scale-[0.98]">
+                      className="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-bold rounded-lg hover:from-orange-700 hover:to-orange-700 transition-all duration-200 text-sm shadow-lg active:scale-[0.98]"
+                    >
                       LOGIN
                     </button>
                     <button
                       onClick={handleRegister}
-                      className="px-4 py-2.5 bg-gradient-to-r from-teal-600 to-teal-600 text-white font-bold rounded-lg hover:from-teal-700 hover:to-teal-700 transition-all duration-200 text-sm shadow-lg active:scale-[0.98]">
+                      className="px-4 py-2.5 bg-gradient-to-r from-teal-600 to-teal-600 text-white font-bold rounded-lg hover:from-teal-700 hover:to-teal-700 transition-all duration-200 text-sm shadow-lg active:scale-[0.98]"
+                    >
                       REGISTER
                     </button>
                   </div>
@@ -449,14 +441,16 @@ const Header = () => {
 
           {/* Mobile Menu Button */}
           <button
+            ref={mobileMenuButtonRef}
             onClick={toggleMobileMenu}
             className={`
               md:hidden p-2.5 rounded-lg transition-all duration-200
               bg-gray-800 hover:bg-gray-700 border border-gray-700
               ${isMobileMenuOpen ? "bg-gray-700" : ""}
-              active:scale-[0.98]
+              active:scale-[0.98] z-60 relative
             `}
-            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}>
+            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+          >
             {isMobileMenuOpen ? (
               <X size={22} className="text-gray-300" />
             ) : (
@@ -465,202 +459,256 @@ const Header = () => {
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu Overlay */}
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 top-20 bg-black/95 md:hidden z-40 mobile-menu-container">
-            <div className="px-6 py-8 h-full overflow-y-auto">
-              {/* Jika di halaman auth, tampilkan tombol kembali */}
-              {isAuthPage ? (
-                <button
-                  onClick={handleBackToHome}
-                  className="w-full py-4 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-bold rounded-xl hover:from-orange-700 hover:to-orange-700 transition-all duration-200 flex items-center justify-center space-x-3 mb-6 shadow-lg active:scale-[0.98]">
-                  <ArrowLeft size={22} />
-                  <span className="text-lg">KE HOME</span>
-                </button>
-              ) : (
-                <>
-                  {/* Mobile User Info */}
-                  {user && (
-                    <div className="p-5 rounded-xl bg-gray-800/80 border border-gray-700 mb-6">
-                      <div className="flex items-center space-x-4 mb-4">
-                        <button
-                          onClick={
-                            isUnverifiedUser && !isVerifyPage
-                              ? handleVerifyEmail
-                              : undefined
-                          }
-                          className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg relative ${
-                            isVerifiedUser
-                              ? "bg-gradient-to-r from-teal-600 to-cyan-600"
-                              : "bg-gradient-to-r from-yellow-600 to-orange-600"
-                          } ${isUnverifiedUser && !isVerifyPage ? "cursor-pointer hover:opacity-90 transition-opacity" : ""}`}>
-                          {isVerifiedUser ? (
-                            <User size={22} />
+          <div
+            className="fixed inset-0 bg-black/50 md:hidden z-40"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* Mobile Menu Content */}
+        <div
+          ref={mobileMenuRef}
+          className={`
+            fixed top-0 right-0 h-full w-4/5 max-w-sm bg-gray-900 border-l border-gray-800
+            transform transition-transform duration-300 ease-in-out md:hidden z-50
+            overflow-y-auto
+            ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full"}
+          `}
+          style={{ top: "0", height: "100vh" }}
+        >
+          {/* Mobile Menu Header */}
+          <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white">Menu</h3>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+              aria-label="Close menu"
+            >
+              <X size={24} className="text-gray-300" />
+            </button>
+          </div>
+
+          <div className="p-6">
+            {/* Jika di halaman auth, tampilkan tombol kembali */}
+            {isAuthPage ? (
+              <button
+                onClick={() => {
+                  handleBackToHome();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full py-4 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-bold rounded-xl hover:from-orange-700 hover:to-orange-700 transition-all duration-200 flex items-center justify-center space-x-3 mb-6 shadow-lg active:scale-[0.98]"
+              >
+                <ArrowLeft size={22} />
+                <span className="text-lg">KE HOME</span>
+              </button>
+            ) : (
+              <>
+                {/* Mobile User Info */}
+                {user && (
+                  <div className="p-5 rounded-xl bg-gray-800/80 border border-gray-700 mb-6">
+                    <div className="flex items-center space-x-4 mb-4">
+                      <button
+                        onClick={
+                          isUnverifiedUser && !isVerifyPage
+                            ? () => {
+                                handleVerifyEmail();
+                                setIsMobileMenuOpen(false);
+                              }
+                            : undefined
+                        }
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg relative ${
+                          isVerifiedUser
+                            ? "bg-gradient-to-r from-teal-600 to-cyan-600"
+                            : "bg-gradient-to-r from-yellow-600 to-orange-600"
+                        } ${isUnverifiedUser && !isVerifyPage ? "cursor-pointer hover:opacity-90 transition-opacity" : ""}`}
+                      >
+                        {isVerifiedUser ? (
+                          <User size={22} />
+                        ) : (
+                          <Mail size={22} />
+                        )}
+                        {isUnverifiedUser && !isVerifyPage && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border border-white"></div>
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-white text-lg">
+                          {user.name}
+                        </p>
+                        <div className="flex items-center gap-1 mt-1">
+                          {isCheckingVerification ? (
+                            <span className="text-xs text-gray-400 font-medium flex items-center">
+                              <Loader size={12} className="mr-1 animate-spin" />
+                              Mengecek...
+                            </span>
+                          ) : isVerifiedUser ? (
+                            <span className="text-xs text-teal-400 font-medium flex items-center">
+                              <MailCheck size={12} className="mr-1" />
+                              Terverifikasi
+                            </span>
                           ) : (
-                            <Mail size={22} />
+                            <button
+                              onClick={() => {
+                                handleVerifyEmail();
+                                setIsMobileMenuOpen(false);
+                              }}
+                              disabled={isVerifyPage}
+                              className={`text-xs font-medium flex items-center ${
+                                isVerifyPage
+                                  ? "text-gray-500"
+                                  : "text-yellow-400 hover:text-yellow-300 underline"
+                              }`}
+                            >
+                              <Mail size={12} className="mr-1" />
+                              {isVerifyPage
+                                ? "Sedang Verifikasi..."
+                                : "Belum Verifikasi"}
+                            </button>
                           )}
-                          {isUnverifiedUser && !isVerifyPage && (
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border border-white"></div>
-                          )}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-white text-lg">
-                            {user.name}
-                          </p>
-                          <div className="flex items-center gap-1 mt-1">
-                            {isCheckingVerification ? (
-                              <span className="text-xs text-gray-400 font-medium flex items-center">
-                                <Loader
-                                  size={12}
-                                  className="mr-1 animate-spin"
-                                />
-                                Mengecek...
-                              </span>
-                            ) : isVerifiedUser ? (
-                              <span className="text-xs text-teal-400 font-medium flex items-center">
-                                <MailCheck size={12} className="mr-1" />
-                                Terverifikasi
-                              </span>
-                            ) : (
-                              <button
-                                onClick={handleVerifyEmail}
-                                disabled={isVerifyPage}
-                                className={`text-xs font-medium flex items-center ${
-                                  isVerifyPage
-                                    ? "text-gray-500"
-                                    : "text-yellow-400 hover:text-yellow-300 underline"
-                                }`}>
-                                <Mail size={12} className="mr-1" />
-                                {isVerifyPage
-                                  ? "Sedang Verifikasi..."
-                                  : "Belum Verifikasi"}
-                              </button>
-                            )}
-                          </div>
                         </div>
                       </div>
-
-                      {isUnverifiedUser && !isVerifyPage && (
-                        <button
-                          onClick={handleVerifyEmail}
-                          className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-200 mb-4 flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]">
-                          <Mail size={18} />
-                          <span>Verifikasi Email Sekarang</span>
-                        </button>
-                      )}
-
-                      {isUnverifiedUser && (
-                        <div className="p-3 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
-                          <p className="text-yellow-300 text-sm font-medium text-center">
-                            ⚠️ Verifikasi email untuk akses fitur lengkap
-                          </p>
-                        </div>
-                      )}
                     </div>
-                  )}
 
-                  {/* Mobile Navigation Menu */}
-                  {(user?.role === "user" || !user) && (
-                    <div className="mb-8">
-                      <p className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-4">
-                        NAVIGASI
-                      </p>
-                      <nav className="space-y-2">
-                        {navItems.map((item) => {
-                          const isActive = location.pathname === item.to;
-                          const showUnverifiedIndicator =
-                            isUnverifiedUser && item.highlightUnverified;
+                    {isUnverifiedUser && !isVerifyPage && (
+                      <button
+                        onClick={() => {
+                          handleVerifyEmail();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-200 mb-4 flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]"
+                      >
+                        <Mail size={18} />
+                        <span>Verifikasi Email Sekarang</span>
+                      </button>
+                    )}
 
-                          return (
-                            <button
-                              key={item.to}
-                              onClick={(e) => handleMenuItemClick(item, e)}
-                              className={`
-                                w-full p-3 rounded-xl transition-all duration-200 font-bold text-lg
-                                uppercase tracking-wider flex items-center justify-center gap-2
-                                cursor-pointer
-                                ${
-                                  isActive
-                                    ? item.highlight
-                                      ? "text-white bg-gradient-to-r from-yellow-600 to-orange-600"
-                                      : "text-white bg-gradient-to-r from-teal-600 to-cyan-600"
-                                    : item.highlight
-                                      ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10"
-                                      : "text-gray-300 hover:text-white hover:bg-gray-800"
-                                }
-                              `}>
-                              {item.icon && <span>{item.icon}</span>}
-                              <span className="flex items-center">
-                                {item.label}
-                                {item.badge && item.badge}
-                                {showUnverifiedIndicator && (
-                                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-bold">
-                                    !
-                                  </span>
-                                )}
-                              </span>
-                              {showUnverifiedIndicator && (
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </nav>
+                    {isUnverifiedUser && (
+                      <div className="p-3 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
+                        <p className="text-yellow-300 text-sm font-medium text-center">
+                          ⚠️ Verifikasi email untuk akses fitur lengkap
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                      {/* Warning untuk user belum verify */}
-                      {isUnverifiedUser && !isVerifyPage && (
-                        <div className="mt-6 p-3 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
-                          <p className="text-yellow-300 text-xs text-center">
-                            Fitur Voting dan Ticket membutuhkan verifikasi email
-                          </p>
+                {/* Mobile Navigation Menu */}
+                {(user?.role === "user" || !user) && (
+                  <div className="mb-8">
+                    <p className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-4">
+                      NAVIGASI
+                    </p>
+                    <nav className="space-y-2">
+                      {navItems.map((item) => {
+                        const isActive = location.pathname === item.to;
+                        const showUnverifiedIndicator =
+                          isUnverifiedUser && item.highlightUnverified;
+
+                        return (
                           <button
-                            onClick={handleVerifyEmail}
-                            className="w-full mt-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-200 text-sm shadow-lg active:scale-[0.98]">
-                            Verifikasi Sekarang
+                            key={item.to}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMenuItemClick(item, e);
+                              if (!e.defaultPrevented) {
+                                handleNavigation(item.to);
+                              }
+                            }}
+                            className={`
+                              w-full p-3 rounded-xl transition-all duration-200 font-bold text-lg
+                              uppercase tracking-wider flex items-center justify-center gap-2
+                              cursor-pointer text-left
+                              ${
+                                isActive
+                                  ? item.highlight
+                                    ? "text-white bg-gradient-to-r from-yellow-600 to-orange-600"
+                                    : "text-white bg-gradient-to-r from-teal-600 to-cyan-600"
+                                  : item.highlight
+                                    ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/10"
+                                    : "text-gray-300 hover:text-white hover:bg-gray-800"
+                              }
+                            `}
+                          >
+                            {item.icon && <span>{item.icon}</span>}
+                            <span className="flex items-center">
+                              {item.label}
+                              {item.badge && item.badge}
+                              {showUnverifiedIndicator && (
+                                <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-500 text-black rounded-full font-bold">
+                                  !
+                                </span>
+                              )}
+                            </span>
+                            {showUnverifiedIndicator && (
+                              <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                            )}
                           </button>
-                        </div>
-                      )}
+                        );
+                      })}
+                    </nav>
 
-                      <div className="border-t border-gray-800 my-6"></div>
-                    </div>
-                  )}
+                    {/* Warning untuk user belum verify */}
+                    {isUnverifiedUser && !isVerifyPage && (
+                      <div className="mt-6 p-3 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
+                        <p className="text-yellow-300 text-xs text-center">
+                          Fitur Voting dan Ticket membutuhkan verifikasi email
+                        </p>
+                        <button
+                          onClick={() => {
+                            handleVerifyEmail();
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className="w-full mt-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white font-bold rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-all duration-200 text-sm shadow-lg active:scale-[0.98]"
+                        >
+                          Verifikasi Sekarang
+                        </button>
+                      </div>
+                    )}
 
-                  {/* Mobile Auth Buttons */}
-                  {user ? (
+                    <div className="border-t border-gray-800 my-6"></div>
+                  </div>
+                )}
+
+                {/* Mobile Auth Buttons */}
+                {user ? (
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-600 to-orange-700 text-white font-bold hover:from-orange-700 hover:to-orange-800 transition-all duration-200 flex items-center justify-center space-x-3 shadow-lg active:scale-[0.98]"
+                  >
+                    <LogOut size={22} />
+                    <span className="text-lg">LOGOUT</span>
+                  </button>
+                ) : (
+                  <div className="space-y-4">
                     <button
                       onClick={() => {
-                        handleLogout();
+                        handleLogin();
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-600 to-orange-700 text-white font-bold hover:from-orange-700 hover:to-orange-800 transition-all duration-200 flex items-center justify-center space-x-3 shadow-lg active:scale-[0.98]">
-                      <LogOut size={22} />
-                      <span className="text-lg">LOGOUT</span>
+                      className="w-full py-4 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-bold rounded-xl hover:from-orange-700 hover:to-orange-700 transition-all duration-200 text-lg shadow-lg active:scale-[0.98]"
+                    >
+                      LOGIN
                     </button>
-                  ) : (
-                    <div className="space-y-4">
-                      <button
-                        onClick={() => {
-                          handleLogin();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="w-full py-4 bg-gradient-to-r from-orange-600 to-orange-600 text-white font-bold rounded-xl hover:from-orange-700 hover:to-orange-700 transition-all duration-200 text-lg shadow-lg active:scale-[0.98]">
-                        LOGIN
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleRegister();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="w-full py-4 bg-gradient-to-r from-teal-600 to-teal-600 text-white font-bold rounded-xl hover:from-teal-700 hover:to-teal-700 transition-all duration-200 text-lg shadow-lg active:scale-[0.98]">
-                        REGISTER
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+                    <button
+                      onClick={() => {
+                        handleRegister();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full py-4 bg-gradient-to-r from-teal-600 to-teal-600 text-white font-bold rounded-xl hover:from-teal-700 hover:to-teal-700 transition-all duration-200 text-lg shadow-lg active:scale-[0.98]"
+                    >
+                      REGISTER
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </header>
   );
