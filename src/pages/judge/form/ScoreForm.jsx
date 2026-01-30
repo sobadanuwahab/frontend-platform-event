@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Save,
   RefreshCw,
@@ -95,16 +95,18 @@ const ScoreForm = ({ userData = null }) => {
   const [expandedCategories, setExpandedCategories] = useState({});
   const [allExpanded, setAllExpanded] = useState(false);
   const [forms, setForms] = useState([]);
-  const [participants, setParticipants] = useState([]);
+  const [allParticipants, setAllParticipants] = useState([]);
+  const [filteredParticipants, setFilteredParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingParticipants, setLoadingParticipants] = useState(true);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [formData, setFormData] = useState(null);
   const [error, setError] = useState(null);
   const [activeFormId, setActiveFormId] = useState(1);
   const [rawFormData, setRawFormData] = useState(null);
-  const [eventId, setEventId] = useState(""); // Kosongkan default event ID
-  const [events, setEvents] = useState([]); // List events
+  const [eventId, setEventId] = useState("");
+  const [events, setEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [participantError, setParticipantError] = useState("");
 
   // Daftar form statis
   useEffect(() => {
@@ -132,17 +134,21 @@ const ScoreForm = ({ userData = null }) => {
 
           // Set eventId ke event pertama jika ada
           if (eventsData.length > 0) {
-            setEventId(eventsData[0].id);
+            const firstEvent = eventsData[0];
+            setEventId(firstEvent.id.toString());
+            console.log(
+              `Event pertama dipilih: ${firstEvent.name} (ID: ${firstEvent.id})`,
+            );
           }
         } else {
           throw new Error(response.data.message || "Failed to fetch events");
         }
       } catch (error) {
         console.error("Error fetching events:", error);
-        // Fallback menggunakan data statis jika API error
         setEvents([
           { id: 1, name: "Event Paskibra SMAN 1 Cilegon" },
           { id: 2, name: "Event Paskibra Lainnya" },
+          { id: 3, name: "Event Baru" },
         ]);
       } finally {
         setLoadingEvents(false);
@@ -152,143 +158,169 @@ const ScoreForm = ({ userData = null }) => {
     fetchEvents();
   }, []);
 
-  // Fetch participants berdasarkan event_id saja (tanpa user_id)
-  // Diasumsikan ada endpoint seperti /participants-by-event/{event_id}
+  // Fetch semua participants (semua event) - hanya sekali saat mount
   useEffect(() => {
-    const fetchParticipants = async () => {
+    const fetchAllParticipants = async () => {
       try {
         setLoadingParticipants(true);
+        console.log("Mengambil semua peserta dari database...");
 
-        // Pastikan eventId tersedia
-        if (!eventId) {
-          console.log("Event ID belum dipilih, menunggu...");
-          setLoadingParticipants(false);
-          setParticipants([]);
-          return;
+        // Coba endpoint yang mungkin ada:
+        // 1. Coba endpoint umum dulu
+        let response;
+        try {
+          response = await api.get("/participant-lists");
+          console.log("Menggunakan endpoint /participant-lists");
+        } catch (err) {
+          console.log(
+            "Endpoint /participant-lists gagal, coba /participant-lists/1",
+          );
+          response = await api.get("/participant-lists/1");
         }
 
-        console.log(`Mengambil daftar peserta untuk event_id: ${eventId}`);
+        if (response.data.success) {
+          const participantsData = response.data.data;
+          console.log("Semua data peserta yang diterima:", participantsData);
+          console.log("Total peserta di database:", participantsData.length);
 
-        // OPSI 1: Jika ada endpoint khusus untuk mengambil participant by event
-        // const response = await api.get(`/participants-by-event/${eventId}`);
-
-        // OPSI 2: Jika tetap menggunakan endpoint /participant-lists/{user_id} tapi tanpa user_id
-        // Kita bisa coba dengan user_id = 0 atau menggunakan endpoint alternatif
-        // Untuk sementara, kita coba endpoint alternatif
-
-        try {
-          // Coba endpoint alternatif untuk mengambil participant berdasarkan event
-          const response = await api.get(`/participants?event_id=${eventId}`);
-
-          if (response.data.success) {
-            const participantsData = response.data.data;
-            console.log("Data peserta yang diterima:", participantsData);
-            setParticipants(participantsData);
-          } else {
-            throw new Error(
-              "Failed to fetch participants from /participants endpoint",
-            );
-          }
-        } catch (firstError) {
-          console.log("Gagal dengan endpoint pertama, mencoba alternatif...");
-
-          // Jika endpoint pertama gagal, coba alternatif
-          try {
-            // Coba endpoint /participant-lists dengan event_id saja
-            const response = await api.get(
-              `/participant-lists?event_id=${eventId}`,
-            );
-
-            if (response.data.success) {
-              const participantsData = response.data.data;
-              console.log("Data peserta yang diterima:", participantsData);
-              setParticipants(participantsData);
-            } else {
-              throw new Error("Failed to fetch participants");
-            }
-          } catch (secondError) {
+          // Debug: Tampilkan event ID untuk setiap participant
+          participantsData.forEach((p, i) => {
             console.log(
-              "Gagal dengan semua endpoint, menggunakan fallback data",
+              `Participant ${i + 1}: ${p.school_name} - Event ID: ${p.event?.id || "tidak ada"}`,
             );
+          });
 
-            // Fallback data jika semua API error
-            // Ini hanya untuk development/demo
-            const fallbackParticipants = [
-              {
-                id: 1,
-                school_name: "SMAN 3 Cilegon",
-                name: "SMAN 3 Cilegon",
-                code: "TM-001",
-                school_address: "Cilegon Mancak, Banten",
-                coach: "Udin Coach",
-              },
-              {
-                id: 2,
-                school_name: "SMAN 7 Serang",
-                name: "SMAN 7 Serang",
-                code: "TM-002",
-                school_address: "Sebelah Mall of Serang, Banten",
-                coach: "Udin Coach",
-              },
-              {
-                id: 3,
-                school_name: "SMAN 99 Pandeglang",
-                name: "SMAN 99 Pandeglang",
-                code: "TM-003",
-                school_address: "Pandeglang deket martabak mang Udin, Banten",
-                coach: "Udin Coach",
-              },
-            ];
-            setParticipants(fallbackParticipants);
-          }
+          setAllParticipants(participantsData);
+          setParticipantError("");
+        } else {
+          throw new Error(
+            response.data.message || "Failed to fetch participants",
+          );
         }
       } catch (error) {
-        console.error("Error fetching participants:", error);
+        console.error("Error fetching all participants:", error);
+        setParticipantError("Gagal mengambil data peserta dari server");
 
-        // Fallback data jika API error
+        // Fallback data untuk development
         const fallbackParticipants = [
           {
             id: 1,
             school_name: "SMAN 3 Cilegon",
             name: "SMAN 3 Cilegon",
-            code: "TM-001",
             school_address: "Cilegon Mancak, Banten",
             coach: "Udin Coach",
+            event: { id: 1, name: "Event Paskibra SMAN 1 Cilegon" },
+            participant_category: { id: 3, name: "SMA" },
           },
           {
             id: 2,
             school_name: "SMAN 7 Serang",
             name: "SMAN 7 Serang",
-            code: "TM-002",
             school_address: "Sebelah Mall of Serang, Banten",
             coach: "Udin Coach",
+            event: { id: 1, name: "Event Paskibra SMAN 1 Cilegon" },
+            participant_category: { id: 3, name: "SMA" },
           },
           {
             id: 3,
             school_name: "SMAN 99 Pandeglang",
             name: "SMAN 99 Pandeglang",
-            code: "TM-003",
             school_address: "Pandeglang deket martabak mang Udin, Banten",
             coach: "Udin Coach",
+            event: { id: 1, name: "Event Paskibra SMAN 1 Cilegon" },
+            participant_category: { id: 3, name: "SMA" },
+          },
+          {
+            id: 4,
+            school_name: "SMA Buaran Serpong",
+            name: "SMA Buaran Serpong",
+            school_address: "Serpong Timur",
+            coach: "Surya",
+            event: { id: 2, name: "Event Paskibra Lainnya" },
+            participant_category: { id: 3, name: "SMA" },
+          },
+          {
+            id: 5,
+            school_name: "SMA Cilegon Barat",
+            name: "SMA Cilegon Barat",
+            school_address: "Cilegon Barat",
+            coach: "Budi",
+            event: { id: 3, name: "Event Baru" },
+            participant_category: { id: 3, name: "SMA" },
           },
         ];
-        setParticipants(fallbackParticipants);
+        setAllParticipants(fallbackParticipants);
       } finally {
         setLoadingParticipants(false);
       }
     };
 
-    // Hanya fetch jika eventId sudah dipilih
-    // Tidak perlu userData untuk mengambil participant
-    if (eventId) {
-      fetchParticipants();
-    } else {
-      setLoadingParticipants(false);
-      setParticipants([]);
-    }
-  }, [eventId]); // Hanya depend on eventId, tidak perlu userData
+    fetchAllParticipants();
+  }, []);
 
-  // Fetch form data from /show-detail-form/1
+  // Filter participants berdasarkan event_id yang dipilih
+  useEffect(() => {
+    const filterParticipants = () => {
+      if (!eventId || allParticipants.length === 0) {
+        console.log("Event ID tidak ada atau tidak ada peserta");
+        setFilteredParticipants([]);
+        return;
+      }
+
+      console.log(`Memfilter peserta untuk event_id: ${eventId}`);
+
+      // Filter participants berdasarkan event.id
+      const filtered = allParticipants.filter((participant) => {
+        // Pastikan participant memiliki event object
+        if (!participant.event) {
+          console.log(
+            `Participant ${participant.id} tidak memiliki event object`,
+          );
+          return false;
+        }
+
+        const participantEventId = participant.event.id?.toString();
+        const matches = participantEventId === eventId.toString();
+
+        console.log(
+          `Participant ${participant.id}: ${participant.school_name} - Event ID: ${participantEventId}, Target: ${eventId}, Match: ${matches}`,
+        );
+
+        return matches;
+      });
+
+      console.log(
+        `✅ Peserta setelah difilter untuk event ${eventId}:`,
+        filtered.length,
+        "tim",
+      );
+
+      // Tampilkan detail tim yang difilter
+      filtered.forEach((team, index) => {
+        console.log(`  ${index + 1}. ${team.school_name} (ID: ${team.id})`);
+      });
+
+      setFilteredParticipants(filtered);
+
+      // Reset selected team jika team tidak ada di event yang baru
+      if (selectedTeamId) {
+        const selectedTeamExists = filtered.some(
+          (team) => team.id.toString() === selectedTeamId,
+        );
+        if (!selectedTeamExists) {
+          console.log(
+            `🔄 Reset selected team karena tidak ada di event ${eventId}`,
+          );
+          setSelectedTeamId("");
+          setTeamName("");
+        }
+      }
+    };
+
+    filterParticipants();
+  }, [eventId, allParticipants, selectedTeamId]);
+
+  // Fetch form data
   useEffect(() => {
     const fetchFormData = async () => {
       try {
@@ -303,7 +335,6 @@ const ScoreForm = ({ userData = null }) => {
           console.log("Detail form yang diterima:", apiData);
           setRawFormData(apiData);
 
-          // Transformasi data dari API ke format yang diharapkan
           const transformedFormData = {
             id: apiData.id,
             name: apiData.name,
@@ -331,7 +362,7 @@ const ScoreForm = ({ userData = null }) => {
 
           setFormData(transformedFormData);
 
-          // Load saved scores for this form (termasuk eventId)
+          // Load saved scores
           const savedDataKey = userData
             ? `form_scores_${userData.id}_${activeFormId}_${eventId}`
             : `form_scores_${activeFormId}_${eventId}`;
@@ -359,7 +390,7 @@ const ScoreForm = ({ userData = null }) => {
         setError(`Gagal mengambil detail form: ${error.message}`);
         setFormData(null);
 
-        // Fallback menggunakan data statis
+        // Fallback data statis
         setFormData({
           id: 1,
           name: "FORM PENILAIAN PBB",
@@ -431,18 +462,15 @@ const ScoreForm = ({ userData = null }) => {
     const selectedId = e.target.value;
     setSelectedTeamId(selectedId);
 
-    // Cari tim yang dipilih
-    const selectedTeam = participants.find(
+    const selectedTeam = filteredParticipants.find(
       (team) => team.id.toString() === selectedId,
     );
     if (selectedTeam) {
-      // Gunakan school_name jika tersedia, jika tidak gunakan name
       setTeamName(selectedTeam.school_name || selectedTeam.name);
     } else {
       setTeamName("");
     }
 
-    // Simpan perubahan ke localStorage
     saveToStorage(scores, {
       selectedTeamId: selectedId,
       teamName: selectedTeam?.school_name || selectedTeam?.name || "",
@@ -452,6 +480,7 @@ const ScoreForm = ({ userData = null }) => {
   // Handle event change
   const handleEventChange = (e) => {
     const selectedEventId = e.target.value;
+    console.log(`🎯 Event berubah dari ${eventId} ke ${selectedEventId}`);
     setEventId(selectedEventId);
 
     // Reset selected team dan scores ketika event berubah
@@ -459,7 +488,7 @@ const ScoreForm = ({ userData = null }) => {
     setTeamName("");
     setScores({});
 
-    // Hapus data localStorage untuk event sebelumnya jika ada
+    // Hapus data localStorage untuk event sebelumnya
     const previousEventId = eventId;
     if (previousEventId && userData && activeFormId) {
       const oldSavedDataKey = userData
@@ -497,7 +526,6 @@ const ScoreForm = ({ userData = null }) => {
   const quickFillCategory = (category, quality) => {
     if (!formData || !rawFormData) return;
 
-    // Cari kategori berdasarkan nama
     const categoryIndex = formData.categories?.findIndex(
       (cat) => cat.category === category,
     );
@@ -509,7 +537,6 @@ const ScoreForm = ({ userData = null }) => {
 
     if (!categoryAspect || !categoryAspect.aspects) return;
 
-    // Isi semua aspek dalam kategori dengan nilai tengah sesuai kualitas
     categoryAspect.aspects.forEach((aspect) => {
       const itemId = `aspect_${aspect.id}`;
       const targetValue = getMidValueForQuality(aspect.aspect_score, quality);
@@ -646,10 +673,10 @@ const ScoreForm = ({ userData = null }) => {
 
           return (
             <div key={catIndex} className="border-b last:border-b-0">
-              {/* Category Header */}
               <div
                 onClick={() => toggleCategory(category.category)}
-                className="w-full p-6 text-left hover:bg-gray-50 transition-colors flex justify-between items-center cursor-pointer">
+                className="w-full p-6 text-left hover:bg-gray-50 transition-colors flex justify-between items-center cursor-pointer"
+              >
                 <div className="flex items-center gap-3">
                   <div className="text-gray-500">
                     {isCategoryExpanded ? (
@@ -669,7 +696,6 @@ const ScoreForm = ({ userData = null }) => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  {/* Quality Indicator */}
                   <div
                     className={`px-3 py-1 rounded-full text-sm font-medium ${
                       catQuality.color === "red"
@@ -679,11 +705,11 @@ const ScoreForm = ({ userData = null }) => {
                           : catQuality.color === "blue"
                             ? "bg-blue-100 text-blue-700"
                             : "bg-green-100 text-green-700"
-                    }`}>
+                    }`}
+                  >
                     {catQuality.label}
                   </div>
 
-                  {/* Score Display */}
                   <div className="text-right">
                     <div className="font-bold text-lg text-gray-900">
                       {catScore} / {catMax}
@@ -695,12 +721,12 @@ const ScoreForm = ({ userData = null }) => {
                           : catPercentage >= 70
                             ? "text-yellow-600"
                             : "text-red-600"
-                      }`}>
+                      }`}
+                    >
                       {catPercentage}%
                     </div>
                   </div>
 
-                  {/* Quick Action Buttons for Category */}
                   <div className="flex gap-1">
                     <button
                       type="button"
@@ -709,7 +735,8 @@ const ScoreForm = ({ userData = null }) => {
                         quickFillCategory(category.category, "kurang");
                       }}
                       className="px-3 py-1 text-xs bg-red-50 text-red-700 rounded-md hover:bg-red-100 font-medium"
-                      title="Set semua ke Kurang (poor)">
+                      title="Set semua ke Kurang (poor)"
+                    >
                       Kurang
                     </button>
                     <button
@@ -719,7 +746,8 @@ const ScoreForm = ({ userData = null }) => {
                         quickFillCategory(category.category, "cukup");
                       }}
                       className="px-3 py-1 text-xs bg-yellow-50 text-yellow-700 rounded-md hover:bg-yellow-100 font-medium"
-                      title="Set semua ke Cukup (fair)">
+                      title="Set semua ke Cukup (fair)"
+                    >
                       Cukup
                     </button>
                     <button
@@ -729,7 +757,8 @@ const ScoreForm = ({ userData = null }) => {
                         quickFillCategory(category.category, "baik");
                       }}
                       className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 font-medium"
-                      title="Set semua ke Baik (good)">
+                      title="Set semua ke Baik (good)"
+                    >
                       Baik
                     </button>
                     <button
@@ -739,18 +768,17 @@ const ScoreForm = ({ userData = null }) => {
                         quickFillCategory(category.category, "baikSekali");
                       }}
                       className="px-3 py-1 text-xs bg-green-50 text-green-700 rounded-md hover:bg-green-100 font-medium"
-                      title="Set semua ke Baik Sekali (excellent)">
+                      title="Set semua ke Baik Sekali (excellent)"
+                    >
                       Baik Sekali
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Category Content */}
               {isCategoryExpanded && (
                 <div className="px-6 pb-6 bg-gray-50">
                   <div className="pt-4">
-                    {/* Render items for categories with items */}
                     {category.items && category.items.length > 0 && (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {category.items.map((item) => renderItem(item))}
@@ -777,8 +805,8 @@ const ScoreForm = ({ userData = null }) => {
     return (
       <div
         key={item.id}
-        className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
-        {/* Item Header */}
+        className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
+      >
         <div className="flex justify-between items-start mb-4">
           <div>
             <h4 className="font-medium text-gray-800">{item.label}</h4>
@@ -798,14 +826,14 @@ const ScoreForm = ({ userData = null }) => {
                       : itemQuality.color === "blue"
                         ? "bg-blue-100 text-blue-700"
                         : "bg-green-100 text-green-700"
-              }`}>
+              }`}
+            >
               <div className="text-xl">{currentValue}</div>
               <div className="text-xs">poin</div>
             </div>
           </div>
         </div>
 
-        {/* Quality Label */}
         <div className="mb-4">
           <div
             className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
@@ -816,7 +844,8 @@ const ScoreForm = ({ userData = null }) => {
                   : itemQuality.color === "blue"
                     ? "bg-blue-50 text-blue-700"
                     : "bg-green-50 text-green-700"
-            }`}>
+            }`}
+          >
             <div
               className={`w-2 h-2 rounded-full ${
                 itemQuality.color === "red"
@@ -826,12 +855,12 @@ const ScoreForm = ({ userData = null }) => {
                     : itemQuality.color === "blue"
                       ? "bg-blue-500"
                       : "bg-green-500"
-              }`}></div>
+              }`}
+            ></div>
             {itemQuality.label} ({Math.round((currentValue / itemMax) * 100)}%)
           </div>
         </div>
 
-        {/* Quick Action Buttons */}
         {rawAspect && rawAspect.aspect_score && (
           <div className="grid grid-cols-4 gap-2 mb-4">
             <button
@@ -840,7 +869,8 @@ const ScoreForm = ({ userData = null }) => {
                 quickFillItem(item.id, "kurang", rawAspect.aspect_score)
               }
               className="px-2 py-2 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium"
-              title="Nilai tengah dari poor (kurang)">
+              title="Nilai tengah dari poor (kurang)"
+            >
               Kurang
             </button>
             <button
@@ -849,7 +879,8 @@ const ScoreForm = ({ userData = null }) => {
                 quickFillItem(item.id, "cukup", rawAspect.aspect_score)
               }
               className="px-2 py-2 text-xs bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors font-medium"
-              title="Nilai tengah dari fair (cukup)">
+              title="Nilai tengah dari fair (cukup)"
+            >
               Cukup
             </button>
             <button
@@ -858,7 +889,8 @@ const ScoreForm = ({ userData = null }) => {
                 quickFillItem(item.id, "baik", rawAspect.aspect_score)
               }
               className="px-2 py-2 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium"
-              title="Nilai tengah dari good (baik)">
+              title="Nilai tengah dari good (baik)"
+            >
               Baik
             </button>
             <button
@@ -867,17 +899,16 @@ const ScoreForm = ({ userData = null }) => {
                 quickFillItem(item.id, "baikSekali", rawAspect.aspect_score)
               }
               className="px-2 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors font-medium"
-              title="Nilai tengah dari excellent (baik sekali)">
+              title="Nilai tengah dari excellent (baik sekali)"
+            >
               Baik Sekali
             </button>
           </div>
         )}
 
-        {/* Detailed Number Buttons dengan grouping berdasarkan kualitas */}
         {valueEntries.length > 0 && (
           <div className="pt-3 border-t border-gray-200">
             <div className="space-y-3">
-              {/* Group Kurang (poor) */}
               {valueEntries.filter(([label]) => label.includes("Kurang"))
                 .length > 0 && (
                 <div>
@@ -897,7 +928,8 @@ const ScoreForm = ({ userData = null }) => {
                               ? "bg-red-600 text-white ring-2 ring-offset-1 ring-red-300 font-bold"
                               : "bg-red-50 text-red-700 hover:bg-red-100"
                           }`}
-                          title={label}>
+                          title={label}
+                        >
                           {value}
                         </button>
                       ))}
@@ -905,7 +937,6 @@ const ScoreForm = ({ userData = null }) => {
                 </div>
               )}
 
-              {/* Group Cukup (fair) */}
               {valueEntries.filter(([label]) => label.includes("Cukup"))
                 .length > 0 && (
                 <div>
@@ -925,7 +956,8 @@ const ScoreForm = ({ userData = null }) => {
                               ? "bg-yellow-600 text-white ring-2 ring-offset-1 ring-yellow-300 font-bold"
                               : "bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
                           }`}
-                          title={label}>
+                          title={label}
+                        >
                           {value}
                         </button>
                       ))}
@@ -933,7 +965,6 @@ const ScoreForm = ({ userData = null }) => {
                 </div>
               )}
 
-              {/* Group Baik (good) */}
               {valueEntries.filter(
                 ([label]) =>
                   label.includes("Baik") && !label.includes("Baik Sekali"),
@@ -959,7 +990,8 @@ const ScoreForm = ({ userData = null }) => {
                               ? "bg-blue-600 text-white ring-2 ring-offset-1 ring-blue-300 font-bold"
                               : "bg-blue-50 text-blue-700 hover:bg-blue-100"
                           }`}
-                          title={label}>
+                          title={label}
+                        >
                           {value}
                         </button>
                       ))}
@@ -967,7 +999,6 @@ const ScoreForm = ({ userData = null }) => {
                 </div>
               )}
 
-              {/* Group Baik Sekali (excellent) */}
               {valueEntries.filter(([label]) => label.includes("Baik Sekali"))
                 .length > 0 && (
                 <div>
@@ -987,7 +1018,8 @@ const ScoreForm = ({ userData = null }) => {
                               ? "bg-green-600 text-white ring-2 ring-offset-1 ring-green-300 font-bold"
                               : "bg-green-50 text-green-700 hover:bg-green-100"
                           }`}
-                          title={label}>
+                          title={label}
+                        >
                           {value}
                         </button>
                       ))}
@@ -1001,27 +1033,10 @@ const ScoreForm = ({ userData = null }) => {
     );
   };
 
-  // Get total items filled
-  const getTotalItemsFilled = () => {
-    return Object.keys(scores).length;
-  };
-
-  // Get total items count
-  const getTotalItemsCount = () => {
-    if (!formData) return 0;
-
-    let total = 0;
-    formData.categories?.forEach((category) => {
-      total += category.items?.length || 0;
-    });
-    return total;
-  };
-
   // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Untuk submit, userData masih diperlukan untuk identifikasi judge
     if (!userData || !userData.id) {
       alert("Anda harus login sebagai judge untuk menyimpan penilaian!");
       return;
@@ -1041,27 +1056,24 @@ const ScoreForm = ({ userData = null }) => {
     const totalMaxScore = getTotalMaxScore();
     const percentage = Math.round((totalScore / totalMaxScore) * 100);
 
-    // Cari tim yang dipilih
-    const selectedTeam = participants.find(
+    const selectedTeam = filteredParticipants.find(
       (team) => team.id.toString() === selectedTeamId,
     );
 
-    // Cari event yang dipilih
     const selectedEvent = events.find(
       (event) => event.id.toString() === eventId,
     );
     const eventName = selectedEvent?.name || "Event";
 
-    // Format data untuk dikirim ke backend
     const payload = {
       teamName: selectedTeam?.school_name || teamName,
-      teamCode: selectedTeam?.code || `TM-${selectedTeamId}`,
       teamId: selectedTeamId,
       school_name: selectedTeam?.school_name,
       school_address: selectedTeam?.school_address,
       coach: selectedTeam?.coach,
       event_id: eventId,
       event_name: eventName,
+      participant_category_id: selectedTeam?.participant_category?.id,
       scores: Object.entries(scores).map(([itemId, score]) => {
         const aspectId = parseInt(itemId.replace("aspect_", ""));
         return {
@@ -1119,6 +1131,24 @@ const ScoreForm = ({ userData = null }) => {
     }
   };
 
+  // Get participants statistics for debug
+  const getParticipantsStats = () => {
+    if (!allParticipants.length) return null;
+
+    const stats = {};
+    allParticipants.forEach((p) => {
+      const eventId = p.event?.id || "unknown";
+      if (!stats[eventId]) {
+        stats[eventId] = 0;
+      }
+      stats[eventId]++;
+    });
+
+    return stats;
+  };
+
+  const participantsStats = getParticipantsStats();
+
   if (loading && !formData) {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
@@ -1134,7 +1164,6 @@ const ScoreForm = ({ userData = null }) => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-6xl mx-auto">
-        {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
             <div className="flex items-center">
@@ -1142,7 +1171,8 @@ const ScoreForm = ({ userData = null }) => {
                 <svg
                   className="h-5 w-5 text-red-400"
                   viewBox="0 0 20 20"
-                  fill="currentColor">
+                  fill="currentColor"
+                >
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -1157,7 +1187,6 @@ const ScoreForm = ({ userData = null }) => {
           </div>
         )}
 
-        {/* Forms Navigation Menu */}
         {forms.length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
             <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -1174,14 +1203,16 @@ const ScoreForm = ({ userData = null }) => {
                     activeFormId === form.id
                       ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100"
                       : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                  }`}>
+                  }`}
+                >
                   <div className="flex items-center gap-3">
                     <div
                       className={`p-2 rounded-lg ${
                         activeFormId === form.id
                           ? "bg-blue-100 text-blue-600"
                           : "bg-gray-100 text-gray-600"
-                      }`}>
+                      }`}
+                    >
                       <Folder size={20} />
                     </div>
                     <div>
@@ -1197,7 +1228,6 @@ const ScoreForm = ({ userData = null }) => {
           </div>
         )}
 
-        {/* Event Selection */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
           <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
             <Calendar size={18} />
@@ -1221,11 +1251,14 @@ const ScoreForm = ({ userData = null }) => {
                 value={eventId}
                 onChange={handleEventChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                required>
+                required
+              >
                 <option value="">-- Pilih Event --</option>
                 {events.map((event) => (
                   <option key={event.id} value={event.id}>
-                    {event.name} {event.location && `- ${event.location}`}
+                    {event.name}
+                    {event.location && ` - ${event.location}`}
+                    {event.id && ` (ID: ${event.id})`}
                   </option>
                 ))}
               </select>
@@ -1235,169 +1268,216 @@ const ScoreForm = ({ userData = null }) => {
                 Event yang dipilih:{" "}
                 <span className="font-medium">
                   {events.find((e) => e.id.toString() === eventId)?.name}
+                  {events.find((e) => e.id.toString() === eventId)?.id &&
+                    ` (ID: ${events.find((e) => e.id.toString() === eventId)?.id})`}
                 </span>
               </div>
             )}
             <div className="mt-2 text-xs text-gray-500">
               Total {events.length} event tersedia
             </div>
+
+            {/* Debug info */}
+            {participantsStats && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-md border border-gray-200">
+                <div className="text-xs font-medium text-gray-700 mb-1">
+                  📊 Statistik Peserta (Debug):
+                </div>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div>Total peserta di database: {allParticipants.length}</div>
+                  {Object.entries(participantsStats).map(([eventId, count]) => (
+                    <div key={eventId}>
+                      Event ID {eventId}: {count} peserta
+                      {eventId === "unknown" && " (tanpa event)"}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Team Information */}
         {formData && eventId && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Users size={18} />
-              Pilih Tim yang Dinilai
-            </h3>
+          <>
+            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Users size={18} />
+                Pilih Tim yang Dinilai
+              </h3>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nama Sekolah/Tim *
-              </label>
-              {loadingParticipants ? (
-                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
-                  Memuat daftar tim untuk event ini...
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Sekolah/Tim *
+                </label>
+                {loadingParticipants ? (
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
+                    Memuat daftar tim...
+                  </div>
+                ) : participantError ? (
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-red-50 text-red-700">
+                    <div className="font-medium">
+                      ⚠️ Error: {participantError}
+                    </div>
+                  </div>
+                ) : filteredParticipants.length === 0 ? (
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-yellow-50 text-yellow-700">
+                    <div className="font-medium">
+                      ⚠️ Tidak ada tim yang terdaftar pada event ini
+                    </div>
+                    <div className="text-xs mt-1">
+                      Event "
+                      {events.find((e) => e.id.toString() === eventId)?.name}"
+                      tidak memiliki tim yang terdaftar.
+                      <br />
+                      <span className="font-medium mt-1 block">
+                        💡 Participant perlu mendaftar ke event ini terlebih
+                        dahulu.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedTeamId}
+                    onChange={handleTeamChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    required
+                  >
+                    <option value="">-- Pilih Sekolah/Tim --</option>
+                    {filteredParticipants.map((team) => (
+                      <option key={team.id} value={team.id}>
+                        {team.school_name || team.name}
+                        {team.school_address && ` - ${team.school_address}`}
+                        {team.coach && ` (Pelatih: ${team.coach})`}
+                        {team.participant_category?.name &&
+                          ` [${team.participant_category.name}]`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {teamName && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    Tim yang dipilih:{" "}
+                    <span className="font-medium">{teamName}</span>
+                  </div>
+                )}
+                <div className="mt-2 text-xs text-gray-500">
+                  {filteredParticipants.length} tim terdaftar pada event ini
                 </div>
-              ) : participants.length === 0 ? (
-                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-red-50 text-red-700">
-                  Tidak ada tim yang terdaftar pada event ini
-                </div>
-              ) : (
-                <select
-                  value={selectedTeamId}
-                  onChange={handleTeamChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  required>
-                  <option value="">-- Pilih Sekolah/Tim --</option>
-                  {participants.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.school_name || team.name}
-                      {team.school_address && ` - ${team.school_address}`}
-                      {team.coach && ` (Pelatih: ${team.coach})`}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {teamName && (
-                <div className="mt-2 text-sm text-gray-600">
-                  Tim yang dipilih:{" "}
-                  <span className="font-medium">{teamName}</span>
-                </div>
-              )}
-              <div className="mt-2 text-xs text-gray-500">
-                Total {participants.length} tim terdaftar pada event ini
+                {eventId && allParticipants.length > 0 && (
+                  <div className="mt-1 text-xs text-blue-600">
+                    💡 Debug: Event ID {eventId} - {filteredParticipants.length}{" "}
+                    tim ditemukan dari total {allParticipants.length} peserta
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Quick Stats */}
-        {formData && eventId && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="text-center md:text-left mb-4 md:mb-0">
-                <div className="text-sm text-gray-600">
-                  Total Nilai Saat Ini
+            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
+              <div className="flex flex-col md:flex-row justify-between items-center">
+                <div className="text-center md:text-left mb-4 md:mb-0">
+                  <div className="text-sm text-gray-600">
+                    Total Nilai Saat Ini
+                  </div>
+                  <div className="text-3xl font-bold text-gray-900">
+                    {getTotalScore()}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    dari {getTotalMaxScore()} poin
+                  </div>
                 </div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {getTotalScore()}
+                <div className="text-center md:text-left">
+                  <div className="text-sm text-gray-600">Persentase</div>
+                  <div
+                    className={`text-3xl font-bold ${
+                      getPercentage() >= 80
+                        ? "text-green-600"
+                        : getPercentage() >= 70
+                          ? "text-yellow-600"
+                          : "text-red-600"
+                    }`}
+                  >
+                    {getPercentage()}%
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500">
-                  dari {getTotalMaxScore()} poin
+                <div className="flex gap-2 mt-4 md:mt-0">
+                  <button
+                    type="button"
+                    onClick={toggleAllCategories}
+                    className="px-4 py-2 bg-gray-50 text-gray-700 rounded-md hover:bg-gray-100 text-sm font-medium"
+                  >
+                    {allExpanded ? "Tutup Semua" : "Buka Semua"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="px-4 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 text-sm font-medium"
+                  >
+                    Reset
+                  </button>
                 </div>
-              </div>
-              <div className="text-center md:text-left">
-                <div className="text-sm text-gray-600">Persentase</div>
-                <div
-                  className={`text-3xl font-bold ${
-                    getPercentage() >= 80
-                      ? "text-green-600"
-                      : getPercentage() >= 70
-                        ? "text-yellow-600"
-                        : "text-red-600"
-                  }`}>
-                  {getPercentage()}%
-                </div>
-              </div>
-              <div className="flex gap-2 mt-4 md:mt-0">
-                <button
-                  type="button"
-                  onClick={toggleAllCategories}
-                  className="px-4 py-2 bg-gray-50 text-gray-700 rounded-md hover:bg-gray-100 text-sm font-medium">
-                  {allExpanded ? "Tutup Semua" : "Buka Semua"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="px-4 py-2 bg-red-50 text-red-700 rounded-md hover:bg-red-100 text-sm font-medium">
-                  Reset
-                </button>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Scoring Form */}
-        {renderScoringForm()}
+            {renderScoringForm()}
 
-        {/* Action Buttons */}
-        {formData && eventId && (
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              type="button"
-              onClick={handleReset}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors">
-              <RefreshCw size={18} />
-              Reset Semua Nilai
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+              >
+                <RefreshCw size={18} />
+                Reset Semua Nilai
+              </button>
 
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!teamName || !selectedTeamId || !userData || !eventId}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium text-white rounded-md transition-colors ${
-                !teamName || !selectedTeamId || !userData || !eventId
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}>
-              <Save size={18} />
-              Simpan Penilaian
-            </button>
-          </div>
-        )}
-
-        {/* Success Message */}
-        {showSuccess && formData && eventId && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-green-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-green-800">
-                  ✓ Nilai berhasil disimpan untuk {teamName} ({formData.name}):{" "}
-                  {getTotalScore()} poin ({getPercentage()}%)
-                  <br />
-                  <span className="text-xs">
-                    Event:{" "}
-                    {events.find((e) => e.id.toString() === eventId)?.name},
-                    Dinilai oleh: {userData?.name}
-                  </span>
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!teamName || !selectedTeamId || !userData || !eventId}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium text-white rounded-md transition-colors ${
+                  !teamName || !selectedTeamId || !userData || !eventId
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                <Save size={18} />
+                Simpan Penilaian
+              </button>
             </div>
-          </div>
+
+            {showSuccess && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-green-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-green-800">
+                      ✓ Nilai berhasil disimpan untuk {teamName} (
+                      {formData.name}
+                      ): {getTotalScore()} poin ({getPercentage()}%)
+                      <br />
+                      <span className="text-xs">
+                        Event:{" "}
+                        {events.find((e) => e.id.toString() === eventId)?.name},
+                        Dinilai oleh: {userData?.name}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

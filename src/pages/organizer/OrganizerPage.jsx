@@ -51,8 +51,6 @@ const OrganizerPage = () => {
     const path = location.pathname;
     if (path.includes("/organizer/participants")) {
       setActiveTab("participants");
-    } else if (path.includes("/organizer/events")) {
-      setActiveTab("events");
     } else if (path.includes("/organizer/documents")) {
       setActiveTab("documents");
     } else if (path.includes("/organizer/reports")) {
@@ -70,12 +68,6 @@ const OrganizerPage = () => {
       label: "Dashboard",
       icon: LayoutDashboard,
       path: "/organizer",
-    },
-    {
-      id: "events",
-      label: "Event",
-      icon: Calendar,
-      path: "/organizer/events",
     },
     {
       id: "participants",
@@ -159,19 +151,13 @@ const OrganizerPage = () => {
 
   const roleColors = getRoleColor(user?.role);
 
-  // Stats data untuk sidebar
+  // Stats data untuk sidebar (diupdate untuk menghapus Event Aktif)
   const stats = [
     {
       label: "Total Peserta",
       value: "248",
       icon: Users,
       color: "blue",
-    },
-    {
-      label: "Event Aktif",
-      value: "3",
-      icon: Calendar,
-      color: "green",
     },
     {
       label: "Dokumen",
@@ -185,9 +171,15 @@ const OrganizerPage = () => {
       icon: BarChart3,
       color: "yellow",
     },
+    {
+      label: "Tugas Selesai",
+      value: "89%",
+      icon: Trophy,
+      color: "green",
+    },
   ];
 
-  // Recent activities
+  // Recent activities (diupdate untuk menghapus event-related activities)
   const recentActivities = [
     {
       id: 1,
@@ -197,15 +189,15 @@ const OrganizerPage = () => {
     },
     {
       id: 2,
-      name: "Event Update",
-      description: "Jadwal final diperbarui",
-      time: "1 jam lalu",
-    },
-    {
-      id: 3,
       name: "Dokumen Upload",
       description: "SK panitia diupload",
       time: "2 jam lalu",
+    },
+    {
+      id: 3,
+      name: "Laporan Dibuat",
+      description: "Laporan bulanan dibuat",
+      time: "3 jam lalu",
     },
   ];
 
@@ -225,7 +217,7 @@ const OrganizerPage = () => {
                 <div>
                   <h1 className="text-xl font-bold">Dashboard Organizer</h1>
                   <p className="text-gray-400 text-xs">
-                    Kelola event dan peserta Anda
+                    Kelola peserta dan dokumen Anda
                   </p>
                 </div>
               </div>
@@ -317,7 +309,7 @@ const OrganizerPage = () => {
                 </nav>
               </div>
 
-              {/* Quick Actions */}
+              {/* Quick Actions - Dihapus tombol "Buat Event" */}
               <div className="mb-6">
                 <h2 className="text-lg font-bold mb-4">Aksi Cepat</h2>
                 <div className="space-y-3">
@@ -327,13 +319,6 @@ const OrganizerPage = () => {
                   >
                     <PlusCircle size={18} />
                     <span>Tambah Peserta</span>
-                  </button>
-                  <button
-                    onClick={() => navigate("/organizer/events/create")}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
-                  >
-                    <Calendar size={18} />
-                    <span>Buat Event</span>
                   </button>
                 </div>
               </div>
@@ -461,7 +446,7 @@ const OrganizerPage = () => {
               ))}
             </nav>
 
-            {/* Quick Actions for Mobile */}
+            {/* Quick Actions for Mobile - Dihapus tombol "Buat Event" */}
             <div className="mb-6">
               <h2 className="text-lg font-bold mb-4">Aksi Cepat</h2>
               <div className="space-y-3">
@@ -474,16 +459,6 @@ const OrganizerPage = () => {
                 >
                   <PlusCircle size={20} />
                   <span>Tambah Peserta</span>
-                </button>
-                <button
-                  onClick={() => {
-                    navigate("/organizer/events/create");
-                    setSidebarOpen(false);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
-                >
-                  <Calendar size={20} />
-                  <span>Buat Event</span>
                 </button>
               </div>
             </div>
@@ -594,18 +569,18 @@ const OrganizerPage = () => {
                         </div>
                         <div className="p-4 bg-green-900/20 rounded-xl border border-green-700/30">
                           <p className="text-green-400 font-medium mb-2">
-                            Jadwal Event
-                          </p>
-                          <p className="text-sm text-gray-300">
-                            Update jadwal secara berkala
-                          </p>
-                        </div>
-                        <div className="p-4 bg-purple-900/20 rounded-xl border border-purple-700/30">
-                          <p className="text-purple-400 font-medium mb-2">
                             Dokumentasi
                           </p>
                           <p className="text-sm text-gray-300">
                             Simpan semua dokumen penting
+                          </p>
+                        </div>
+                        <div className="p-4 bg-purple-900/20 rounded-xl border border-purple-700/30">
+                          <p className="text-purple-400 font-medium mb-2">
+                            Laporan
+                          </p>
+                          <p className="text-sm text-gray-300">
+                            Buat laporan secara berkala
                           </p>
                         </div>
                       </div>

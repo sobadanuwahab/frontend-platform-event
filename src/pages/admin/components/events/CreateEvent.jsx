@@ -9,9 +9,10 @@ import {
   Info,
   Loader,
   Image as ImageIcon,
+  ArrowLeft,
 } from "lucide-react";
-import api from "../../../services/api";
-import { useAuth } from "../../../context/AuthContext";
+import api from "../../../../services/api";
+import { useAuth } from "../../../../context/AuthContext";
 
 const CreateEvent = () => {
   const navigate = useNavigate();
@@ -52,7 +53,7 @@ const CreateEvent = () => {
 
   /* ================= ADD DEBUG LOG ================= */
   const addDebugLog = (message) => {
-    // console.log(`[DEBUG] ${message}`);
+    console.log(`[DEBUG] ${message}`);
     setDebugInfo((prev) => [
       ...prev,
       `${new Date().toISOString().split("T")[1].split(".")[0]} - ${message}`,
@@ -106,7 +107,12 @@ const CreateEvent = () => {
     e.preventDefault();
 
     if (!user) {
-      setError("Anda harus login untuk membuat event");
+      setError("Anda harus login sebagai admin untuk membuat event");
+      return;
+    }
+
+    if (user.role !== "admin") {
+      setError("Hanya admin yang dapat membuat event");
       return;
     }
 
@@ -153,24 +159,30 @@ const CreateEvent = () => {
         throw new Error(response.data?.message || "Gagal membuat event");
       }
 
+      // ================= TANGKAP EVENT_ID =================
+      const newEventId = response.data?.data?.id;
+
+      addDebugLog(`✅ Event created successfully with ID: ${newEventId}`);
       setSuccess(true);
 
-      // Redirect setelah sukses
+      // Redirect setelah sukses ke admin events list
       setTimeout(() => {
-        navigate("/organizer/events");
+        navigate("/admin/events/list");
       }, 1500);
     } catch (err) {
-      console.error(err);
+      console.error("Create Event Error:", err);
 
       if (err.response?.status === 422) {
         const errors = err.response.data.errors;
         const messages = Object.values(errors).flat().join(", ");
         setError(`Validasi gagal: ${messages}`);
+        addDebugLog(`Validation error: ${messages}`);
       } else if (err.response?.status === 401) {
         setError("Sesi berakhir, silakan login ulang");
         navigate("/auth/login");
       } else {
         setError(err.message || "Terjadi kesalahan");
+        addDebugLog(`Error: ${err.message}`);
       }
     } finally {
       setSubmitting(false);
@@ -215,39 +227,55 @@ const CreateEvent = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto">
+      className="max-w-4xl mx-auto"
+    >
       {/* Header */}
       <div className="mb-8">
+        <button
+          onClick={() => navigate("/admin/events/list")} // ✅ UBAH KE ADMIN
+          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6"
+        >
+          <ArrowLeft size={20} />
+          <span>Kembali ke Daftar Event</span>
+        </button>
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Buat Event Baru</h1>
+            <h1 className="text-3xl font-bold mb-2">Buat Event Baru (Admin)</h1>
             <p className="text-gray-400">
-              Buat event Paskibra Championship baru untuk diikuti peserta
+              Buat event Paskibra Championship baru sebagai admin
             </p>
+            {user && (
+              <div className="mt-2 text-sm text-gray-500">
+                Admin: <span className="text-blue-400">{user.name}</span> (ID:{" "}
+                {user.id})
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Jika user tidak login */}
-      {!user && (
+      {/* Jika user bukan admin */}
+      {user && user.role !== "admin" && (
         <div className="mb-6 p-6 rounded-xl bg-red-500/10 border border-red-500/30">
           <div className="flex items-center gap-3 mb-4">
             <AlertCircle size={24} className="text-red-400" />
             <h3 className="text-lg font-bold text-red-400">Akses Ditolak</h3>
           </div>
           <p className="text-gray-300 mb-4">
-            Anda harus login untuk membuat event.
+            Hanya admin yang dapat membuat event. Role Anda: {user.role}
           </p>
           <button
-            onClick={() => navigate("/auth/login")}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
-            Login Sekarang
+            onClick={() => navigate("/admin")}
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
+          >
+            Kembali ke Dashboard Admin
           </button>
         </div>
       )}
 
-      {/* Konten form hanya ditampilkan jika user login */}
-      {user && (
+      {/* Konten form hanya ditampilkan jika user adalah admin */}
+      {user && user.role === "admin" && (
         <>
           {/* Debug Info Panel */}
           {debugInfo.length > 0 && (
@@ -262,7 +290,8 @@ const CreateEvent = () => {
                 {debugInfo.slice(-10).map((log, index) => (
                   <div
                     key={index}
-                    className="py-1 border-b border-gray-800/50 last:border-b-0">
+                    className="py-1 border-b border-gray-800/50 last:border-b-0"
+                  >
                     {log}
                   </div>
                 ))}
@@ -300,7 +329,8 @@ const CreateEvent = () => {
                   <div>
                     <p className="text-green-400 font-medium">Berhasil!</p>
                     <p className="text-green-300 text-sm mt-1">
-                      Event berhasil dibuat. Mengarahkan ke halaman event...
+                      Event berhasil dibuat sebagai admin. Mengarahkan ke daftar
+                      event...
                     </p>
                   </div>
                 </div>
@@ -476,7 +506,8 @@ const CreateEvent = () => {
                     {/* Upload Area */}
                     <label
                       htmlFor="event-image-upload"
-                      className={`flex-1 cursor-pointer ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}>
+                      className={`flex-1 cursor-pointer ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
                       <div className="border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors h-full">
                         <div className="flex flex-col items-center space-y-4">
                           <ImageIcon size={32} className="text-gray-400" />
@@ -511,7 +542,8 @@ const CreateEvent = () => {
                               type="button"
                               onClick={removeImage}
                               disabled={submitting}
-                              className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white disabled:opacity-50">
+                              className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white disabled:opacity-50"
+                            >
                               <X size={16} />
                             </button>
                           </div>
@@ -526,9 +558,10 @@ const CreateEvent = () => {
               <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6 border-t border-gray-700">
                 <button
                   type="button"
-                  onClick={() => navigate("/organizer/events")}
+                  onClick={() => navigate("/admin/events/list")} // ✅ UBAH KE ADMIN
                   disabled={submitting}
-                  className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50">
+                  className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
+                >
                   Batal
                 </button>
 
@@ -552,14 +585,16 @@ const CreateEvent = () => {
                       addDebugLog("Form reset manually");
                     }}
                     disabled={submitting}
-                    className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50">
+                    className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
+                  >
                     Reset Form
                   </button>
 
                   <button
                     type="submit"
                     disabled={submitting || success}
-                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
                     {submitting ? (
                       <>
                         <Loader className="animate-spin h-5 w-5 border-t-2 border-b-2 border-white" />
@@ -583,13 +618,16 @@ const CreateEvent = () => {
               <Info size={20} className="text-blue-400 mt-0.5" />
               <div>
                 <h4 className="font-medium text-blue-300 mb-2">
-                  Tips Membuat Event:
+                  Tips Membuat Event (Admin):
                 </h4>
                 <div className="text-sm text-gray-400 space-y-1">
                   <p>• Isi semua field bertanda * (wajib)</p>
                   <p>• Tanggal selesai harus setelah tanggal mulai</p>
                   <p>• Gambar opsional, maksimal 5MB</p>
-                  <p>• Event akan langsung muncul di daftar organizer</p>
+                  <p>• Event akan langsung muncul di daftar semua event</p>
+                  <p>
+                    • Sebagai admin, Anda dapat mengelola semua event di sistem
+                  </p>
                 </div>
               </div>
             </div>

@@ -16,6 +16,9 @@ import {
   Settings,
   Menu,
   X,
+  Calendar,
+  FileText,
+  PlusCircle,
 } from "lucide-react";
 
 const DashboardPage = () => {
@@ -102,9 +105,9 @@ const DashboardPage = () => {
     },
     {
       id: "events",
-      label: "Event",
-      icon: Users,
-      path: "/admin/events",
+      label: "Event Management",
+      icon: Calendar,
+      path: "/admin/events/list",
       color: "from-green-600 to-emerald-600",
     },
     {
@@ -112,28 +115,28 @@ const DashboardPage = () => {
       label: "User Management",
       icon: User,
       path: "/admin/users",
-      color: "from-purple-600 to-violet-600",
+      color: "from-orange-600 to-amber-600",
     },
     {
       id: "transactions",
       label: "Data Voting",
       icon: Vote,
       path: "/admin/transactions",
-      color: "from-orange-600 to-amber-600",
+      color: "from-pink-600 to-rose-600",
     },
     {
       id: "tickets",
       label: "Data Tiket",
       icon: TicketIcon,
       path: "/admin/tickets",
-      color: "from-pink-600 to-rose-600",
+      color: "from-indigo-600 to-blue-600",
     },
     {
       id: "history",
       label: "History Order",
       icon: History,
       path: "/admin/history",
-      color: "from-indigo-600 to-blue-600",
+      color: "from-teal-600 to-cyan-600",
     },
     {
       id: "settings",
@@ -160,8 +163,15 @@ const DashboardPage = () => {
   // Stats data untuk sidebar
   const adminStats = [
     {
-      label: "Total User",
-      value: "2,548",
+      label: "Total Event",
+      value: "3",
+      icon: Calendar,
+      color: "green",
+      change: "+1",
+    },
+    {
+      label: "Total Peserta",
+      value: "248",
       icon: Users,
       color: "blue",
       change: "+12%",
@@ -170,22 +180,15 @@ const DashboardPage = () => {
       label: "Total Votes",
       value: "15,842",
       icon: Vote,
-      color: "green",
+      color: "purple",
       change: "+8%",
     },
     {
       label: "Total Tiket",
-      value: "248",
+      value: "45",
       icon: TicketIcon,
-      color: "purple",
-      change: "+5%",
-    },
-    {
-      label: "Event Aktif",
-      value: "3",
-      icon: Users,
       color: "yellow",
-      change: "0%",
+      change: "+5%",
     },
   ];
 
@@ -193,20 +196,20 @@ const DashboardPage = () => {
   const recentActivities = [
     {
       id: 1,
-      name: "User Baru",
-      description: "john.doe@gmail.com terdaftar",
-      time: "5 menit lalu",
+      name: "Event Baru",
+      description: "Event Paskibra Championship dibuat",
+      time: "10 menit lalu",
     },
     {
       id: 2,
-      name: "Voting Update",
-      description: "1,250 votes untuk Tim A",
+      name: "Peserta Baru",
+      description: "SMAN 1 Jakarta mendaftar",
       time: "30 menit lalu",
     },
     {
       id: 3,
-      name: "Tiket Terjual",
-      description: "Tiket VIP laku 5 buah",
+      name: "Voting Update",
+      description: "1,250 votes untuk Tim A",
       time: "2 jam lalu",
     },
   ];
@@ -233,7 +236,8 @@ const DashboardPage = () => {
           </p>
           <button
             onClick={() => navigate("/")}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all">
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all"
+          >
             Kembali ke Home
           </button>
         </div>
@@ -257,7 +261,7 @@ const DashboardPage = () => {
                 <div>
                   <h1 className="text-xl font-bold">Admin Dashboard</h1>
                   <p className="text-gray-400 text-xs">
-                    Kelola sistem voting, tiket, dan user management
+                    Kelola sistem voting, event, dan user management
                   </p>
                 </div>
               </div>
@@ -266,7 +270,8 @@ const DashboardPage = () => {
               <button
                 onClick={toggleSidebar}
                 className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50 active:bg-gray-700/50 transition-all"
-                title={sidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}>
+                title={sidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}
+              >
                 {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
             </div>
@@ -291,7 +296,8 @@ const DashboardPage = () => {
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/20 active:bg-red-500/30 transition-all"
-                  title="Logout">
+                  title="Logout"
+                >
                   <LogOut size={18} />
                   <span className="text-sm font-medium hidden sm:inline">
                     Logout
@@ -309,11 +315,13 @@ const DashboardPage = () => {
         <div
           className={`hidden lg:flex transition-all duration-300 flex-shrink-0 ${
             sidebarOpen ? "w-72" : "w-0"
-          }`}>
+          }`}
+        >
           <div
             className={`w-72 bg-gray-800/50 border-r border-gray-700 flex flex-col flex-shrink-0 transition-opacity duration-300 ${
               sidebarOpen ? "opacity-100" : "opacity-0"
-            }`}>
+            }`}
+          >
             <div className="p-5 flex-1 overflow-y-auto">
               <div className="mb-6">
                 <h2 className="text-lg font-bold mb-4">Menu Navigasi</h2>
@@ -326,7 +334,8 @@ const DashboardPage = () => {
                         activeTab === item.id
                           ? "bg-gradient-to-r from-red-600/20 to-pink-600/20 text-red-400 border border-red-500/30"
                           : "text-gray-400 hover:text-white hover:bg-gray-700/50 active:bg-gray-600/50"
-                      }`}>
+                      }`}
+                    >
                       <item.icon size={18} />
                       <span className="font-medium">{item.label}</span>
                       <ChevronRight
@@ -338,6 +347,20 @@ const DashboardPage = () => {
                     </button>
                   ))}
                 </nav>
+              </div>
+
+              {/* Quick Actions for Admin */}
+              <div className="mb-6">
+                <h2 className="text-lg font-bold mb-4">Aksi Cepat Admin</h2>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => navigate("/admin/events/create")}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
+                  >
+                    <PlusCircle size={18} />
+                    <span>Buat Event Baru</span>
+                  </button>
+                </div>
               </div>
 
               {/* Stats Overview */}
@@ -359,11 +382,13 @@ const DashboardPage = () => {
                     return (
                       <div
                         key={stat.label}
-                        className="bg-gray-800/50 border border-gray-700 p-3 rounded-xl">
+                        className="bg-gray-800/50 border border-gray-700 p-3 rounded-xl"
+                      >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div
-                              className={`p-2 rounded-lg bg-gradient-to-r ${colorClasses[stat.color]}`}>
+                              className={`p-2 rounded-lg bg-gradient-to-r ${colorClasses[stat.color]}`}
+                            >
                               <Icon size={16} />
                             </div>
                             <div>
@@ -382,7 +407,8 @@ const DashboardPage = () => {
                                 : stat.change.startsWith("-")
                                   ? "text-red-400"
                                   : "text-gray-400"
-                            }`}>
+                            }`}
+                          >
                             {stat.change}
                           </span>
                         </div>
@@ -399,7 +425,8 @@ const DashboardPage = () => {
                   {recentActivities.map((activity) => (
                     <div
                       key={activity.id}
-                      className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/50">
+                      className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/50"
+                    >
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-semibold text-sm text-white">
                           {activity.name}
@@ -431,7 +458,8 @@ const DashboardPage = () => {
         <div
           className={`fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 lg:hidden ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}>
+          }`}
+        >
           <div className="bg-gray-800/95 backdrop-blur-md border-r border-gray-700 h-full p-5 overflow-y-auto">
             {/* Close Button for Mobile */}
             <div className="flex justify-between items-center mb-6">
@@ -439,7 +467,8 @@ const DashboardPage = () => {
               <button
                 onClick={() => setSidebarOpen(false)}
                 className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50 active:bg-gray-700/50 transition-all"
-                title="Tutup Sidebar">
+                title="Tutup Sidebar"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -456,7 +485,8 @@ const DashboardPage = () => {
                     activeTab === item.id
                       ? "bg-gradient-to-r from-red-600/20 to-pink-600/20 text-red-400 border border-red-500/30"
                       : "text-gray-400 hover:text-white hover:bg-gray-700/50 active:bg-gray-600/50"
-                  }`}>
+                  }`}
+                >
                   <item.icon size={20} />
                   <span className="font-medium">{item.label}</span>
                   <ChevronRight
@@ -468,6 +498,23 @@ const DashboardPage = () => {
                 </button>
               ))}
             </nav>
+
+            {/* Quick Actions for Mobile */}
+            <div className="mb-6">
+              <h2 className="text-lg font-bold mb-4">Aksi Cepat Admin</h2>
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    navigate("/admin/events/create");
+                    setSidebarOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
+                >
+                  <PlusCircle size={20} />
+                  <span>Buat Event</span>
+                </button>
+              </div>
+            </div>
 
             {/* Stats for Mobile */}
             <div className="mb-6">
@@ -488,11 +535,13 @@ const DashboardPage = () => {
                   return (
                     <div
                       key={stat.label}
-                      className="bg-gray-800/50 border border-gray-700 p-3 rounded-xl">
+                      className="bg-gray-800/50 border border-gray-700 p-3 rounded-xl"
+                    >
                       <div className="flex flex-col">
                         <div className="flex items-center justify-between mb-2">
                           <div
-                            className={`p-2 rounded-lg bg-gradient-to-r ${colorClasses[stat.color]}`}>
+                            className={`p-2 rounded-lg bg-gradient-to-r ${colorClasses[stat.color]}`}
+                          >
                             <Icon size={16} />
                           </div>
                           <span
@@ -502,7 +551,8 @@ const DashboardPage = () => {
                                 : stat.change.startsWith("-")
                                   ? "text-red-400"
                                   : "text-gray-400"
-                            }`}>
+                            }`}
+                          >
                             {stat.change}
                           </span>
                         </div>
@@ -526,7 +576,8 @@ const DashboardPage = () => {
                 {recentActivities.map((activity) => (
                   <div
                     key={activity.id}
-                    className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/50">
+                    className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/50"
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <p className="font-semibold text-sm text-white">
                         {activity.name}
@@ -548,20 +599,23 @@ const DashboardPage = () => {
         {/* Main Content Area dengan scroll sendiri */}
         <div
           ref={mainContentRef}
-          className="flex-1 flex flex-col overflow-hidden">
+          className="flex-1 flex flex-col overflow-hidden"
+        >
           <div className="flex-1 overflow-y-auto">
             <div className="container mx-auto px-4 py-6">
               <div className="flex gap-6">
                 <div
                   className={`flex-1 transition-all duration-300 ${
                     sidebarOpen && !isMobile ? "lg:ml-0" : ""
-                  }`}>
+                  }`}
+                >
                   <motion.div
                     key={location.pathname}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="space-y-6">
+                    className="space-y-6"
+                  >
                     {/* Dynamic Content dari Outlet */}
                     <Outlet context={{ stats, formatCurrency, setStats }} />
 

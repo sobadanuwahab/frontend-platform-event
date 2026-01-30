@@ -20,8 +20,8 @@ import {
   Database,
   Bug,
 } from "lucide-react";
-import { useAuth } from "../../../context/AuthContext";
-import api from "../../../services/api";
+import { useAuth } from "../../../../context/AuthContext";
+import api from "../../../../services/api";
 
 const Events = () => {
   const navigate = useNavigate();
@@ -130,7 +130,8 @@ const Events = () => {
     setError("");
 
     try {
-      const response = await api.get("/list-event-by-user");
+      // Mengambil semua event untuk admin (tidak hanya event milik user)
+      const response = await api.get("/list-all-event");
 
       if (!response.data?.success) {
         throw new Error(response.data?.message || "Gagal memuat event");
@@ -232,48 +233,6 @@ const Events = () => {
     return `https://apipaskibra.my.id/storage/${image}`;
   };
 
-  /* ================= TEST EVENT CREATION ================= */
-  const testEventCreation = async () => {
-    if (!user) return;
-
-    try {
-      // Coba create event test
-      const testEventData = new FormData();
-      testEventData.append("name", `Test Event ${Date.now()}`);
-      testEventData.append("organized_by", "Test Organizer");
-      testEventData.append("location", "Test Location");
-      testEventData.append("start_date", "2024-12-31");
-      testEventData.append("end_date", "2024-12-31");
-      testEventData.append("event_info", "Test event info");
-      testEventData.append("term_condition", "Test terms");
-      testEventData.append("user_id", user.id.toString());
-
-      const response = await api.post("/create-event", testEventData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      // console.log("Test event creation response:", response.data);
-      alert(
-        `Test event created! Response: ${JSON.stringify(response.data, null, 2)}`,
-      );
-
-      // Refresh events
-      loadEvents();
-    } catch (error) {
-      console.error("Test event creation failed:", error);
-      alert(`Test failed: ${error.message}`);
-    }
-  };
-
-  /* ================= VIEW DEBUG INFO ================= */
-  const viewDebugInfo = () => {
-    if (debugInfo) {
-      alert(`Debug Information:\n\n${debugInfo}`);
-    } else {
-      alert("No debug information available. Try refreshing first.");
-    }
-  };
-
   /* ================= RENDER EVENT IMAGE ================= */
   const renderEventImage = (event) => {
     if (!event.image_url) {
@@ -317,22 +276,24 @@ const Events = () => {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Manajemen Event</h1>
+            <h1 className="text-3xl font-bold mb-2">Manajemen Event (Admin)</h1>
             <p className="text-gray-400">
-              Kelola event Paskibra Championship Anda
+              Kelola semua event Paskibra Championship di sistem
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
               onClick={loadEvents}
-              className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors flex items-center gap-2">
+              className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors flex items-center gap-2"
+            >
               <RefreshCw size={16} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
             <button
-              onClick={() => navigate("/organizer/events/create")}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium flex items-center gap-2">
+              onClick={() => navigate("/admin/events/create")} // ✅ UBAH KE ADMIN
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium flex items-center gap-2"
+            >
               <Plus size={20} />
               <span>Buat Event Baru</span>
             </button>
@@ -353,8 +314,9 @@ const Events = () => {
             </div>
             {error.includes("Belum ada event") && (
               <button
-                onClick={() => navigate("/organizer/events/create")}
-                className="px-4 py-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 transition-colors text-sm">
+                onClick={() => navigate("/admin/events/create")} // ✅ UBAH KE ADMIN
+                className="px-4 py-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 transition-colors text-sm"
+              >
                 Buat Event
               </button>
             )}
@@ -376,7 +338,8 @@ const Events = () => {
           </div>
           <button
             onClick={() => navigate("/auth/login")}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
+          >
             Login Sekarang
           </button>
         </div>
@@ -393,7 +356,7 @@ const Events = () => {
             </div>
             <p className="text-3xl font-bold mb-1">{events.length}</p>
             <p className="text-gray-300 font-medium mb-1">Total Event</p>
-            <p className="text-gray-500 text-sm">Semua event Anda</p>
+            <p className="text-gray-500 text-sm">Semua event di sistem</p>
           </div>
 
           <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
@@ -462,7 +425,8 @@ const Events = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                className="px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
                 <option value="all">Semua Status</option>
                 <option value="upcoming">Akan Datang</option>
                 <option value="ongoing">Berlangsung</option>
@@ -470,7 +434,8 @@ const Events = () => {
               </select>
               <button
                 onClick={() => filterEvents()}
-                className="px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors">
+                className="px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
+              >
                 <Filter size={20} />
               </button>
             </div>
@@ -486,10 +451,11 @@ const Events = () => {
               <div>
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Calendar size={20} />
-                  Daftar Event Anda
+                  Daftar Semua Event
                 </h2>
                 <p className="text-gray-400 text-sm">
                   Menampilkan {filteredEvents.length} dari {events.length} event
+                  di sistem
                 </p>
               </div>
               {filteredEvents.length === 0 && events.length > 0 && (
@@ -498,7 +464,8 @@ const Events = () => {
                     setSearchTerm("");
                     setStatusFilter("all");
                   }}
-                  className="px-4 py-2 text-sm rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors">
+                  className="px-4 py-2 text-sm rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
+                >
                   Reset Filter
                 </button>
               )}
@@ -522,7 +489,8 @@ const Events = () => {
                         setSearchTerm("");
                         setStatusFilter("all");
                       }}
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
+                    >
                       Reset Filter
                     </button>
                   </>
@@ -536,8 +504,9 @@ const Events = () => {
                       Belum ada event yang dibuat
                     </p>
                     <button
-                      onClick={() => navigate("/organizer/events/create")}
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium">
+                      onClick={() => navigate("/admin/events/create")} // ✅ UBAH KE ADMIN
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
+                    >
                       Buat Event Pertama
                     </button>
                   </>
@@ -553,7 +522,8 @@ const Events = () => {
                     key={event.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="p-6 hover:bg-gray-800/30 transition-colors">
+                    className="p-6 hover:bg-gray-800/30 transition-colors"
+                  >
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex items-start gap-4">
                         {/* Gambar Event */}
@@ -565,7 +535,8 @@ const Events = () => {
                               {event.name}
                             </h3>
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text} self-start flex items-center gap-1`}>
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text} self-start flex items-center gap-1`}
+                            >
                               {statusColor.icon}
                               {statusColor.label}
                             </span>
@@ -602,18 +573,18 @@ const Events = () => {
 
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() =>
-                            navigate(`/organizer/events/${event.id}`)
-                          }
-                          className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors flex items-center gap-2">
+                          onClick={() => navigate(`/admin/events/${event.id}`)}
+                          className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors flex items-center gap-2"
+                        >
                           <Eye size={16} />
                           <span className="hidden sm:inline">Detail</span>
                         </button>
                         <button
-                          onClick={() =>
-                            navigate(`/organizer/events/edit/${event.id}`)
+                          onClick={
+                            () => navigate(`/admin/events/edit/${event.id}`) // ✅ UBAH KE ADMIN
                           }
-                          className="px-4 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 transition-colors flex items-center gap-2">
+                          className="px-4 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 transition-colors flex items-center gap-2"
+                        >
                           <Edit size={16} />
                           <span className="hidden sm:inline">Edit</span>
                         </button>
@@ -625,16 +596,18 @@ const Events = () => {
                             <button
                               onClick={() =>
                                 navigate(
-                                  `/organizer/events/${event.id}/participants`,
+                                  `/admin/participants?event_id=${event.id}`,
                                 )
                               }
-                              className="w-full text-left px-4 py-3 hover:bg-gray-800 text-sm text-gray-300 flex items-center gap-2">
+                              className="w-full text-left px-4 py-3 hover:bg-gray-800 text-sm text-gray-300 flex items-center gap-2"
+                            >
                               <Users size={14} />
                               Lihat Peserta
                             </button>
                             <button
                               onClick={() => handleDelete(event.id)}
-                              className="w-full text-left px-4 py-3 hover:bg-red-500/20 text-sm text-red-400 flex items-center gap-2">
+                              className="w-full text-left px-4 py-3 hover:bg-red-500/20 text-sm text-red-400 flex items-center gap-2"
+                            >
                               <Trash2 size={14} />
                               Hapus Event
                             </button>

@@ -21,12 +21,16 @@ import CriteriaPage from "./pages/judge/CriteriaPage";
 // Import Admin Pages & Components
 import DashboardPage from "./pages/admin/DashboardPage";
 import OverviewTab from "./pages/admin/components/OverviewTab";
-import EventsTab from "./pages/admin/components/EventsTab";
 import UserManagementTab from "./pages/admin/components/UserManagement";
 import TransactionsTab from "./pages/admin/components/TransactionsTab";
 import TicketsTab from "./pages/admin/components/TicketsTab";
 import HistoryTab from "./pages/admin/components/HistoryTab";
 import SettingsTab from "./pages/admin/components/SettingsTab";
+
+// Import Event Management Components untuk Admin
+import EventsList from "./pages/admin/components/events/index";
+import CreateEvent from "./pages/admin/components/events/CreateEvent";
+import EditEvent from "./pages/admin/components/events/EditEvent";
 
 // Import Organizer Pages
 import OrganizerPage from "./pages/organizer/OrganizerPage";
@@ -34,9 +38,6 @@ import Dashboard from "./pages/organizer/Dashboard";
 import ParticipantsList from "./pages/organizer/participants";
 import CreateParticipant from "./pages/organizer/participants/CreateParticipants";
 import EditParticipant from "./pages/organizer/participants/EditParticipants";
-import EventsList from "./pages/organizer/events";
-import CreateEvent from "./pages/organizer/events/CreateEvent";
-import EditEvent from "./pages/organizer/events/EditEvent";
 
 import ProtectedRoute from "./components/Common/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
@@ -109,7 +110,13 @@ function App() {
             }
           >
             <Route index element={<OverviewTab />} />
-            <Route path="events" element={<EventsTab />} />
+            <Route path="dashboard" element={<OverviewTab />} />
+
+            {/* Event Management Routes - DI ADMIN */}
+            <Route path="events/list" element={<EventsList />} />
+            <Route path="events/create" element={<CreateEvent />} />
+            <Route path="events/edit/:id" element={<EditEvent />} />
+
             <Route path="users" element={<UserManagementTab />} />
             <Route path="transactions" element={<TransactionsTab />} />
             <Route path="tickets" element={<TicketsTab />} />
@@ -117,19 +124,8 @@ function App() {
             <Route path="settings" element={<SettingsTab />} />
           </Route>
 
-          {/* Tambahkan route /admin/dashboard untuk kompatibilitas */}
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={["admin"]}>
-                <DashboardPage>
-                  <OverviewTab />
-                </DashboardPage>
-              </ProtectedRoute>
-            }
-          />
-
           {/* ORGANIZER ROUTES dengan Layout Khusus - HANYA untuk "organizer" */}
+          {/* TANPA ROUTE EVENT - HANYA PARTICIPANTS */}
           <Route
             path="/organizer"
             element={
@@ -142,9 +138,7 @@ function App() {
             <Route path="participants" element={<ParticipantsList />} />
             <Route path="participants/create" element={<CreateParticipant />} />
             <Route path="participants/edit/:id" element={<EditParticipant />} />
-            <Route path="events" element={<EventsList />} />
-            <Route path="events/create" element={<CreateEvent />} />
-            <Route path="events/edit/:id" element={<EditEvent />} />
+            {/* TIDAK ADA ROUTE EVENT DI SINI */}
           </Route>
 
           {/* Global 404 untuk routes yang tidak ditangkap */}

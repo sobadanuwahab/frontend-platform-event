@@ -15,8 +15,8 @@ import {
   User,
   Info,
 } from "lucide-react";
-import api from "../../../services/api";
-import { useAuth } from "../../../context/AuthContext";
+import api from "../../../../services/api";
+import { useAuth } from "../../../../context/AuthContext";
 
 const EditEvent = () => {
   const { id } = useParams(); // event_id
