@@ -131,7 +131,7 @@ const Events = () => {
 
     try {
       // Mengambil semua event untuk admin (tidak hanya event milik user)
-      const response = await api.get("/list-all-event");
+      const response = await api.get("/list-event");
 
       if (!response.data?.success) {
         throw new Error(response.data?.message || "Gagal memuat event");
