@@ -309,20 +309,6 @@ const OrganizerPage = () => {
                 </nav>
               </div>
 
-              {/* Quick Actions - Dihapus tombol "Buat Event" */}
-              <div className="mb-6">
-                <h2 className="text-lg font-bold mb-4">Aksi Cepat</h2>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => navigate("/organizer/participants/create")}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all font-medium"
-                  >
-                    <PlusCircle size={18} />
-                    <span>Tambah Peserta</span>
-                  </button>
-                </div>
-              </div>
-
               {/* Stats Overview */}
               <div className="mb-6">
                 <h2 className="text-lg font-bold mb-4">Statistik</h2>

@@ -13,7 +13,7 @@ import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 
 import JudgingPage from "./pages/judge/JudgingPage";
 
-// Import Judging Components (untuk outlet JudgingPage)
+// Import Judging Components
 import ScoreForm from "./pages/judge/form/ScoreForm";
 import RankingPage from "./pages/judge/RankingPage";
 import CriteriaPage from "./pages/judge/CriteriaPage";
@@ -38,6 +38,11 @@ import Dashboard from "./pages/organizer/Dashboard";
 import ParticipantsList from "./pages/organizer/participants";
 import CreateParticipant from "./pages/organizer/participants/CreateParticipants";
 import EditParticipant from "./pages/organizer/participants/EditParticipants";
+
+// Import Organizer Menu Pages
+import DocumentsPage from "./pages/organizer/documents/DocumentsPage";
+import ReportsPage from "./pages/organizer/reports/ReportsPage";
+import OrganizerSettings from "./pages/organizer/settings/OrganizerSettings";
 
 import ProtectedRoute from "./components/Common/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
@@ -86,7 +91,7 @@ function App() {
             />
           </Route>
 
-          {/* JUDGING ROUTES dengan Layout Khusus (Dashboard Sendiri) - untuk "juri" dan "admin" */}
+          {/* JUDGING ROUTES dengan Layout Khusus - untuk "juri" dan "admin" */}
           <Route
             path="/judging"
             element={
@@ -125,7 +130,6 @@ function App() {
           </Route>
 
           {/* ORGANIZER ROUTES dengan Layout Khusus - HANYA untuk "organizer" */}
-          {/* TANPA ROUTE EVENT - HANYA PARTICIPANTS */}
           <Route
             path="/organizer"
             element={
@@ -138,7 +142,11 @@ function App() {
             <Route path="participants" element={<ParticipantsList />} />
             <Route path="participants/create" element={<CreateParticipant />} />
             <Route path="participants/edit/:id" element={<EditParticipant />} />
-            {/* TIDAK ADA ROUTE EVENT DI SINI */}
+
+            {/* New Organizer Menu Routes */}
+            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="settings" element={<OrganizerSettings />} />
           </Route>
 
           {/* Global 404 untuk routes yang tidak ditangkap */}
