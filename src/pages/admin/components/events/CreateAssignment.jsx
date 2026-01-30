@@ -3,8 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Users,
-  UserCheck,
-  Crown,
   Search,
   CheckCircle,
   XCircle,
@@ -14,9 +12,6 @@ import {
   Loader,
   ChevronRight,
   Calendar,
-  Filter,
-  Shield,
-  Award,
 } from "lucide-react";
 import api from "../../../../services/api";
 import { useAuth } from "../../../../context/AuthContext";
@@ -34,19 +29,15 @@ const CreateAssignment = () => {
   // State untuk event details
   const [event, setEvent] = useState(null);
 
-  // State untuk daftar semua users yang tersedia, dipisahkan berdasarkan role
-  const [allJudges, setAllJudges] = useState([]); // Hanya users dengan role judge
-  const [allOrganizers, setAllOrganizers] = useState([]); // Hanya users dengan role organizer
+  // State untuk daftar semua users yang tersedia
+  const [allUsers, setAllUsers] = useState([]);
 
-  // State untuk users yang sudah diassign ke event ini, dipisahkan berdasarkan role
-  const [assignedJudges, setAssignedJudges] = useState([]);
-  const [assignedOrganizers, setAssignedOrganizers] = useState([]);
+  // State untuk users yang sudah diassign ke event ini
+  const [assignedUsers, setAssignedUsers] = useState([]);
 
   // State untuk pencarian dan filter
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all"); // "all", "judge", "organizer"
-  const [selectedJudgeIds, setSelectedJudgeIds] = useState([]);
-  const [selectedOrganizerIds, setSelectedOrganizerIds] = useState([]);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
 
   // Load event details dan data semua users
   useEffect(() => {
@@ -73,17 +64,17 @@ const CreateAssignment = () => {
       console.log(`Fetching data for event ID: ${eventId}`);
 
       // 1. Fetch event details
-      try {
-        const eventResponse = await api.get(`/events/${eventId}`);
-        if (eventResponse.data?.success) {
-          setEvent(eventResponse.data.data);
-          console.log(`✅ Event loaded: ${eventResponse.data.data.name}`);
-        }
-      } catch (eventErr) {
-        console.warn("Gagal load event details:", eventErr.message);
-      }
+      // try {
+      //   const eventResponse = await api.get(`/events/${eventId}`);
+      //   if (eventResponse.data?.success) {
+      //     setEvent(eventResponse.data.data);
+      //     console.log(`✅ Event loaded: ${eventResponse.data.data.name}`);
+      //   }
+      // } catch (eventErr) {
+      //   console.warn("Gagal load event details:", eventErr.message);
+      // }
 
-      // 2. Fetch semua users dari endpoint
+      // 2. Fetch semua users dari endpoint /users (TANPA FILTER ROLE)
       try {
         const usersResponse = await api.get("/users-judge-organizer");
         console.log("Users API Response:", usersResponse.data);
@@ -105,25 +96,25 @@ const CreateAssignment = () => {
             usersData = Object.values(usersResponse.data.data);
           }
 
-          // Pisahkan users berdasarkan role
-          const judges = usersData.filter(
-            (user) =>
-              user.role?.toLowerCase() === "judge" ||
-              user.role?.toLowerCase() === "juri",
+          // Debug: Log semua users dengan role mereka
+          console.log(
+            "All users loaded:",
+            usersData.map((u) => ({
+              id: u.id,
+              name: u.name,
+              role: u.role,
+              email: u.email,
+            })),
           );
 
-          const organizers = usersData.filter(
-            (user) => user.role?.toLowerCase() === "organizer",
-          );
+          // TANPA FILTER - ambil semua users
+          setAllUsers(usersData);
 
-          console.log(`✅ Judges loaded: ${judges.length}`);
-          console.log(`✅ Organizers loaded: ${organizers.length}`);
+          console.log(`✅ Total users loaded: ${usersData.length}`);
 
-          setAllJudges(judges);
-          setAllOrganizers(organizers);
-
-          if (judges.length === 0 && organizers.length === 0) {
-            setError("Tidak ada judge atau organizer ditemukan di sistem.");
+          // Jika tidak ada users sama sekali
+          if (usersData.length === 0) {
+            setError("Tidak ada user ditemukan di sistem.");
           }
         } else {
           setError("Gagal memuat data users. Format response tidak sesuai.");
@@ -133,8 +124,48 @@ const CreateAssignment = () => {
         setError(`Gagal memuat data users: ${usersErr.message}`);
       }
 
-      // 3. Load assigned users dari localStorage untuk development
-      loadAssignedUsersFromLocalStorage();
+      // 3. Fetch users yang sudah diassign ke event ini
+      // try {
+      //   const endpoint = `/events/${eventId}/users`;
+      //   console.log(`Fetching assigned users from: ${endpoint}`);
+
+      //   const response = await api.get(endpoint);
+
+      //   if (response.data?.success) {
+      //     let assignedData = response.data.data;
+
+      //     if (
+      //       !Array.isArray(assignedData) &&
+      //       assignedData &&
+      //       Array.isArray(assignedData.data)
+      //     ) {
+      //       assignedData = assignedData.data;
+      //     }
+
+      //     if (!Array.isArray(assignedData)) {
+      //       assignedData = [];
+      //     }
+
+      //     console.log(`✅ Found assigned users: ${assignedData.length}`);
+      //     console.log("Assigned users details:", assignedData);
+
+      //     setAssignedUsers(assignedData);
+
+      //     // Set selected user IDs dari yang sudah diassign
+      //     const assignedIds = assignedData
+      //       .map((user) => user.user_id || user.id)
+      //       .filter((id) => id); // Filter null/undefined
+
+      //     console.log("Assigned user IDs:", assignedIds);
+      //     setSelectedUserIds(assignedIds);
+      //   }
+      // } catch (assignedErr) {
+      //   console.log(
+      //     "ℹ️ No assigned users found or endpoint not available:",
+      //     assignedErr.message,
+      //   );
+      //   // Tidak apa-apa jika endpoint tidak ada atau belum ada assigned users
+      // }
     } catch (err) {
       console.error("Error in fetchEventAndUsers:", err);
       setError("Gagal memuat data. Silakan coba lagi.");
@@ -143,155 +174,37 @@ const CreateAssignment = () => {
     }
   };
 
-  // Load assigned users dari localStorage
-  const loadAssignedUsersFromLocalStorage = () => {
-    try {
-      const devAssignments = JSON.parse(
-        localStorage.getItem("dev_assignments") || "[]",
-      );
+  // Filter users berdasarkan search term
+  const filteredUsers = allUsers.filter((user) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      (user.name && user.name.toLowerCase().includes(searchLower)) ||
+      (user.email && user.email.toLowerCase().includes(searchLower)) ||
+      (user.username && user.username.toLowerCase().includes(searchLower)) ||
+      (user.role && user.role.toLowerCase().includes(searchLower))
+    );
+  });
 
-      const eventAssignment = devAssignments.find(
-        (assignment) => assignment.event_id == eventId,
-      );
-
-      if (eventAssignment) {
-        const allUsers = JSON.parse(localStorage.getItem("dev_users") || "[]");
-
-        // Load assigned judges
-        const judgeIds = eventAssignment.judges || [];
-        const assignedJudgesData = judgeIds.map((judgeId) => {
-          const judge = allUsers.find(
-            (u) => u.id == judgeId || u.user_id == judgeId,
-          );
-          return (
-            judge || { id: judgeId, name: `Juri ${judgeId}`, role: "judge" }
-          );
-        });
-        setAssignedJudges(assignedJudgesData);
-        setSelectedJudgeIds(judgeIds);
-
-        // Load assigned organizers
-        const organizerIds = eventAssignment.organizers || [];
-        const assignedOrganizersData = organizerIds.map((organizerId) => {
-          const organizer = allUsers.find(
-            (u) => u.id == organizerId || u.user_id == organizerId,
-          );
-          return (
-            organizer || {
-              id: organizerId,
-              name: `Organizer ${organizerId}`,
-              role: "organizer",
-            }
-          );
-        });
-        setAssignedOrganizers(assignedOrganizersData);
-        setSelectedOrganizerIds(organizerIds);
-
-        console.log(
-          `✅ Loaded ${assignedJudgesData.length} judges and ${assignedOrganizersData.length} organizers from localStorage`,
-        );
-      }
-    } catch (err) {
-      console.error("Error loading from localStorage:", err);
-    }
-  };
-
-  // Simpan assignment ke localStorage
-  const saveAssignmentToLocalStorage = () => {
-    try {
-      const devAssignments = JSON.parse(
-        localStorage.getItem("dev_assignments") || "[]",
-      );
-
-      // Cari assignment existing
-      const existingIndex = devAssignments.findIndex(
-        (assignment) => assignment.event_id == eventId,
-      );
-
-      const assignmentData = {
-        event_id: eventId,
-        judges: selectedJudgeIds,
-        organizers: selectedOrganizerIds,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (existingIndex >= 0) {
-        devAssignments[existingIndex] = assignmentData;
+  // Toggle selection user
+  const toggleUserSelection = (userId) => {
+    setSelectedUserIds((prev) => {
+      if (prev.includes(userId)) {
+        return prev.filter((id) => id !== userId);
       } else {
-        devAssignments.push(assignmentData);
-      }
-
-      localStorage.setItem("dev_assignments", JSON.stringify(devAssignments));
-      console.log(`💾 Saved assignment for event ${eventId} to localStorage`);
-    } catch (err) {
-      console.error("Error saving to localStorage:", err);
-    }
-  };
-
-  // Filter users berdasarkan search term dan role
-  const filteredUsers = () => {
-    let users = [];
-
-    // Gabungkan semua users berdasarkan filter role
-    if (roleFilter === "all" || roleFilter === "judge") {
-      users = [
-        ...users,
-        ...allJudges.map((j) => ({ ...j, userType: "judge" })),
-      ];
-    }
-    if (roleFilter === "all" || roleFilter === "organizer") {
-      users = [
-        ...users,
-        ...allOrganizers.map((o) => ({ ...o, userType: "organizer" })),
-      ];
-    }
-
-    // Filter berdasarkan search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      users = users.filter((user) => {
-        return (
-          (user.name && user.name.toLowerCase().includes(term)) ||
-          (user.email && user.email.toLowerCase().includes(term)) ||
-          (user.username && user.username.toLowerCase().includes(term))
-        );
-      });
-    }
-
-    return users;
-  };
-
-  // Toggle selection untuk judge
-  const toggleJudgeSelection = (judgeId) => {
-    setSelectedJudgeIds((prev) => {
-      if (prev.includes(judgeId)) {
-        return prev.filter((id) => id !== judgeId);
-      } else {
-        return [...prev, judgeId];
+        return [...prev, userId];
       }
     });
   };
 
-  // Toggle selection untuk organizer
-  const toggleOrganizerSelection = (organizerId) => {
-    setSelectedOrganizerIds((prev) => {
-      if (prev.includes(organizerId)) {
-        return prev.filter((id) => id !== organizerId);
-      } else {
-        return [...prev, organizerId];
-      }
-    });
-  };
-
-  // Handle submit assignment
+  // Handle submit assignment - MENGIRIM SATU PER SATU
   const handleSubmit = async () => {
     if (!user || user.role !== "admin") {
       setError("Hanya admin yang dapat mengelola assignment");
       return;
     }
 
-    if (selectedJudgeIds.length === 0 && selectedOrganizerIds.length === 0) {
-      setError("Pilih minimal satu juri atau organizer untuk diassign");
+    if (selectedUserIds.length === 0) {
+      setError("Pilih minimal satu user untuk diassign");
       return;
     }
 
@@ -300,100 +213,190 @@ const CreateAssignment = () => {
 
     try {
       console.log(`Submitting assignment for event ${eventId}`);
-      console.log(`Selected judges: ${selectedJudgeIds.length}`);
-      console.log(`Selected organizers: ${selectedOrganizerIds.length}`);
+      console.log(`Selected users IDs: ${selectedUserIds}`);
 
-      // Simpan ke localStorage untuk development
-      saveAssignmentToLocalStorage();
-
-      // Kirim ke API jika diperlukan
-      const totalSelected =
-        selectedJudgeIds.length + selectedOrganizerIds.length;
-
-      // Simulasikan API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setSuccess(true);
-
-      // Update state assigned users
-      const allUsers = JSON.parse(localStorage.getItem("dev_users") || "[]");
-
-      // Update assigned judges
-      const assignedJudgesData = selectedJudgeIds.map((judgeId) => {
-        const judge = allUsers.find((u) => u.id == judgeId);
-        return judge || { id: judgeId, name: `Juri ${judgeId}`, role: "judge" };
-      });
-      setAssignedJudges(assignedJudgesData);
-
-      // Update assigned organizers
-      const assignedOrganizersData = selectedOrganizerIds.map((organizerId) => {
-        const organizer = allUsers.find((u) => u.id == organizerId);
-        return (
-          organizer || {
-            id: organizerId,
-            name: `Organizer ${organizerId}`,
-            role: "organizer",
-          }
-        );
-      });
-      setAssignedOrganizers(assignedOrganizersData);
-
-      setError(
-        `✅ Berhasil assign ${totalSelected} user (${selectedJudgeIds.length} juri, ${selectedOrganizerIds.length} organizer)`,
+      // Verifikasi bahwa yang dipilih benar-benar users
+      const selectedUsers = allUsers.filter((j) =>
+        selectedUserIds.includes(j.id),
       );
+      console.log("Selected users details:", selectedUsers);
 
-      // Redirect setelah beberapa detik
-      setTimeout(() => {
-        navigate(`/admin/events/list`);
-      }, 3000);
+      // Kirim assignment satu per satu karena API hanya menerima single user_id
+      const results = [];
+      const endpoint = `/events/${eventId}/users`;
+
+      for (const userId of selectedUserIds) {
+        // Skip jika user sudah diassign
+        const alreadyAssigned = assignedUsers.some(
+          (j) => j.id === userId || j.user_id === userId,
+        );
+
+        if (alreadyAssigned) {
+          console.log(`⏭️ User ${userId} already assigned, skipping`);
+          results.push({
+            userId,
+            success: true,
+            message: "Already assigned",
+            skipped: true,
+          });
+          continue;
+        }
+
+        try {
+          const assignmentData = {
+            user_id: userId, // Hanya single user_id seperti format API
+          };
+
+          console.log(
+            `📤 Assigning user ${userId} to event ${eventId}`,
+            assignmentData,
+          );
+
+          const response = await api.post(endpoint, assignmentData);
+
+          if (response.data?.success) {
+            console.log(`✅ Success assigning user ${userId}`);
+            results.push({
+              userId,
+              success: true,
+              data: response.data,
+              message: response.data?.message || "Success",
+            });
+          } else {
+            console.log(`⚠️ Failed assigning user ${userId}:`, response.data);
+            results.push({
+              userId,
+              success: false,
+              error: response.data?.message || "Unknown error",
+            });
+          }
+        } catch (err) {
+          console.error(
+            `❌ Error assigning user ${userId}:`,
+            err.response?.data || err.message,
+          );
+          results.push({
+            userId,
+            success: false,
+            error: err.response?.data?.message || err.message,
+          });
+        }
+      }
+
+      // Analisis hasil
+      const successfulAssignments = results.filter(
+        (r) => r.success && !r.skipped,
+      );
+      const skippedAssignments = results.filter((r) => r.skipped);
+      const failedAssignments = results.filter((r) => !r.success);
+
+      if (successfulAssignments.length > 0 || skippedAssignments.length > 0) {
+        setSuccess(true);
+
+        // Refresh data untuk mendapatkan updated assigned users
+        await fetchEventAndUsers();
+
+        // Tampilkan pesan sukses
+        let successMessage = "";
+
+        if (successfulAssignments.length > 0 && skippedAssignments.length > 0) {
+          successMessage = `✅ ${successfulAssignments.length} user berhasil diassign, ${skippedAssignments.length} sudah ditugaskan sebelumnya.`;
+        } else if (successfulAssignments.length > 0) {
+          successMessage = `✅ ${successfulAssignments.length} user berhasil diassign.`;
+        } else {
+          successMessage = `ℹ️ Semua user yang dipilih sudah ditugaskan sebelumnya.`;
+        }
+
+        // Tambahkan pesan error jika ada yang gagal
+        if (failedAssignments.length > 0) {
+          const failedNames = failedAssignments
+            .map((f) => {
+              const user = selectedUsers.find((j) => j.id === f.userId);
+              return `${user?.name || `User ${f.userId}`} (${user?.role})`;
+            })
+            .join(", ");
+
+          setError(`${successMessage} Gagal assign: ${failedNames}`);
+        } else {
+          setError(""); // Clear error
+        }
+
+        console.log(successMessage);
+
+        // Redirect setelah beberapa detik
+        setTimeout(() => {
+          navigate(`/admin/events/list`);
+        }, 3000);
+      } else {
+        // Semua gagal
+        const errorMessages = failedAssignments
+          .map((f) => {
+            const user = selectedUsers.find((j) => j.id === f.userId);
+            return `${user?.name || `User ${f.userId}`}: ${f.error}`;
+          })
+          .join("; ");
+
+        setError(`Gagal mengassign user: ${errorMessages}`);
+      }
     } catch (err) {
       console.error("Assignment Error:", err);
-      setError(err.message || "Terjadi kesalahan saat menyimpan assignment");
+
+      if (err.response?.status === 422) {
+        const errors = err.response.data.errors;
+        const messages = Object.values(errors).flat().join(", ");
+        setError(`Validasi gagal: ${messages}`);
+      } else if (err.response?.status === 401) {
+        setError("Sesi berakhir, silakan login ulang");
+        navigate("/auth/login");
+      } else if (err.response?.status === 403) {
+        setError("Anda tidak memiliki izin untuk melakukan assignment");
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError(err.message || "Terjadi kesalahan saat menyimpan assignment");
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Handle unassign judge
-  const handleUnassignJudge = (judgeId) => {
+  // Handle unassign user
+  const handleUnassign = async (userId) => {
     if (
-      !window.confirm("Apakah Anda yakin ingin menghapus assignment juri ini?")
+      !window.confirm(`Apakah Anda yakin ingin menghapus assignment user ini?`)
     ) {
       return;
     }
 
-    const newSelectedIds = selectedJudgeIds.filter((id) => id !== judgeId);
-    setSelectedJudgeIds(newSelectedIds);
+    try {
+      const endpoint = `/events/${eventId}/users/${userId}`;
+      console.log(`Unassigning user ${userId} from event ${eventId}`);
 
-    const newAssigned = assignedJudges.filter((j) => j.id !== judgeId);
-    setAssignedJudges(newAssigned);
+      const response = await api.delete(endpoint);
 
-    saveAssignmentToLocalStorage();
-    setError(`✅ Juri berhasil dihapus dari assignment`);
-    setTimeout(() => setError(""), 3000);
-  };
+      if (response.data?.success) {
+        console.log(`✅ Success unassigning user ${userId}`);
 
-  // Handle unassign organizer
-  const handleUnassignOrganizer = (organizerId) => {
-    if (
-      !window.confirm(
-        "Apakah Anda yakin ingin menghapus assignment organizer ini?",
-      )
-    ) {
-      return;
+        // Update state
+        setAssignedUsers((prev) =>
+          prev.filter((j) => j.id !== userId && j.user_id !== userId),
+        );
+
+        setSelectedUserIds((prev) => prev.filter((id) => id !== userId));
+
+        // Refresh data
+        fetchEventAndUsers();
+
+        // Show success message
+        setError(`✅ User berhasil dihapus dari assignment`);
+        setTimeout(() => setError(""), 3000);
+      } else {
+        setError("Gagal menghapus assignment");
+      }
+    } catch (err) {
+      console.error("Unassign Error:", err);
+      setError(err.response?.data?.message || "Gagal menghapus assignment");
     }
-
-    const newSelectedIds = selectedOrganizerIds.filter(
-      (id) => id !== organizerId,
-    );
-    setSelectedOrganizerIds(newSelectedIds);
-
-    const newAssigned = assignedOrganizers.filter((o) => o.id !== organizerId);
-    setAssignedOrganizers(newAssigned);
-
-    saveAssignmentToLocalStorage();
-    setError(`✅ Organizer berhasil dihapus dari assignment`);
-    setTimeout(() => setError(""), 3000);
   };
 
   // Format tanggal
@@ -411,6 +414,25 @@ const CreateAssignment = () => {
     }
   };
 
+  // Format role untuk display
+  const formatRole = (role) => {
+    if (!role) return "Unknown";
+
+    const roleMap = {
+      judge: "Juri",
+      juri: "Juri",
+      admin: "Admin",
+      organizer: "Organizer",
+      user: "User",
+    };
+
+    const lowerRole = role.toLowerCase();
+    return (
+      roleMap[lowerRole] ||
+      role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
+    );
+  };
+
   // Get role color
   const getRoleColor = (role) => {
     const lowerRole = role?.toLowerCase() || "";
@@ -423,6 +445,8 @@ const CreateAssignment = () => {
         return "bg-blue-500/20 text-blue-400 border-blue-500/30";
       case "organizer":
         return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      case "user":
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
       default:
         return "bg-gray-500/20 text-gray-400 border-gray-500/30";
     }
@@ -449,11 +473,9 @@ const CreateAssignment = () => {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2 text-white">
-              Assign Users ke Event
-            </h1>
+            <h1 className="text-3xl font-bold mb-2">Assign Users ke Event</h1>
             <p className="text-gray-400">
-              Pilih juri dan organizer yang akan ditugaskan pada event ini
+              Pilih users yang akan ditugaskan pada event tertentu (semua role)
             </p>
 
             {event && (
@@ -470,12 +492,8 @@ const CreateAssignment = () => {
                       <span>📍 {event.location}</span>
                       <span>👥 {event.organized_by}</span>
                       <span className="flex items-center gap-1">
-                        <UserCheck size={14} className="text-blue-400" />
-                        {assignedJudges.length} Juri Ditugaskan
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Crown size={14} className="text-purple-400" />
-                        {assignedOrganizers.length} Organizer Ditugaskan
+                        <Users size={14} />
+                        {assignedUsers.length} Users Ditugaskan
                       </span>
                     </div>
                   </div>
@@ -486,8 +504,8 @@ const CreateAssignment = () => {
         </div>
       </div>
 
-      {/* Error/Success Messages */}
-      {error && !error.includes("✅") && !error.includes("ℹ️") && (
+      {/* Error Message */}
+      {error && !error.includes("Tidak ada user") && !error.includes("✅") && (
         <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
           <div className="flex items-start gap-3">
             <AlertCircle size={20} className="text-red-400 mt-0.5" />
@@ -499,6 +517,7 @@ const CreateAssignment = () => {
         </div>
       )}
 
+      {/* Success Message */}
       {success && (
         <div className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
           <div className="flex items-start gap-3">
@@ -506,13 +525,15 @@ const CreateAssignment = () => {
             <div>
               <p className="text-green-400 font-medium">Berhasil!</p>
               <p className="text-green-300 text-sm mt-1">
-                Assignment berhasil disimpan. Mengarahkan ke daftar event...
+                Assignment users berhasil disimpan. Mengarahkan ke daftar
+                event...
               </p>
             </div>
           </div>
         </div>
       )}
 
+      {/* Success/Info Message */}
       {(error.includes("✅") || error.includes("ℹ️")) && (
         <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
           <div className="flex items-start gap-3">
@@ -525,6 +546,25 @@ const CreateAssignment = () => {
         </div>
       )}
 
+      {/* Info Message jika tidak ada users */}
+      {error && error.includes("Tidak ada user") && (
+        <div className="mb-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
+          <div className="flex items-start gap-3">
+            <Info size={20} className="text-yellow-400 mt-0.5" />
+            <div>
+              <p className="text-yellow-400 font-medium">Informasi</p>
+              <p className="text-yellow-300 text-sm mt-1">{error}</p>
+              <button
+                onClick={() => navigate("/admin/users")}
+                className="mt-3 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg text-sm transition-colors"
+              >
+                Kelola Users
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Panel: Available Users */}
         <div className="lg:col-span-2">
@@ -532,31 +572,19 @@ const CreateAssignment = () => {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-bold text-white">
-                  Daftar Users ({filteredUsers().length})
+                  Daftar Users ({allUsers.length})
                 </h3>
-                <p className="text-gray-400 text-sm">
-                  {allJudges.length} juri dan {allOrganizers.length} organizer
-                  tersedia
-                </p>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <UserCheck size={20} className="text-blue-400" />
-                  <span className="text-white font-semibold">
-                    {allJudges.length}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Crown size={20} className="text-purple-400" />
-                  <span className="text-white font-semibold">
-                    {allOrganizers.length}
-                  </span>
-                </div>
+              <div className="flex items-center gap-2">
+                <Users size={20} className="text-gray-400" />
+                <span className="text-white font-semibold">
+                  {allUsers.length}
+                </span>
               </div>
             </div>
 
             {/* Search and Filter */}
-            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mb-6">
               <div className="relative">
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -564,66 +592,45 @@ const CreateAssignment = () => {
                 />
                 <input
                   type="text"
-                  placeholder="Cari user berdasarkan nama atau email..."
+                  placeholder="Cari user berdasarkan nama, email, username, atau role..."
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Semua Role</option>
-                <option value="judge">Hanya Juri</option>
-                <option value="organizer">Hanya Organizer</option>
-              </select>
             </div>
 
             {/* Users List */}
             <div className="space-y-3 max-h-[500px] overflow-y-auto">
-              {filteredUsers().length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <div className="text-center py-8">
                   <Users size={48} className="text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-400">Tidak ada user yang ditemukan</p>
-                  {(searchTerm || roleFilter !== "all") && (
+                  {searchTerm && (
                     <button
-                      onClick={() => {
-                        setSearchTerm("");
-                        setRoleFilter("all");
-                      }}
+                      onClick={() => setSearchTerm("")}
                       className="mt-2 px-4 py-2 text-sm rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
                     >
-                      Reset Filter
+                      Reset Pencarian
                     </button>
                   )}
                 </div>
               ) : (
-                filteredUsers().map((userItem) => {
-                  const isJudge = userItem.userType === "judge";
-                  const isSelected = isJudge
-                    ? selectedJudgeIds.includes(userItem.id)
-                    : selectedOrganizerIds.includes(userItem.id);
-                  const isAssigned = isJudge
-                    ? assignedJudges.some((j) => j.id === userItem.id)
-                    : assignedOrganizers.some((o) => o.id === userItem.id);
+                filteredUsers.map((userItem) => {
+                  const isSelected = selectedUserIds.includes(userItem.id);
+                  const isAssigned = assignedUsers.some(
+                    (j) => j.id === userItem.id || j.user_id === userItem.id,
+                  );
 
                   return (
                     <div
                       key={userItem.id}
-                      onClick={() =>
-                        isJudge
-                          ? toggleJudgeSelection(userItem.id)
-                          : toggleOrganizerSelection(userItem.id)
-                      }
+                      onClick={() => toggleUserSelection(userItem.id)}
                       className={`
                         p-4 rounded-xl border cursor-pointer transition-all
                         ${
                           isSelected
-                            ? isJudge
-                              ? "bg-blue-500/10 border-blue-500/30"
-                              : "bg-purple-500/10 border-purple-500/30"
+                            ? "bg-blue-500/10 border-blue-500/30"
                             : "bg-gray-900/50 border-gray-700 hover:bg-gray-800/50"
                         }
                         ${isAssigned ? "border-green-500/30 bg-green-500/5" : ""}
@@ -635,26 +642,31 @@ const CreateAssignment = () => {
                             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                               isAssigned
                                 ? "bg-green-500/20 text-green-400"
-                                : isJudge
-                                  ? "bg-blue-500/20 text-blue-400"
-                                  : "bg-purple-500/20 text-purple-400"
+                                : getRoleColor(userItem.role).split(" ")[0]
                             }`}
                           >
-                            {isJudge ? (
-                              <UserCheck size={18} />
-                            ) : (
-                              <Crown size={18} />
-                            )}
+                            <Users
+                              size={18}
+                              className={
+                                isAssigned
+                                  ? "text-green-400"
+                                  : getRoleColor(userItem.role)
+                                      .split(" ")[1]
+                                      .replace("text-", "")
+                              }
+                            />
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-white">
-                                {userItem.name || `User ${userItem.id}`}
+                                {userItem.name ||
+                                  userItem.username ||
+                                  `User ${userItem.id}`}
                               </p>
                               <span
                                 className={`px-2 py-0.5 text-xs rounded-full ${getRoleColor(userItem.role)}`}
                               >
-                                {isJudge ? "Juri" : "Organizer"}
+                                {formatRole(userItem.role)}
                               </span>
                               {isAssigned && (
                                 <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
@@ -665,21 +677,19 @@ const CreateAssignment = () => {
                             <p className="text-sm text-gray-400">
                               {userItem.email || "No email"}
                             </p>
-                            {userItem.phone && (
-                              <p className="text-xs text-gray-500 mt-1">
-                                📱 {userItem.phone}
-                              </p>
-                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              {userItem.whatsapp && (
+                                <span className="text-xs text-gray-500">
+                                  📱 {userItem.whatsapp}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
                           {isSelected ? (
-                            <div
-                              className={`p-1.5 rounded-lg ${
-                                isJudge ? "bg-blue-500" : "bg-purple-500"
-                              }`}
-                            >
+                            <div className="p-1.5 bg-blue-500 rounded-lg">
                               <CheckCircle size={16} className="text-white" />
                             </div>
                           ) : (
@@ -687,6 +697,11 @@ const CreateAssignment = () => {
                               <div className="w-4 h-4 rounded-sm"></div>
                             </div>
                           )}
+
+                          <ChevronRight
+                            size={16}
+                            className={`text-gray-400 transition-transform ${isSelected ? "rotate-90" : ""}`}
+                          />
                         </div>
                       </div>
                     </div>
@@ -699,111 +714,68 @@ const CreateAssignment = () => {
 
         {/* Right Panel: Summary & Actions */}
         <div className="space-y-6">
-          {/* Assigned Judges Section */}
-          <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <UserCheck size={20} className="text-blue-400" />
+          {/* Assigned Users Info */}
+          {assignedUsers.length > 0 && (
+            <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
+              <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-white">
-                  Juri yang Ditugaskan
+                  Users yang Sudah Ditugaskan
                 </h3>
-              </div>
-              <div className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm">
-                {assignedJudges.length} juri
-              </div>
-            </div>
-            <div className="space-y-2">
-              {assignedJudges.length === 0 ? (
-                <div className="text-center py-4">
-                  <Award size={24} className="text-gray-500 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">
-                    Belum ada juri yang ditugaskan
-                  </p>
+                <div className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
+                  {assignedUsers.length} users
                 </div>
-              ) : (
-                assignedJudges.map((judge, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 hover:bg-gray-800/30 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
-                        <UserCheck size={12} className="text-blue-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-white">
-                          {judge.name || `Juri ${judge.id}`}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {judge.email || "No email"}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleUnassignJudge(judge.id)}
-                      className="p-1 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10"
-                      title="Hapus assignment"
-                    >
-                      <XCircle size={16} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Assigned Organizers Section */}
-          <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Crown size={20} className="text-purple-400" />
-                <h3 className="font-semibold text-white">
-                  Organizer yang Ditugaskan
-                </h3>
               </div>
-              <div className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm">
-                {assignedOrganizers.length} organizer
+              <div className="space-y-2">
+                {assignedUsers.map((assignedUser, index) => {
+                  const userInfo = allUsers.find(
+                    (j) =>
+                      j.id === assignedUser.id || j.id === assignedUser.user_id,
+                  );
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 hover:bg-gray-800/30 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center">
+                          <CheckCircle size={12} className="text-green-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-white">
+                            {userInfo?.name ||
+                              `User ${assignedUser.id || assignedUser.user_id}`}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-gray-400">
+                              {userInfo?.email || "No email"}
+                            </p>
+                            {userInfo && (
+                              <span
+                                className={`text-xs px-1.5 py-0.5 rounded ${getRoleColor(userInfo.role)}`}
+                              >
+                                {formatRole(userInfo.role)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleUnassign(
+                            assignedUser.id || assignedUser.user_id,
+                          )
+                        }
+                        className="p-1 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10"
+                        title="Hapus assignment"
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <div className="space-y-2">
-              {assignedOrganizers.length === 0 ? (
-                <div className="text-center py-4">
-                  <Shield size={24} className="text-gray-500 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">
-                    Belum ada organizer yang ditugaskan
-                  </p>
-                </div>
-              ) : (
-                assignedOrganizers.map((organizer, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 hover:bg-gray-800/30 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center">
-                        <Crown size={12} className="text-purple-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-white">
-                          {organizer.name || `Organizer ${organizer.id}`}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {organizer.email || "No email"}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleUnassignOrganizer(organizer.id)}
-                      className="p-1 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10"
-                      title="Hapus assignment"
-                    >
-                      <XCircle size={16} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          )}
 
           {/* Action Buttons */}
           <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
@@ -814,22 +786,21 @@ const CreateAssignment = () => {
                   <button
                     onClick={handleSubmit}
                     disabled={
-                      submitting ||
-                      success ||
-                      (selectedJudgeIds.length === 0 &&
-                        selectedOrganizerIds.length === 0)
+                      submitting || success || selectedUserIds.length === 0
                     }
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {submitting ? (
                       <>
                         <Loader className="animate-spin h-5 w-5 border-t-2 border-b-2 border-white" />
-                        <span>Menyimpan assignment...</span>
+                        <span>
+                          Mengassign {selectedUserIds.length} users...
+                        </span>
                       </>
                     ) : (
                       <>
                         <Save size={18} />
-                        <span>Simpan Assignment</span>
+                        <span>Assign {selectedUserIds.length} Users</span>
                       </>
                     )}
                   </button>
@@ -845,42 +816,66 @@ const CreateAssignment = () => {
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-700">
-                <div className="text-center p-3 bg-blue-500/10 rounded-lg">
-                  <p className="text-2xl font-bold text-blue-400">
-                    {selectedJudgeIds.length}
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">
+                    {allUsers.length}
                   </p>
-                  <p className="text-xs text-gray-400">Juri Dipilih</p>
+                  <p className="text-xs text-gray-400">Total Users</p>
                 </div>
-                <div className="text-center p-3 bg-purple-500/10 rounded-lg">
-                  <p className="text-2xl font-bold text-purple-400">
-                    {selectedOrganizerIds.length}
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">
+                    {selectedUserIds.length}
                   </p>
-                  <p className="text-xs text-gray-400">Organizer Dipilih</p>
+                  <p className="text-xs text-gray-400">Akan Ditugaskan</p>
                 </div>
               </div>
 
-              {/* Total Summary */}
+              {/* Role Distribution */}
               <div className="pt-4 border-t border-gray-700">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-white mb-1">
-                    {selectedJudgeIds.length + selectedOrganizerIds.length}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    Total User Akan Diassign
-                  </p>
-                  <div className="flex justify-center gap-4 mt-2">
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                      <span className="text-xs text-gray-400">
-                        {selectedJudgeIds.length} Juri
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                      <span className="text-xs text-gray-400">
-                        {selectedOrganizerIds.length} Organizer
-                      </span>
-                    </div>
+                <h5 className="text-sm font-medium text-gray-300 mb-2">
+                  Distribusi Role:
+                </h5>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-center p-2 bg-red-500/10 rounded">
+                    <p className="text-lg font-bold text-red-400">
+                      {
+                        allUsers.filter(
+                          (u) => u.role?.toLowerCase() === "admin",
+                        ).length
+                      }
+                    </p>
+                    <p className="text-xs text-gray-400">Admin</p>
+                  </div>
+                  <div className="text-center p-2 bg-blue-500/10 rounded">
+                    <p className="text-lg font-bold text-blue-400">
+                      {
+                        allUsers.filter(
+                          (u) =>
+                            u.role?.toLowerCase() === "judge" ||
+                            u.role?.toLowerCase() === "juri",
+                        ).length
+                      }
+                    </p>
+                    <p className="text-xs text-gray-400">Juri</p>
+                  </div>
+                  <div className="text-center p-2 bg-purple-500/10 rounded">
+                    <p className="text-lg font-bold text-purple-400">
+                      {
+                        allUsers.filter(
+                          (u) => u.role?.toLowerCase() === "organizer",
+                        ).length
+                      }
+                    </p>
+                    <p className="text-xs text-gray-400">Organizer</p>
+                  </div>
+                  <div className="text-center p-2 bg-gray-500/10 rounded">
+                    <p className="text-lg font-bold text-gray-400">
+                      {
+                        allUsers.filter((u) => u.role?.toLowerCase() === "user")
+                          .length
+                      }
+                    </p>
+                    <p className="text-xs text-gray-400">User</p>
                   </div>
                 </div>
               </div>
