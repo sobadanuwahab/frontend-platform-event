@@ -54,7 +54,7 @@ const EditEvent = () => {
 
     const loadEvent = async () => {
       try {
-        const res = await api.get("/list-event-by-user");
+        const res = await api.get("/list-event");
 
         if (!Array.isArray(res.data?.data)) {
           throw new Error("Data event tidak valid");
@@ -186,7 +186,7 @@ const EditEvent = () => {
           Event dengan ID {id} tidak ditemukan atau Anda tidak memiliki akses.
         </p>
         <button
-          onClick={() => navigate("/organizer/events")}
+          onClick={() => navigate("/admin/events")}
           className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600"
         >
           Kembali ke Daftar Event
@@ -205,7 +205,7 @@ const EditEvent = () => {
       {/* Header */}
       <div className="mb-8">
         <button
-          onClick={() => navigate("/organizer/events")}
+          onClick={() => navigate("/admin/events")}
           className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6"
         >
           <ArrowLeft size={20} />
@@ -218,133 +218,12 @@ const EditEvent = () => {
             <p className="text-gray-400">
               Edit detail event "{eventData?.name}"
             </p>
-            {user && (
-              <div className="mt-2 text-sm text-gray-500">
-                <div className="flex items-center gap-2">
-                  <span>
-                    Editor: <span className="text-blue-400">{user.name}</span>
-                  </span>
-                  <span className="text-gray-600">•</span>
-                  <span>
-                    ID: <span className="text-blue-400">{user.id}</span>
-                  </span>
-                  <span className="text-gray-600">•</span>
-                  <span>
-                    Event ID: <span className="text-blue-400">{id}</span>
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate(`/organizer/events/${id}`)}
-              className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium flex items-center gap-2"
-            >
-              <Eye size={16} />
-              Lihat Detail
-            </button>
-            <button
-              onClick={handleChange}
-              className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition-colors font-medium flex items-center gap-2"
-            >
-              <Trash2 size={16} />
-              Hapus
-            </button>
           </div>
         </div>
       </div>
 
       {/* Form */}
       <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
-        {/* Error Alert */}
-        {error && !success && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-            <div className="flex items-start space-x-3">
-              <AlertCircle
-                size={20}
-                className="text-red-400 flex-shrink-0 mt-0.5"
-              />
-              <div>
-                <p className="text-red-400 font-medium">
-                  Gagal mengupdate event
-                </p>
-                <p className="text-red-300 text-sm mt-1 whitespace-pre-line">
-                  {error}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Success Alert */}
-        {success && (
-          <div className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
-            <div className="flex items-start space-x-3">
-              <CheckCircle
-                size={20}
-                className="text-green-400 flex-shrink-0 mt-0.5"
-              />
-              <div>
-                <p className="text-green-400 font-medium">Berhasil!</p>
-                <p className="text-green-300 text-sm mt-1">
-                  Event berhasil diupdate. Mengarahkan ke halaman event...
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* User Information */}
-        <div className="mb-8 p-4 rounded-xl bg-gray-900/50 border border-gray-700">
-          <h3 className="text-lg font-bold mb-3 text-gray-300 flex items-center gap-2">
-            <User size={20} />
-            Informasi Editor
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Nama Editor</p>
-              <p className="text-gray-300 font-medium">{user?.name || "-"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">User ID</p>
-              <p className="text-blue-400 font-mono font-medium">
-                {user?.id || "-"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Event ID</p>
-              <p className="text-yellow-400 font-mono font-medium">{id}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Event Name</p>
-              <p className="text-gray-300 font-medium">
-                {eventData?.name || "-"}
-              </p>
-            </div>
-          </div>
-
-          {/* Image Debug Info */}
-          {eventData && (
-            <div className="mt-4 p-3 bg-blue-500/10 rounded-lg">
-              <p className="text-xs text-blue-300 mb-1">
-                <strong>Image Info:</strong>
-              </p>
-              <p className="text-xs text-gray-400">
-                {imagePreview && imagePreview.startsWith("http")
-                  ? `Image URL: ${imagePreview.substring(0, 60)}...`
-                  : "No image found in event data"}
-              </p>
-              {eventData.image && (
-                <p className="text-xs text-gray-400 mt-1">
-                  Image path in data: {eventData.image}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Basic Information */}
           <div>
@@ -647,21 +526,6 @@ const EditEvent = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Event Data Debug Info */}
-              {eventData && (
-                <div className="mt-4 p-3 bg-gray-900/30 rounded-lg">
-                  <p className="text-xs text-gray-400 mb-2">
-                    <strong>Event Data Debug:</strong>
-                  </p>
-                  <div className="text-xs font-mono text-gray-500 space-y-1">
-                    <p>Event ID: {eventData.id}</p>
-                    <p>Name: {eventData.name}</p>
-                    <p>Has image field: {eventData.image ? "Yes" : "No"}</p>
-                    {eventData.image && <p>Image path: {eventData.image}</p>}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -694,6 +558,14 @@ const EditEvent = () => {
               </button>
 
               <button
+                onClick={handleChange}
+                className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition-colors font-medium flex items-center gap-2"
+              >
+                <Trash2 size={16} />
+                Hapus
+              </button>
+
+              <button
                 type="submit"
                 disabled={submitting || success}
                 className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
@@ -713,29 +585,6 @@ const EditEvent = () => {
             </div>
           </div>
         </form>
-      </div>
-
-      {/* Information Panel */}
-      <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-        <div className="flex items-start gap-3">
-          <Info size={20} className="text-blue-400 mt-0.5" />
-          <div>
-            <h4 className="font-medium text-blue-300 mb-2">
-              Informasi Edit Event:
-            </h4>
-            <div className="text-sm text-gray-400 space-y-1">
-              <p>• Event ID: {id}</p>
-              <p>• User ID: {user?.id || "-"}</p>
-              <p>• Event Name: {eventData?.name || "-"}</p>
-              <p>• Has Image: {imagePreview ? "Yes" : "No"}</p>
-              <p>• Image Path: {eventData?.image || "Not found in data"}</p>
-              <p>
-                • Status:{" "}
-                {submitting ? "Updating..." : success ? "Success!" : "Ready"}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </motion.div>
   );

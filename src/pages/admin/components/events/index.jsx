@@ -18,6 +18,10 @@ import {
   Globe,
   Clock,
   UserPlus,
+  Award,
+  UserCheck,
+  Crown,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 import api from "../../../../services/api";
@@ -32,7 +36,11 @@ const Events = () => {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [debugInfo, setDebugInfo] = useState("");
+
+  // State untuk menyimpan assigned judges per event
+  const [eventJudges, setEventJudges] = useState({}); // { eventId: [judge1, judge2, ...] }
+  // State untuk menyimpan assigned organizers per event
+  const [eventOrganizers, setEventOrganizers] = useState({}); // { eventId: [organizer1, organizer2, ...] }
 
   /* ================= LOAD EVENTS FROM API ================= */
   useEffect(() => {
@@ -47,7 +55,284 @@ const Events = () => {
 
   useEffect(() => {
     filterEvents();
-  }, [searchTerm, statusFilter, events]);
+  }, [searchTerm, statusFilter, events, eventJudges, eventOrganizers]);
+
+  /* ================= LOAD ASSIGNED JUDGES ================= */
+  const loadAssignedJudges = async (eventId) => {
+    try {
+      let assignedJudges = [];
+
+      // Cek dari localStorage untuk development
+      const devAssignments = JSON.parse(
+        localStorage.getItem("dev_assignments") || "[]",
+      );
+
+      // Cari assignment untuk event ini
+      const eventAssignment = devAssignments.find(
+        (assignment) =>
+          assignment.event_id == eventId || assignment.event_id === eventId,
+      );
+
+      if (eventAssignment) {
+        // Ambil info judge dari localStorage atau API users
+        const allUsers = JSON.parse(localStorage.getItem("dev_users") || "[]");
+        assignedJudges = (eventAssignment.judges || []).map((judgeId) => {
+          const judge = allUsers.find(
+            (u) => u.id == judgeId || u.user_id == judgeId,
+          );
+          return judge
+            ? {
+                id: judge.id || judge.user_id,
+                user_id: judge.user_id || judge.id,
+                name: judge.name || `Juri ${judge.id}`,
+                email: judge.email,
+                role: judge.role,
+                avatar: judge.avatar,
+              }
+            : {
+                id: judgeId,
+                user_id: judgeId,
+                name: `Juri ${judgeId}`,
+                role: "judge",
+              };
+        });
+      }
+
+      // Update state
+      setEventJudges((prev) => ({
+        ...prev,
+        [eventId]: assignedJudges,
+      }));
+
+      return assignedJudges;
+    } catch (err) {
+      console.log(`Error loading judges for event ${eventId}:`, err);
+      setEventJudges((prev) => ({
+        ...prev,
+        [eventId]: [],
+      }));
+      return [];
+    }
+  };
+
+  /* ================= LOAD ASSIGNED ORGANIZERS ================= */
+  const loadAssignedOrganizers = async (eventId) => {
+    try {
+      console.log(`🔄 Loading organizers for event ${eventId}...`);
+
+      let assignedOrganizers = [];
+
+      // Cek dari localStorage untuk development
+      const devAssignments = JSON.parse(
+        localStorage.getItem("dev_assignments") || "[]",
+      );
+
+      console.log(
+        `📋 Total assignments in localStorage: ${devAssignments.length}`,
+      );
+
+      // Debug: Tampilkan semua assignments
+      if (devAssignments.length > 0) {
+        console.log("📝 All assignments:", devAssignments);
+      }
+
+      // Cari assignment untuk event ini
+      const eventAssignment = devAssignments.find(
+        (assignment) =>
+          assignment.event_id == eventId || assignment.event_id === eventId,
+      );
+
+      if (eventAssignment) {
+        console.log(
+          `✅ Found assignment for event ${eventId}:`,
+          eventAssignment,
+        );
+
+        // Ambil info organizer dari localStorage atau API users
+        const allUsers = JSON.parse(localStorage.getItem("dev_users") || "[]");
+        console.log(`👥 Total users in localStorage: ${allUsers.length}`);
+
+        // Cek apakah ada field "organizers" di assignment
+        const organizerIds = eventAssignment.organizers || [];
+        console.log(`📋 Organizer IDs for event ${eventId}:`, organizerIds);
+
+        assignedOrganizers = organizerIds.map((organizerId) => {
+          const organizer = allUsers.find(
+            (u) => u.id == organizerId || u.user_id == organizerId,
+          );
+
+          if (organizer) {
+            console.log(`✅ Found organizer: ${organizer.name || organizerId}`);
+            return {
+              id: organizer.id || organizer.user_id,
+              user_id: organizer.user_id || organizer.id,
+              name: organizer.name || `Organizer ${organizer.id}`,
+              email: organizer.email,
+              role: organizer.role || "organizer",
+              avatar: organizer.avatar,
+            };
+          } else {
+            console.log(`❌ Organizer not found in users: ${organizerId}`);
+            return {
+              id: organizerId,
+              user_id: organizerId,
+              name: `Organizer ${organizerId}`,
+              role: "organizer",
+            };
+          }
+        });
+
+        console.log(
+          `✅ Final assigned organizers for event ${eventId}:`,
+          assignedOrganizers,
+        );
+      } else {
+        console.log(`❌ No assignment found for event ${eventId}`);
+      }
+
+      // Update state
+      setEventOrganizers((prev) => ({
+        ...prev,
+        [eventId]: assignedOrganizers,
+      }));
+
+      return assignedOrganizers;
+    } catch (err) {
+      console.error(`❌ Error loading organizers for event ${eventId}:`, err);
+      setEventOrganizers((prev) => ({
+        ...prev,
+        [eventId]: [],
+      }));
+      return [];
+    }
+  };
+
+  /* ================= LOAD ALL EVENTS AND THEIR ASSIGNMENTS ================= */
+  const loadEvents = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await api.get("/list-event");
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || "Gagal memuat event");
+      }
+
+      let rawEvents = response.data.data;
+
+      if (!rawEvents) {
+        rawEvents = [];
+      } else if (Array.isArray(rawEvents)) {
+        rawEvents = rawEvents;
+      } else if (Array.isArray(rawEvents.data)) {
+        rawEvents = rawEvents.data;
+      } else if (typeof rawEvents === "object") {
+        rawEvents = [rawEvents];
+      } else {
+        rawEvents = [];
+      }
+
+      const formattedEvents = rawEvents.map((event) => ({
+        id: event.id,
+        name: event.name,
+        organized_by: event.organized_by,
+        location: event.location,
+        event_info: event.event_info || "",
+        term_condition: event.term_condition || "",
+        start_date: event.start_date,
+        end_date: event.end_date,
+        image_url: formatImageUrl(event.image),
+        user_id: event.user_id,
+        created_at: event.created_at,
+        participants_count: event.participants_count || 0,
+        status: getEventStatus(event),
+      }));
+
+      setEvents(formattedEvents);
+      setFilteredEvents(formattedEvents);
+
+      // Load assigned judges dan organizers untuk setiap event
+      formattedEvents.forEach((event) => {
+        setTimeout(() => {
+          loadAssignedJudges(event.id);
+          loadAssignedOrganizers(event.id);
+        }, 0);
+      });
+
+      if (formattedEvents.length === 0) {
+        setError(
+          "Belum ada event yang dibuat. Silakan buat event pertama Anda.",
+        );
+      }
+    } catch (err) {
+      console.error("Load events failed:", err);
+
+      if (err.response?.status === 401) {
+        setError("Sesi berakhir. Silakan login kembali.");
+        navigate("/auth/login");
+      } else {
+        setError(err.message || "Gagal memuat event");
+      }
+
+      setEvents([]);
+      setFilteredEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================= RENDER ASSIGNED PEOPLE ================= */
+  const renderAssignedPeople = (eventId) => {
+    const judges = eventJudges[eventId] || [];
+    const organizers = eventOrganizers[eventId] || [];
+    const totalAssigned = judges.length + organizers.length;
+
+    if (totalAssigned === 0) {
+      return (
+        <div className="flex items-center gap-2 text-gray-500 text-sm">
+          <Award size={14} />
+          <span>Belum ada penugasan</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-3 space-y-3">
+        {/* Judges Section */}
+        {judges.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <UserCheck size={14} className="text-purple-400" />
+              <span className="text-sm font-medium text-purple-300">
+                Juri yang Ditugaskan:
+              </span>
+              <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full">
+                {judges.length} juri
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Organizers Section */}
+        {organizers.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Crown size={14} className="text-amber-400" />
+              <span className="text-sm font-medium text-amber-300">
+                Organizer yang Ditugaskan:
+              </span>
+              <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full">
+                {organizers.length} organizer
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   /* ================= GET STATUS COLOR ================= */
   const getStatusColor = (status) => {
@@ -90,13 +375,43 @@ const Events = () => {
     // Filter by search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (event) =>
+      filtered = filtered.filter((event) => {
+        // Cek di event properties
+        if (
           event.name.toLowerCase().includes(term) ||
           (event.organized_by &&
             event.organized_by.toLowerCase().includes(term)) ||
-          (event.location && event.location.toLowerCase().includes(term)),
-      );
+          (event.location && event.location.toLowerCase().includes(term))
+        ) {
+          return true;
+        }
+
+        // Cek di assigned judges
+        const judges = eventJudges[event.id] || [];
+        if (
+          judges.some(
+            (judge) =>
+              judge.name?.toLowerCase().includes(term) ||
+              judge.email?.toLowerCase().includes(term),
+          )
+        ) {
+          return true;
+        }
+
+        // Cek di assigned organizers
+        const organizers = eventOrganizers[event.id] || [];
+        if (
+          organizers.some(
+            (organizer) =>
+              organizer.name?.toLowerCase().includes(term) ||
+              organizer.email?.toLowerCase().includes(term),
+          )
+        ) {
+          return true;
+        }
+
+        return false;
+      });
     }
 
     // Filter by status
@@ -122,86 +437,6 @@ const Events = () => {
     }
   };
 
-  const loadEvents = async () => {
-    if (!user) return;
-
-    setLoading(true);
-    setError("");
-
-    try {
-      // Mengambil semua event untuk admin (tidak hanya event milik user)
-      const response = await api.get("/list-event");
-
-      if (!response.data?.success) {
-        throw new Error(response.data?.message || "Gagal memuat event");
-      }
-
-      /**
-       * NORMALIZE RESPONSE
-       * Backend bisa return:
-       * - data: { ... }        -> single event
-       * - data: [ ... ]        -> list
-       * - data: { data: [ ] } -> pagination
-       */
-      let rawEvents = response.data.data;
-
-      if (!rawEvents) {
-        rawEvents = [];
-      } else if (Array.isArray(rawEvents)) {
-        // already array
-        rawEvents = rawEvents;
-      } else if (Array.isArray(rawEvents.data)) {
-        // pagination
-        rawEvents = rawEvents.data;
-      } else if (typeof rawEvents === "object") {
-        // SINGLE EVENT → convert to array
-        rawEvents = [rawEvents];
-      } else {
-        rawEvents = [];
-      }
-
-      // ================= FORMAT EVENTS =================
-      const formattedEvents = rawEvents.map((event) => ({
-        id: event.id,
-        name: event.name,
-        organized_by: event.organized_by,
-        location: event.location,
-        event_info: event.event_info || "",
-        term_condition: event.term_condition || "",
-        start_date: event.start_date,
-        end_date: event.end_date,
-        image_url: formatImageUrl(event.image),
-        user_id: event.user_id,
-        created_at: event.created_at,
-        participants_count: event.participants_count || 0,
-        status: getEventStatus(event),
-      }));
-
-      setEvents(formattedEvents);
-      setFilteredEvents(formattedEvents);
-
-      if (formattedEvents.length === 0) {
-        setError(
-          "Belum ada event yang dibuat. Silakan buat event pertama Anda.",
-        );
-      }
-    } catch (err) {
-      console.error("Load events failed:", err);
-
-      if (err.response?.status === 401) {
-        setError("Sesi berakhir. Silakan login kembali.");
-        navigate("/auth/login");
-      } else {
-        setError(err.message || "Gagal memuat event");
-      }
-
-      setEvents([]);
-      setFilteredEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getEventStatus = (event) => {
     if (!event.start_date) return "unknown";
 
@@ -216,10 +451,29 @@ const Events = () => {
 
   /* ================= DELETE EVENT ================= */
   const handleDelete = async (eventId) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus event ini?")) return;
+    if (
+      !window.confirm(
+        "Apakah Anda yakin ingin menghapus event ini? Semua assignment juri juga akan dihapus.",
+      )
+    )
+      return;
 
     try {
       await api.delete(`/delete-event/${eventId}`);
+
+      // Hapus dari state
+      setEventJudges((prev) => {
+        const newState = { ...prev };
+        delete newState[eventId];
+        return newState;
+      });
+
+      setEventOrganizers((prev) => {
+        const newState = { ...prev };
+        delete newState[eventId];
+        return newState;
+      });
+
       loadEvents();
     } catch (err) {
       alert("Gagal menghapus event");
@@ -373,31 +627,38 @@ const Events = () => {
 
           <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
             <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500">
-                <Users size={24} className="text-white" />
+              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
+                <UserCheck size={24} className="text-white" />
               </div>
             </div>
             <p className="text-3xl font-bold mb-1">
-              {events.reduce(
-                (total, event) => total + (event.participants_count || 0),
+              {Object.values(eventJudges).reduce(
+                (total, judges) => total + (judges?.length || 0),
                 0,
               )}
             </p>
-            <p className="text-gray-300 font-medium mb-1">Total Peserta</p>
+            <p className="text-gray-300 font-medium mb-1">
+              Total Juri Ditugaskan
+            </p>
             <p className="text-gray-500 text-sm">Di semua event</p>
           </div>
 
           <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
             <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
-                <Clock size={24} className="text-white" />
+              <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500">
+                <Crown size={24} className="text-white" />
               </div>
             </div>
             <p className="text-3xl font-bold mb-1">
-              {events.filter((e) => e.status === "upcoming").length}
+              {Object.values(eventOrganizers).reduce(
+                (total, organizers) => total + (organizers?.length || 0),
+                0,
+              )}
             </p>
-            <p className="text-gray-300 font-medium mb-1">Event Akan Datang</p>
-            <p className="text-gray-500 text-sm">Akan dilaksanakan</p>
+            <p className="text-gray-300 font-medium mb-1">
+              Total Organizer Ditugaskan
+            </p>
+            <p className="text-gray-500 text-sm">Di semua event</p>
           </div>
         </div>
       )}
@@ -413,7 +674,7 @@ const Events = () => {
               />
               <input
                 type="text"
-                placeholder="Cari event berdasarkan nama, penyelenggara, atau lokasi..."
+                placeholder="Cari event berdasarkan nama, penyelenggara, lokasi, atau nama juri/organizer..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -515,6 +776,10 @@ const Events = () => {
               filteredEvents.map((event) => {
                 const statusColor =
                   event.status_color || getStatusColor(event.status);
+                const assignedJudges = eventJudges[event.id] || [];
+                const assignedOrganizers = eventOrganizers[event.id] || [];
+                const totalAssigned =
+                  assignedJudges.length + assignedOrganizers.length;
 
                 return (
                   <motion.div
@@ -554,6 +819,17 @@ const Events = () => {
                               <Users size={14} />
                               {event.participants_count || 0} Peserta
                             </span>
+                            <span className="flex items-center gap-1">
+                              <UserCheck
+                                size={14}
+                                className="text-purple-400"
+                              />
+                              {assignedJudges.length} Juri
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Crown size={14} className="text-amber-400" />
+                              {assignedOrganizers.length} Organizer
+                            </span>
                           </div>
                           <p className="text-gray-300 text-sm mb-1">
                             Diselenggarakan oleh:{" "}
@@ -567,20 +843,23 @@ const Events = () => {
                               {event.event_info.length > 150 ? "..." : ""}
                             </p>
                           )}
+
+                          {/* Tampilkan assigned judges dan organizers */}
+                          {renderAssignedPeople(event.id)}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3">
-                        {/* TOMBOL ASSIGN JURI - TAMBAHKAN DI SINI */}
+                        {/* TOMBOL ASSIGN JURI & ORGANIZER */}
                         <button
                           onClick={() =>
                             navigate(`/admin/events/assign/${event.id}`)
                           }
-                          className="px-4 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 transition-colors flex items-center gap-2"
-                          title="Assign Juri"
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500/20 to-amber-500/20 hover:from-purple-500/30 hover:to-amber-500/30 border border-purple-500/30 text-white transition-colors flex items-center gap-2"
+                          title="Assign Users"
                         >
                           <UserPlus size={16} />
-                          <span className="hidden sm:inline">Assign Juri</span>
+                          <span className="hidden sm:inline">Assign Users</span>
                         </button>
 
                         <button
@@ -591,9 +870,10 @@ const Events = () => {
                           <span className="hidden sm:inline">Detail</span>
                         </button>
                         <button
-                          onClick={() =>
-                            navigate(`/admin/events/edit/${event.id}`)
-                          }
+                          onClick={() => {
+                            console.log("Navigating to edit event:", event.id);
+                            navigate(`/admin/events/edit/${event.id}`);
+                          }}
                           className="px-4 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 transition-colors flex items-center gap-2"
                         >
                           <Edit size={16} />
@@ -614,6 +894,15 @@ const Events = () => {
                             >
                               <Users size={14} />
                               Lihat Peserta
+                            </button>
+                            <button
+                              onClick={() =>
+                                navigate(`/admin/events/assign/${event.id}`)
+                              }
+                              className="w-full text-left px-4 py-3 hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-amber-500/20 text-sm text-white flex items-center gap-2"
+                            >
+                              <Shield size={14} />
+                              Kelola Penugasan
                             </button>
                             <button
                               onClick={() => handleDelete(event.id)}

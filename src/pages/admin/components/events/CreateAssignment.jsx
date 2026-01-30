@@ -3,19 +3,20 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Users,
-  UserPlus,
+  UserCheck,
+  Crown,
   Search,
-  Filter,
   CheckCircle,
   XCircle,
   Save,
-  ArrowLeft,
   AlertCircle,
   Info,
   Loader,
   ChevronRight,
-  Shield,
   Calendar,
+  Filter,
+  Shield,
+  Award,
 } from "lucide-react";
 import api from "../../../../services/api";
 import { useAuth } from "../../../../context/AuthContext";
@@ -33,20 +34,24 @@ const CreateAssignment = () => {
   // State untuk event details
   const [event, setEvent] = useState(null);
 
-  // State untuk daftar juri yang tersedia
-  const [judges, setJudges] = useState([]);
+  // State untuk daftar semua users yang tersedia, dipisahkan berdasarkan role
+  const [allJudges, setAllJudges] = useState([]); // Hanya users dengan role judge
+  const [allOrganizers, setAllOrganizers] = useState([]); // Hanya users dengan role organizer
 
-  // State untuk juri yang sudah diassign ke event ini
+  // State untuk users yang sudah diassign ke event ini, dipisahkan berdasarkan role
   const [assignedJudges, setAssignedJudges] = useState([]);
+  const [assignedOrganizers, setAssignedOrganizers] = useState([]);
 
   // State untuk pencarian dan filter
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all"); // "all", "judge", "organizer"
   const [selectedJudgeIds, setSelectedJudgeIds] = useState([]);
+  const [selectedOrganizerIds, setSelectedOrganizerIds] = useState([]);
 
-  // Load event details dan data juri
+  // Load event details dan data semua users
   useEffect(() => {
     if (!user || user.role !== "admin") {
-      setError("Hanya admin yang dapat mengelola assignment juri");
+      setError("Hanya admin yang dapat mengelola assignment users");
       setLoading(false);
       return;
     }
@@ -57,10 +62,10 @@ const CreateAssignment = () => {
       return;
     }
 
-    fetchEventAndJudges();
+    fetchEventAndUsers();
   }, [user, eventId]);
 
-  const fetchEventAndJudges = async () => {
+  const fetchEventAndUsers = async () => {
     setLoading(true);
     setError("");
 
@@ -78,58 +83,47 @@ const CreateAssignment = () => {
         console.warn("Gagal load event details:", eventErr.message);
       }
 
-      // 2. Fetch semua users dari endpoint /users
+      // 2. Fetch semua users dari endpoint
       try {
-        const usersResponse = await api.get("/users");
+        const usersResponse = await api.get("/users-judge-organizer");
         console.log("Users API Response:", usersResponse.data);
 
         if (usersResponse.data?.success) {
-          // Format response bisa berbeda:
-          // 1. { success: true, data: [...] } → langsung array
-          // 2. { success: true, data: { data: [...] } } → nested
-
           let usersData = [];
 
           if (Array.isArray(usersResponse.data.data)) {
-            // Format 1: langsung array
             usersData = usersResponse.data.data;
           } else if (
             usersResponse.data.data &&
             Array.isArray(usersResponse.data.data.data)
           ) {
-            // Format 2: nested dengan pagination
             usersData = usersResponse.data.data.data;
           } else if (
             usersResponse.data.data &&
             typeof usersResponse.data.data === "object"
           ) {
-            // Format 3: object, convert ke array
             usersData = Object.values(usersResponse.data.data);
           }
 
-          // Filter hanya user dengan role "juri"
-          const judgesData = usersData.filter(
+          // Pisahkan users berdasarkan role
+          const judges = usersData.filter(
             (user) =>
-              user.role === "juri" ||
-              user.role?.toLowerCase() === "juri" ||
-              user.role === "judge" || // Tambahkan ini
-              user.role?.toLowerCase() === "judge" || // Tambahkan ini
-              user.user_type === "juri" ||
-              user.user_type === "judge" || // Tambahkan ini
-              user.type === "juri" ||
-              user.type === "judge", // Tambahkan ini
+              user.role?.toLowerCase() === "judge" ||
+              user.role?.toLowerCase() === "juri",
           );
 
-          console.log(`✅ Total users loaded: ${usersData.length}`);
-          console.log(`✅ Judges filtered: ${judgesData.length}`);
+          const organizers = usersData.filter(
+            (user) => user.role?.toLowerCase() === "organizer",
+          );
 
-          setJudges(judgesData);
+          console.log(`✅ Judges loaded: ${judges.length}`);
+          console.log(`✅ Organizers loaded: ${organizers.length}`);
 
-          // Jika tidak ada juri, tampilkan pesan
-          if (judgesData.length === 0) {
-            setError(
-              "Tidak ada user dengan role 'juri' ditemukan. Pastikan ada user dengan role juri di sistem.",
-            );
+          setAllJudges(judges);
+          setAllOrganizers(organizers);
+
+          if (judges.length === 0 && organizers.length === 0) {
+            setError("Tidak ada judge atau organizer ditemukan di sistem.");
           }
         } else {
           setError("Gagal memuat data users. Format response tidak sesuai.");
@@ -139,79 +133,152 @@ const CreateAssignment = () => {
         setError(`Gagal memuat data users: ${usersErr.message}`);
       }
 
-      // 3. Fetch juri yang sudah diassign ke event ini (opsional)
-      try {
-        // Coba endpoint yang mungkin ada untuk assigned judges
-        // Beberapa kemungkinan endpoint:
-        // - /events/{id}/users
-        // - /event-users?event_id={id}
-        // - /assignments?event_id={id}
-
-        const endpointsToTry = [
-          `/events/${eventId}/users`,
-          `/event-users?event_id=${eventId}`,
-          `/assignments?event_id=${eventId}`,
-          `/event-judges?event_id=${eventId}`,
-        ];
-
-        let assignedData = [];
-
-        for (const endpoint of endpointsToTry) {
-          try {
-            const response = await api.get(endpoint);
-            if (response.data?.success) {
-              const data = response.data.data;
-              if (Array.isArray(data)) {
-                assignedData = data;
-              } else if (data && Array.isArray(data.data)) {
-                assignedData = data.data;
-              }
-              console.log(
-                `✅ Found assigned judges from ${endpoint}: ${assignedData.length}`,
-              );
-              break;
-            }
-          } catch (e) {
-            // Continue to next endpoint
-          }
-        }
-
-        setAssignedJudges(assignedData);
-
-        // Set selected judge IDs dari yang sudah diassign
-        const assignedIds = assignedData.map(
-          (judge) => judge.user_id || judge.id,
-        );
-        setSelectedJudgeIds(assignedIds);
-      } catch (assignedErr) {
-        console.log("ℹ️ No assigned judges endpoint available");
-        // Tidak apa-apa jika endpoint tidak ada
-      }
+      // 3. Load assigned users dari localStorage untuk development
+      loadAssignedUsersFromLocalStorage();
     } catch (err) {
-      console.error("Error in fetchEventAndJudges:", err);
+      console.error("Error in fetchEventAndUsers:", err);
       setError("Gagal memuat data. Silakan coba lagi.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter judges berdasarkan search term
-  const filteredJudges = judges.filter((judge) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      (judge.name && judge.name.toLowerCase().includes(searchLower)) ||
-      (judge.email && judge.email.toLowerCase().includes(searchLower)) ||
-      (judge.username && judge.username.toLowerCase().includes(searchLower))
-    );
-  });
+  // Load assigned users dari localStorage
+  const loadAssignedUsersFromLocalStorage = () => {
+    try {
+      const devAssignments = JSON.parse(
+        localStorage.getItem("dev_assignments") || "[]",
+      );
 
-  // Toggle selection judge
+      const eventAssignment = devAssignments.find(
+        (assignment) => assignment.event_id == eventId,
+      );
+
+      if (eventAssignment) {
+        const allUsers = JSON.parse(localStorage.getItem("dev_users") || "[]");
+
+        // Load assigned judges
+        const judgeIds = eventAssignment.judges || [];
+        const assignedJudgesData = judgeIds.map((judgeId) => {
+          const judge = allUsers.find(
+            (u) => u.id == judgeId || u.user_id == judgeId,
+          );
+          return (
+            judge || { id: judgeId, name: `Juri ${judgeId}`, role: "judge" }
+          );
+        });
+        setAssignedJudges(assignedJudgesData);
+        setSelectedJudgeIds(judgeIds);
+
+        // Load assigned organizers
+        const organizerIds = eventAssignment.organizers || [];
+        const assignedOrganizersData = organizerIds.map((organizerId) => {
+          const organizer = allUsers.find(
+            (u) => u.id == organizerId || u.user_id == organizerId,
+          );
+          return (
+            organizer || {
+              id: organizerId,
+              name: `Organizer ${organizerId}`,
+              role: "organizer",
+            }
+          );
+        });
+        setAssignedOrganizers(assignedOrganizersData);
+        setSelectedOrganizerIds(organizerIds);
+
+        console.log(
+          `✅ Loaded ${assignedJudgesData.length} judges and ${assignedOrganizersData.length} organizers from localStorage`,
+        );
+      }
+    } catch (err) {
+      console.error("Error loading from localStorage:", err);
+    }
+  };
+
+  // Simpan assignment ke localStorage
+  const saveAssignmentToLocalStorage = () => {
+    try {
+      const devAssignments = JSON.parse(
+        localStorage.getItem("dev_assignments") || "[]",
+      );
+
+      // Cari assignment existing
+      const existingIndex = devAssignments.findIndex(
+        (assignment) => assignment.event_id == eventId,
+      );
+
+      const assignmentData = {
+        event_id: eventId,
+        judges: selectedJudgeIds,
+        organizers: selectedOrganizerIds,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existingIndex >= 0) {
+        devAssignments[existingIndex] = assignmentData;
+      } else {
+        devAssignments.push(assignmentData);
+      }
+
+      localStorage.setItem("dev_assignments", JSON.stringify(devAssignments));
+      console.log(`💾 Saved assignment for event ${eventId} to localStorage`);
+    } catch (err) {
+      console.error("Error saving to localStorage:", err);
+    }
+  };
+
+  // Filter users berdasarkan search term dan role
+  const filteredUsers = () => {
+    let users = [];
+
+    // Gabungkan semua users berdasarkan filter role
+    if (roleFilter === "all" || roleFilter === "judge") {
+      users = [
+        ...users,
+        ...allJudges.map((j) => ({ ...j, userType: "judge" })),
+      ];
+    }
+    if (roleFilter === "all" || roleFilter === "organizer") {
+      users = [
+        ...users,
+        ...allOrganizers.map((o) => ({ ...o, userType: "organizer" })),
+      ];
+    }
+
+    // Filter berdasarkan search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      users = users.filter((user) => {
+        return (
+          (user.name && user.name.toLowerCase().includes(term)) ||
+          (user.email && user.email.toLowerCase().includes(term)) ||
+          (user.username && user.username.toLowerCase().includes(term))
+        );
+      });
+    }
+
+    return users;
+  };
+
+  // Toggle selection untuk judge
   const toggleJudgeSelection = (judgeId) => {
     setSelectedJudgeIds((prev) => {
       if (prev.includes(judgeId)) {
         return prev.filter((id) => id !== judgeId);
       } else {
         return [...prev, judgeId];
+      }
+    });
+  };
+
+  // Toggle selection untuk organizer
+  const toggleOrganizerSelection = (organizerId) => {
+    setSelectedOrganizerIds((prev) => {
+      if (prev.includes(organizerId)) {
+        return prev.filter((id) => id !== organizerId);
+      } else {
+        return [...prev, organizerId];
       }
     });
   };
@@ -223,8 +290,8 @@ const CreateAssignment = () => {
       return;
     }
 
-    if (selectedJudgeIds.length === 0) {
-      setError("Pilih minimal satu juri untuk diassign");
+    if (selectedJudgeIds.length === 0 && selectedOrganizerIds.length === 0) {
+      setError("Pilih minimal satu juri atau organizer untuk diassign");
       return;
     }
 
@@ -233,105 +300,100 @@ const CreateAssignment = () => {
 
     try {
       console.log(`Submitting assignment for event ${eventId}`);
-      console.log(`Selected judges: ${selectedJudgeIds}`);
+      console.log(`Selected judges: ${selectedJudgeIds.length}`);
+      console.log(`Selected organizers: ${selectedOrganizerIds.length}`);
 
-      // Prepare data untuk API
-      const assignmentData = {
-        event_id: parseInt(eventId),
-        user_ids: selectedJudgeIds,
-        // Atau format lain sesuai kebutuhan backend
-        // judges: selectedJudgeIds,
-        // assignees: selectedJudgeIds.map(id => ({ user_id: id }))
-      };
+      // Simpan ke localStorage untuk development
+      saveAssignmentToLocalStorage();
 
-      console.log(`Assignment data:`, assignmentData);
+      // Kirim ke API jika diperlukan
+      const totalSelected =
+        selectedJudgeIds.length + selectedOrganizerIds.length;
 
-      // Coba beberapa endpoint yang mungkin untuk submit
-      const endpointsToTry = [
-        `/events/${eventId}/users`,
-        `/event-users`,
-        `/assign-judges`,
-        `/assignments`,
-        `/event/${eventId}/assign-judges`,
-      ];
+      // Simulasikan API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      let success = false;
-      let response = null;
+      setSuccess(true);
 
-      for (const endpoint of endpointsToTry) {
-        try {
-          console.log(`Trying endpoint: ${endpoint}`);
-          response = await api.post(endpoint, assignmentData);
+      // Update state assigned users
+      const allUsers = JSON.parse(localStorage.getItem("dev_users") || "[]");
 
-          if (response.data?.success) {
-            console.log(`✅ Success using endpoint: ${endpoint}`);
-            success = true;
-            break;
+      // Update assigned judges
+      const assignedJudgesData = selectedJudgeIds.map((judgeId) => {
+        const judge = allUsers.find((u) => u.id == judgeId);
+        return judge || { id: judgeId, name: `Juri ${judgeId}`, role: "judge" };
+      });
+      setAssignedJudges(assignedJudgesData);
+
+      // Update assigned organizers
+      const assignedOrganizersData = selectedOrganizerIds.map((organizerId) => {
+        const organizer = allUsers.find((u) => u.id == organizerId);
+        return (
+          organizer || {
+            id: organizerId,
+            name: `Organizer ${organizerId}`,
+            role: "organizer",
           }
-        } catch (err) {
-          console.log(`Endpoint ${endpoint} failed:`, err.message);
-          // Continue to next endpoint
-        }
-      }
-
-      if (success) {
-        setSuccess(true);
-        console.log("✅ Assignment berhasil disimpan");
-
-        // Update assigned judges state
-        const newAssignedJudges = judges.filter((judge) =>
-          selectedJudgeIds.includes(judge.id),
         );
-        setAssignedJudges((prev) => [...prev, ...newAssignedJudges]);
+      });
+      setAssignedOrganizers(assignedOrganizersData);
 
-        // Redirect setelah beberapa detik
-        setTimeout(() => {
-          navigate(`/admin/events/list`);
-        }, 2000);
-      } else {
-        // Jika semua endpoint gagal, simulasikan untuk development
-        console.log(
-          "⚠️ All API endpoints failed, simulating success for development",
-        );
-        setSuccess(true);
+      setError(
+        `✅ Berhasil assign ${totalSelected} user (${selectedJudgeIds.length} juri, ${selectedOrganizerIds.length} organizer)`,
+      );
 
-        // Simpan ke localStorage untuk development
-        const devAssignments = JSON.parse(
-          localStorage.getItem("dev_assignments") || "[]",
-        );
-        devAssignments.push({
-          event_id: eventId,
-          judges: selectedJudgeIds,
-          assigned_at: new Date().toISOString(),
-        });
-        localStorage.setItem("dev_assignments", JSON.stringify(devAssignments));
-
-        // Update assigned judges state
-        const newAssignedJudges = judges.filter((judge) =>
-          selectedJudgeIds.includes(judge.id),
-        );
-        setAssignedJudges((prev) => [...prev, ...newAssignedJudges]);
-
-        setTimeout(() => {
-          navigate(`/admin/events/list`);
-        }, 2000);
-      }
+      // Redirect setelah beberapa detik
+      setTimeout(() => {
+        navigate(`/admin/events/list`);
+      }, 3000);
     } catch (err) {
       console.error("Assignment Error:", err);
-
-      if (err.response?.status === 422) {
-        const errors = err.response.data.errors;
-        const messages = Object.values(errors).flat().join(", ");
-        setError(`Validasi gagal: ${messages}`);
-      } else if (err.response?.status === 401) {
-        setError("Sesi berakhir, silakan login ulang");
-        navigate("/auth/login");
-      } else {
-        setError(err.message || "Terjadi kesalahan saat menyimpan assignment");
-      }
+      setError(err.message || "Terjadi kesalahan saat menyimpan assignment");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Handle unassign judge
+  const handleUnassignJudge = (judgeId) => {
+    if (
+      !window.confirm("Apakah Anda yakin ingin menghapus assignment juri ini?")
+    ) {
+      return;
+    }
+
+    const newSelectedIds = selectedJudgeIds.filter((id) => id !== judgeId);
+    setSelectedJudgeIds(newSelectedIds);
+
+    const newAssigned = assignedJudges.filter((j) => j.id !== judgeId);
+    setAssignedJudges(newAssigned);
+
+    saveAssignmentToLocalStorage();
+    setError(`✅ Juri berhasil dihapus dari assignment`);
+    setTimeout(() => setError(""), 3000);
+  };
+
+  // Handle unassign organizer
+  const handleUnassignOrganizer = (organizerId) => {
+    if (
+      !window.confirm(
+        "Apakah Anda yakin ingin menghapus assignment organizer ini?",
+      )
+    ) {
+      return;
+    }
+
+    const newSelectedIds = selectedOrganizerIds.filter(
+      (id) => id !== organizerId,
+    );
+    setSelectedOrganizerIds(newSelectedIds);
+
+    const newAssigned = assignedOrganizers.filter((o) => o.id !== organizerId);
+    setAssignedOrganizers(newAssigned);
+
+    saveAssignmentToLocalStorage();
+    setError(`✅ Organizer berhasil dihapus dari assignment`);
+    setTimeout(() => setError(""), 3000);
   };
 
   // Format tanggal
@@ -349,10 +411,21 @@ const CreateAssignment = () => {
     }
   };
 
-  // Format role untuk display
-  const formatRole = (role) => {
-    if (!role) return "Unknown";
-    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+  // Get role color
+  const getRoleColor = (role) => {
+    const lowerRole = role?.toLowerCase() || "";
+
+    switch (lowerRole) {
+      case "admin":
+        return "bg-red-500/20 text-red-400 border-red-500/30";
+      case "judge":
+      case "juri":
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+      case "organizer":
+        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      default:
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+    }
   };
 
   if (loading) {
@@ -374,19 +447,13 @@ const CreateAssignment = () => {
     >
       {/* Header */}
       <div className="mb-8">
-        <button
-          onClick={() => navigate("/admin/events/list")}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6"
-        >
-          <ArrowLeft size={20} />
-          <span>Kembali ke Daftar Event</span>
-        </button>
-
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Assign Juri ke Event</h1>
+            <h1 className="text-3xl font-bold mb-2 text-white">
+              Assign Users ke Event
+            </h1>
             <p className="text-gray-400">
-              Pilih juri yang akan bertugas pada event tertentu
+              Pilih juri dan organizer yang akan ditugaskan pada event ini
             </p>
 
             {event && (
@@ -402,27 +469,25 @@ const CreateAssignment = () => {
                       </span>
                       <span>📍 {event.location}</span>
                       <span>👥 {event.organized_by}</span>
+                      <span className="flex items-center gap-1">
+                        <UserCheck size={14} className="text-blue-400" />
+                        {assignedJudges.length} Juri Ditugaskan
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Crown size={14} className="text-purple-400" />
+                        {assignedOrganizers.length} Organizer Ditugaskan
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             )}
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-sm text-gray-400">Admin</p>
-              <p className="font-semibold text-white">{user?.name}</p>
-            </div>
-            <div className="p-2 bg-red-900/30 rounded-lg">
-              <Shield size={20} className="text-red-400" />
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && !error.includes("Tidak ada user") && (
+      {/* Error/Success Messages */}
+      {error && !error.includes("✅") && !error.includes("ℹ️") && (
         <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
           <div className="flex items-start gap-3">
             <AlertCircle size={20} className="text-red-400 mt-0.5" />
@@ -434,26 +499,6 @@ const CreateAssignment = () => {
         </div>
       )}
 
-      {/* Info Message jika tidak ada juri */}
-      {error && error.includes("Tidak ada user") && (
-        <div className="mb-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
-          <div className="flex items-start gap-3">
-            <Info size={20} className="text-yellow-400 mt-0.5" />
-            <div>
-              <p className="text-yellow-400 font-medium">Informasi</p>
-              <p className="text-yellow-300 text-sm mt-1">{error}</p>
-              <button
-                onClick={() => navigate("/admin/users")}
-                className="mt-3 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg text-sm transition-colors"
-              >
-                Kelola Users
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success Message */}
       {success && (
         <div className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/30">
           <div className="flex items-start gap-3">
@@ -461,37 +506,57 @@ const CreateAssignment = () => {
             <div>
               <p className="text-green-400 font-medium">Berhasil!</p>
               <p className="text-green-300 text-sm mt-1">
-                Assignment juri berhasil disimpan. Mengarahkan ke daftar
-                event...
+                Assignment berhasil disimpan. Mengarahkan ke daftar event...
               </p>
             </div>
           </div>
         </div>
       )}
 
+      {(error.includes("✅") || error.includes("ℹ️")) && (
+        <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+          <div className="flex items-start gap-3">
+            <Info size={20} className="text-blue-400 mt-0.5" />
+            <div>
+              <p className="text-blue-400 font-medium">Informasi</p>
+              <p className="text-blue-300 text-sm mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Panel: Available Judges */}
+        {/* Left Panel: Available Users */}
         <div className="lg:col-span-2">
           <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-bold text-white">
-                  Daftar Juri Tersedia
+                  Daftar Users ({filteredUsers().length})
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  {judges.length} juri ditemukan di sistem
+                  {allJudges.length} juri dan {allOrganizers.length} organizer
+                  tersedia
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Users size={20} className="text-gray-400" />
-                <span className="text-white font-semibold">
-                  {judges.length}
-                </span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <UserCheck size={20} className="text-blue-400" />
+                  <span className="text-white font-semibold">
+                    {allJudges.length}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Crown size={20} className="text-purple-400" />
+                  <span className="text-white font-semibold">
+                    {allOrganizers.length}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Search and Filter */}
-            <div className="mb-6">
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -499,45 +564,66 @@ const CreateAssignment = () => {
                 />
                 <input
                   type="text"
-                  placeholder="Cari juri berdasarkan nama, email, atau username..."
+                  placeholder="Cari user berdasarkan nama atau email..."
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">Semua Role</option>
+                <option value="judge">Hanya Juri</option>
+                <option value="organizer">Hanya Organizer</option>
+              </select>
             </div>
 
-            {/* Judges List */}
+            {/* Users List */}
             <div className="space-y-3 max-h-[500px] overflow-y-auto">
-              {filteredJudges.length === 0 ? (
+              {filteredUsers().length === 0 ? (
                 <div className="text-center py-8">
                   <Users size={48} className="text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400">Tidak ada juri yang ditemukan</p>
-                  {searchTerm && (
+                  <p className="text-gray-400">Tidak ada user yang ditemukan</p>
+                  {(searchTerm || roleFilter !== "all") && (
                     <button
-                      onClick={() => setSearchTerm("")}
+                      onClick={() => {
+                        setSearchTerm("");
+                        setRoleFilter("all");
+                      }}
                       className="mt-2 px-4 py-2 text-sm rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
                     >
-                      Reset Pencarian
+                      Reset Filter
                     </button>
                   )}
                 </div>
               ) : (
-                filteredJudges.map((judge) => {
-                  const isSelected = selectedJudgeIds.includes(judge.id);
-                  const isAssigned = assignedJudges.some(
-                    (j) => j.id === judge.id || j.user_id === judge.id,
-                  );
+                filteredUsers().map((userItem) => {
+                  const isJudge = userItem.userType === "judge";
+                  const isSelected = isJudge
+                    ? selectedJudgeIds.includes(userItem.id)
+                    : selectedOrganizerIds.includes(userItem.id);
+                  const isAssigned = isJudge
+                    ? assignedJudges.some((j) => j.id === userItem.id)
+                    : assignedOrganizers.some((o) => o.id === userItem.id);
 
                   return (
                     <div
-                      key={judge.id}
-                      onClick={() => toggleJudgeSelection(judge.id)}
+                      key={userItem.id}
+                      onClick={() =>
+                        isJudge
+                          ? toggleJudgeSelection(userItem.id)
+                          : toggleOrganizerSelection(userItem.id)
+                      }
                       className={`
                         p-4 rounded-xl border cursor-pointer transition-all
                         ${
                           isSelected
-                            ? "bg-blue-500/10 border-blue-500/30"
+                            ? isJudge
+                              ? "bg-blue-500/10 border-blue-500/30"
+                              : "bg-purple-500/10 border-purple-500/30"
                             : "bg-gray-900/50 border-gray-700 hover:bg-gray-800/50"
                         }
                         ${isAssigned ? "border-green-500/30 bg-green-500/5" : ""}
@@ -549,18 +635,27 @@ const CreateAssignment = () => {
                             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                               isAssigned
                                 ? "bg-green-500/20 text-green-400"
-                                : "bg-blue-500/20 text-blue-400"
+                                : isJudge
+                                  ? "bg-blue-500/20 text-blue-400"
+                                  : "bg-purple-500/20 text-purple-400"
                             }`}
                           >
-                            <Users size={18} />
+                            {isJudge ? (
+                              <UserCheck size={18} />
+                            ) : (
+                              <Crown size={18} />
+                            )}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-white">
-                                {judge.name ||
-                                  judge.username ||
-                                  `User ${judge.id}`}
+                                {userItem.name || `User ${userItem.id}`}
                               </p>
+                              <span
+                                className={`px-2 py-0.5 text-xs rounded-full ${getRoleColor(userItem.role)}`}
+                              >
+                                {isJudge ? "Juri" : "Organizer"}
+                              </span>
                               {isAssigned && (
                                 <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
                                   Sudah Ditugaskan
@@ -568,24 +663,23 @@ const CreateAssignment = () => {
                               )}
                             </div>
                             <p className="text-sm text-gray-400">
-                              {judge.email || "No email"}
+                              {userItem.email || "No email"}
                             </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs px-2 py-0.5 bg-gray-700 rounded">
-                                {formatRole(judge.role)}
-                              </span>
-                              {judge.phone && (
-                                <span className="text-xs text-gray-500">
-                                  📱 {judge.phone}
-                                </span>
-                              )}
-                            </div>
+                            {userItem.phone && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                📱 {userItem.phone}
+                              </p>
+                            )}
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
                           {isSelected ? (
-                            <div className="p-1.5 bg-blue-500 rounded-lg">
+                            <div
+                              className={`p-1.5 rounded-lg ${
+                                isJudge ? "bg-blue-500" : "bg-purple-500"
+                              }`}
+                            >
                               <CheckCircle size={16} className="text-white" />
                             </div>
                           ) : (
@@ -593,11 +687,6 @@ const CreateAssignment = () => {
                               <div className="w-4 h-4 rounded-sm"></div>
                             </div>
                           )}
-
-                          <ChevronRight
-                            size={16}
-                            className={`text-gray-400 transition-transform ${isSelected ? "rotate-90" : ""}`}
-                          />
                         </div>
                       </div>
                     </div>
@@ -610,105 +699,111 @@ const CreateAssignment = () => {
 
         {/* Right Panel: Summary & Actions */}
         <div className="space-y-6">
-          {/* Selected Judges Summary */}
+          {/* Assigned Judges Section */}
           <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-white">Juri Terpilih</h3>
+              <div className="flex items-center gap-2">
+                <UserCheck size={20} className="text-blue-400" />
+                <h3 className="font-semibold text-white">
+                  Juri yang Ditugaskan
+                </h3>
+              </div>
               <div className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm">
-                {selectedJudgeIds.length} dipilih
+                {assignedJudges.length} juri
               </div>
             </div>
-
-            <div className="space-y-3 max-h-[300px] overflow-y-auto">
-              {selectedJudgeIds.length === 0 ? (
+            <div className="space-y-2">
+              {assignedJudges.length === 0 ? (
                 <div className="text-center py-4">
-                  <UserPlus size={32} className="text-gray-600 mx-auto mb-2" />
+                  <Award size={24} className="text-gray-500 mx-auto mb-2" />
                   <p className="text-gray-400 text-sm">
-                    Belum ada juri yang dipilih
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Klik pada kartu juri di sebelah kiri untuk memilih
+                    Belum ada juri yang ditugaskan
                   </p>
                 </div>
               ) : (
-                selectedJudgeIds.map((judgeId) => {
-                  const judge = judges.find((j) => j.id === judgeId);
-                  const isAssigned = assignedJudges.some(
-                    (j) => j.id === judgeId || j.user_id === judgeId,
-                  );
-
-                  if (!judge) return null;
-
-                  return (
-                    <div
-                      key={judgeId}
-                      className="flex items-center justify-between p-3 bg-gray-900/30 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                          <Users size={14} className="text-blue-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-white">
-                            {judge.name || judge.username || `Juri ${judge.id}`}
-                          </p>
-                          <p className="text-xs text-gray-400 truncate max-w-[120px]">
-                            {judge.email || "No email"}
-                          </p>
-                        </div>
+                assignedJudges.map((judge, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-2 hover:bg-gray-800/30 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <UserCheck size={12} className="text-blue-400" />
                       </div>
-                      {isAssigned && (
-                        <span
-                          className="text-xs text-green-400"
-                          title="Sudah ditugaskan"
-                        >
-                          ✓
-                        </span>
-                      )}
+                      <div>
+                        <p className="text-sm text-white">
+                          {judge.name || `Juri ${judge.id}`}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {judge.email || "No email"}
+                        </p>
+                      </div>
                     </div>
-                  );
-                })
+                    <button
+                      onClick={() => handleUnassignJudge(judge.id)}
+                      className="p-1 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10"
+                      title="Hapus assignment"
+                    >
+                      <XCircle size={16} />
+                    </button>
+                  </div>
+                ))
               )}
             </div>
           </div>
 
-          {/* Assigned Judges Info */}
-          {assignedJudges.length > 0 && (
-            <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
-              <div className="flex items-center justify-between mb-4">
+          {/* Assigned Organizers Section */}
+          <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Crown size={20} className="text-purple-400" />
                 <h3 className="font-semibold text-white">
-                  Juri yang Sudah Ditugaskan
+                  Organizer yang Ditugaskan
                 </h3>
-                <div className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
-                  {assignedJudges.length} juri
-                </div>
               </div>
-              <div className="space-y-2">
-                {assignedJudges.map((judge, index) => {
-                  const judgeInfo = judges.find(
-                    (j) => j.id === judge.id || j.id === judge.user_id,
-                  );
-                  return (
-                    <div key={index} className="flex items-center gap-3 p-2">
-                      <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <CheckCircle size={12} className="text-green-400" />
+              <div className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm">
+                {assignedOrganizers.length} organizer
+              </div>
+            </div>
+            <div className="space-y-2">
+              {assignedOrganizers.length === 0 ? (
+                <div className="text-center py-4">
+                  <Shield size={24} className="text-gray-500 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">
+                    Belum ada organizer yang ditugaskan
+                  </p>
+                </div>
+              ) : (
+                assignedOrganizers.map((organizer, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-2 hover:bg-gray-800/30 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center">
+                        <Crown size={12} className="text-purple-400" />
                       </div>
                       <div>
                         <p className="text-sm text-white">
-                          {judgeInfo?.name ||
-                            judgeInfo?.username ||
-                            `Juri ${judge.id}`}
+                          {organizer.name || `Organizer ${organizer.id}`}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {judgeInfo?.email || "No email"}
+                          {organizer.email || "No email"}
                         </p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                    <button
+                      onClick={() => handleUnassignOrganizer(organizer.id)}
+                      className="p-1 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10"
+                      title="Hapus assignment"
+                    >
+                      <XCircle size={16} />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
-          )}
+          </div>
 
           {/* Action Buttons */}
           <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
@@ -719,21 +814,22 @@ const CreateAssignment = () => {
                   <button
                     onClick={handleSubmit}
                     disabled={
-                      submitting || success || selectedJudgeIds.length === 0
+                      submitting ||
+                      success ||
+                      (selectedJudgeIds.length === 0 &&
+                        selectedOrganizerIds.length === 0)
                     }
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {submitting ? (
                       <>
                         <Loader className="animate-spin h-5 w-5 border-t-2 border-b-2 border-white" />
-                        <span>Menyimpan...</span>
+                        <span>Menyimpan assignment...</span>
                       </>
                     ) : (
                       <>
                         <Save size={18} />
-                        <span>
-                          Simpan Assignment ({selectedJudgeIds.length})
-                        </span>
+                        <span>Simpan Assignment</span>
                       </>
                     )}
                   </button>
@@ -749,35 +845,43 @@ const CreateAssignment = () => {
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-700">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-white">
-                    {judges.length}
-                  </p>
-                  <p className="text-xs text-gray-400">Total Juri</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-white">
+                <div className="text-center p-3 bg-blue-500/10 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-400">
                     {selectedJudgeIds.length}
                   </p>
-                  <p className="text-xs text-gray-400">Akan Ditugaskan</p>
+                  <p className="text-xs text-gray-400">Juri Dipilih</p>
+                </div>
+                <div className="text-center p-3 bg-purple-500/10 rounded-lg">
+                  <p className="text-2xl font-bold text-purple-400">
+                    {selectedOrganizerIds.length}
+                  </p>
+                  <p className="text-xs text-gray-400">Organizer Dipilih</p>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Information Panel */}
-          <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-            <div className="flex items-start gap-3">
-              <Info size={20} className="text-blue-400 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-blue-300 mb-2">Informasi:</h4>
-                <div className="text-sm text-gray-400 space-y-1">
-                  <p>• Pilih juri dengan mengklik kartu juri</p>
-                  <p>
-                    • Juri yang sudah ditandai hijau sudah ditugaskan sebelumnya
+              {/* Total Summary */}
+              <div className="pt-4 border-t border-gray-700">
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-white mb-1">
+                    {selectedJudgeIds.length + selectedOrganizerIds.length}
                   </p>
-                  <p>• Minimal pilih 1 juri untuk disimpan</p>
-                  <p>• Pastikan juri sudah memiliki akses login</p>
+                  <p className="text-sm text-gray-400">
+                    Total User Akan Diassign
+                  </p>
+                  <div className="flex justify-center gap-4 mt-2">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <span className="text-xs text-gray-400">
+                        {selectedJudgeIds.length} Juri
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                      <span className="text-xs text-gray-400">
+                        {selectedOrganizerIds.length} Organizer
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

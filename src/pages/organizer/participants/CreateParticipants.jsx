@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Save,
@@ -16,6 +16,8 @@ import {
   Image as ImageIcon,
   CalendarDays,
   PlusCircle,
+  Calendar,
+  Info,
 } from "lucide-react";
 import api from "../../../services/api";
 import { useAuth } from "../../../context/AuthContext";
@@ -23,6 +25,7 @@ import { useAuth } from "../../../context/AuthContext";
 const CreateParticipant = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { eventId: eventIdFromParams } = useParams(); // Ambil event_id dari URL params jika ada
 
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -30,6 +33,8 @@ const CreateParticipant = () => {
 
   const [categories, setCategories] = useState([]);
   const [events, setEvents] = useState([]);
+  const [assignedEvents, setAssignedEvents] = useState([]); // Event yang sudah di-assign ke user
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -41,7 +46,7 @@ const CreateParticipant = () => {
     coach: "",
     coach_whatsapp: "",
     image: null,
-    event_id: "",
+    event_id: eventIdFromParams || "", // Gunakan dari params jika ada
     participant_category_id: "",
   });
 
@@ -60,14 +65,25 @@ const CreateParticipant = () => {
     }
   };
 
-  /* ================= FETCH ================= */
+  /* ================= FETCH DATA ================= */
   useEffect(() => {
-    if (!user?.id) return setLoading(false);
+    if (!user?.id) {
+      setError("Anda harus login terlebih dahulu");
+      setLoading(false);
+      return;
+    }
 
     const loadData = async () => {
       try {
-        await Promise.all([fetchCategories(), fetchEvents()]);
-      } catch {
+        await Promise.all([
+          fetchCategories(),
+          fetchAssignedEvents(), // Ambil event yang sudah di-assign
+          eventIdFromParams
+            ? fetchEventById(eventIdFromParams)
+            : Promise.resolve(), // Jika ada event_id dari params
+        ]);
+      } catch (err) {
+        console.error("Error loading data:", err);
         setError("Gagal memuat data");
       } finally {
         setLoading(false);
@@ -75,40 +91,123 @@ const CreateParticipant = () => {
     };
 
     loadData();
-  }, [user?.id]);
+  }, [user?.id, eventIdFromParams]);
 
   const fetchCategories = async () => {
     setLoadingCategories(true);
-    const res = await api.get("/participant-categories");
-    setCategories(res.data.data || []);
-    setLoadingCategories(false);
+    try {
+      const res = await api.get("/participant-categories");
+      setCategories(res.data.data || []);
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+      setError("Gagal memuat kategori peserta");
+    } finally {
+      setLoadingCategories(false);
+    }
   };
 
-  const fetchEvents = async () => {
+  const fetchAssignedEvents = async () => {
     setLoadingEvents(true);
     try {
-      const res = await api.get(`/list-event-by-user?user_id=${user.id}`);
+      // Endpoint untuk mendapatkan event yang di-assign ke user
+      let assignedEventsData = [];
 
-      if (!res.data?.success || !Array.isArray(res.data.data)) {
-        setEvents([]);
-        return;
+      // Coba beberapa endpoint yang mungkin
+      const endpointsToTry = [
+        `/users/${user.id}/events`, // Jika ada endpoint khusus user events
+        `/my-events`, // Jika ada endpoint my-events
+        `/events?user_id=${user.id}`, // Query dengan user_id
+      ];
+
+      for (const endpoint of endpointsToTry) {
+        try {
+          const response = await api.get(endpoint);
+          if (response.data?.success) {
+            let data = response.data.data;
+
+            // Handle different response formats
+            if (Array.isArray(data)) {
+              assignedEventsData = data;
+            } else if (data && Array.isArray(data.data)) {
+              assignedEventsData = data.data;
+            }
+
+            if (assignedEventsData.length > 0) {
+              console.log(
+                `✅ Found assigned events from ${endpoint}:`,
+                assignedEventsData,
+              );
+              break;
+            }
+          }
+        } catch (err) {
+          // Continue to next endpoint
+          console.log(`Endpoint ${endpoint} failed:`, err.message);
+        }
       }
 
-      // 🔥 SIMPAN DATA MENTAH DARI BACKEND
-      setEvents(res.data.data);
+      // Jika tidak ada endpoint yang berhasil, gunakan semua event untuk admin/judge
+      if (assignedEventsData.length === 0) {
+        const res = await api.get("/list-event");
+        if (res.data?.success) {
+          assignedEventsData = Array.isArray(res.data.data)
+            ? res.data.data
+            : [];
+        }
+      }
+
+      setAssignedEvents(assignedEventsData);
+
+      // Auto-select event jika hanya ada 1 event
+      if (assignedEventsData.length === 1 && !eventIdFromParams) {
+        const event = assignedEventsData[0];
+        setSelectedEvent(event);
+        setFormData((prev) => ({ ...prev, event_id: event.id }));
+      }
+
+      // Jika ada event_id dari params, cari event tersebut
+      if (eventIdFromParams) {
+        const foundEvent = assignedEventsData.find(
+          (e) => e.id == eventIdFromParams,
+        );
+        if (foundEvent) {
+          setSelectedEvent(foundEvent);
+          setFormData((prev) => ({ ...prev, event_id: foundEvent.id }));
+        }
+      }
     } catch (err) {
-      console.error("Error fetching events:", err);
-      setEvents([]);
+      console.error("Error fetching assigned events:", err);
+      setAssignedEvents([]);
     } finally {
       setLoadingEvents(false);
     }
   };
 
-  /* ================= HANDLER ================= */
+  const fetchEventById = async (id) => {
+    try {
+      const response = await api.get(`/events/${id}`);
+      if (response.data?.success) {
+        const event = response.data.data;
+        setSelectedEvent(event);
+        setFormData((prev) => ({ ...prev, event_id: event.id }));
+      }
+    } catch (err) {
+      console.error("Error fetching event by ID:", err);
+      setError("Event tidak ditemukan");
+    }
+  };
+
+  /* ================= HANDLERS ================= */
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     setError("");
+
+    // Jika mengubah event_id, update selectedEvent
+    if (name === "event_id") {
+      const selected = assignedEvents.find((e) => e.id == value);
+      setSelectedEvent(selected || null);
+    }
   };
 
   const handleImageChange = (e) => {
@@ -125,18 +224,18 @@ const CreateParticipant = () => {
       return;
     }
 
-    setFormData((p) => ({ ...p, image: file }));
+    setFormData((prev) => ({ ...prev, image: file }));
     setImagePreview(URL.createObjectURL(file));
   };
 
   const removeImage = () => {
-    setFormData((p) => ({ ...p, image: null }));
+    setFormData((prev) => ({ ...prev, image: null }));
     setImagePreview("");
   };
 
   const handleWhatsAppChange = (e) => {
     const value = e.target.value.replace(/\D/g, "");
-    setFormData((p) => ({ ...p, coach_whatsapp: value }));
+    setFormData((prev) => ({ ...prev, coach_whatsapp: value }));
   };
 
   /* ================= SUBMIT ================= */
@@ -145,6 +244,7 @@ const CreateParticipant = () => {
     setSubmitting(true);
     setError("");
 
+    // Validasi required fields
     const required = [
       "participant_category_id",
       "event_id",
@@ -162,17 +262,97 @@ const CreateParticipant = () => {
       }
     }
 
+    // Pastikan event_id ada
+    const eventId = formData.event_id;
+    if (!eventId) {
+      setError("Event ID tidak ditemukan");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const payload = new FormData();
-      Object.entries(formData).forEach(([k, v]) => v && payload.append(k, v));
+
+      // Hanya tambahkan field yang diperlukan untuk endpoint /events/{event_id}/create-participants
+      // Field yang akan dikirim ke endpoint:
+      payload.append("school_name", formData.school_name);
+      payload.append("school_address", formData.school_address);
+      payload.append("coach", formData.coach);
+      payload.append("coach_whatsapp", formData.coach_whatsapp);
+      payload.append(
+        "participant_category_id",
+        formData.participant_category_id,
+      );
+
+      // Tambahkan image jika ada
+      if (formData.image) {
+        payload.append("image", formData.image);
+      }
+
+      // Tambahkan user_id jika diperlukan oleh backend
       payload.append("user_id", user.id);
 
-      await api.post("/create-participant", payload);
-      setSuccess(true);
+      console.log(`Submitting participant to event ${eventId}`);
+      console.log("Payload:", {
+        school_name: formData.school_name,
+        school_address: formData.school_address,
+        coach: formData.coach,
+        coach_whatsapp: formData.coach_whatsapp,
+        participant_category_id: formData.participant_category_id,
+        user_id: user.id,
+        has_image: !!formData.image,
+      });
 
-      setTimeout(() => navigate("/organizer/participants"), 1500);
+      // Gunakan endpoint /events/{event_id}/create-participants
+      const endpoint = `/events/${eventId}/create-participants`;
+      console.log(`Endpoint: ${endpoint}`);
+
+      const response = await api.post(endpoint, payload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      console.log("Response:", response.data);
+
+      if (response.data?.success) {
+        setSuccess(true);
+        setTimeout(() => {
+          // Redirect ke halaman participants untuk event tersebut
+          navigate(`/organizer/participants?event_id=${eventId}`);
+        }, 1500);
+      } else {
+        throw new Error(response.data?.message || "Gagal menyimpan peserta");
+      }
     } catch (err) {
-      setError(err.response?.data?.message || "Gagal menyimpan data peserta");
+      console.error("Submit error:", err);
+
+      // Tampilkan error detail
+      if (err.response?.data) {
+        console.error("Error response:", err.response.data);
+
+        // Handle validation errors
+        if (err.response.status === 422) {
+          const errors = err.response.data.errors;
+          const errorMessages = [];
+
+          for (const field in errors) {
+            if (errors[field]) {
+              errorMessages.push(`${field}: ${errors[field].join(", ")}`);
+            }
+          }
+
+          setError(`Validasi gagal: ${errorMessages.join("; ")}`);
+        } else if (err.response.data.message) {
+          setError(err.response.data.message);
+        } else {
+          setError(err.response.data?.error || "Gagal menyimpan data peserta");
+        }
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError("Gagal menyimpan data peserta");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -181,8 +361,28 @@ const CreateParticipant = () => {
   /* ================= RENDER ================= */
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex justify-center items-center">
-        <Loader className="animate-spin text-blue-500" size={48} />
+      <div className="min-h-[60vh] flex flex-col justify-center items-center">
+        <Loader className="animate-spin text-blue-500 mb-4" size={48} />
+        <p className="text-gray-400">Memuat data...</p>
+      </div>
+    );
+  }
+
+  // Jika user belum login
+  if (!user) {
+    return (
+      <div className="min-h-[60vh] flex flex-col justify-center items-center">
+        <AlertCircle className="text-red-500 mb-4" size={48} />
+        <h2 className="text-xl font-bold text-white mb-2">Anda Belum Login</h2>
+        <p className="text-gray-400 mb-6">
+          Silakan login terlebih dahulu untuk menambahkan peserta
+        </p>
+        <button
+          onClick={() => navigate("/auth/login")}
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl"
+        >
+          Login Sekarang
+        </button>
       </div>
     );
   }
@@ -192,12 +392,21 @@ const CreateParticipant = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="max-w-4xl mx-auto">
+      className="max-w-4xl mx-auto"
+    >
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <h1 className="text-2xl md:text-3xl font-bold text-white">
             Tambah Peserta Baru
+            {selectedEvent && (
+              <span className="text-blue-400 text-lg ml-2">
+                untuk Event:{" "}
+                {selectedEvent.name ||
+                  selectedEvent.event_name ||
+                  `Event #${selectedEvent.id}`}
+              </span>
+            )}
           </h1>
         </div>
         <p className="text-gray-400">
@@ -206,11 +415,12 @@ const CreateParticipant = () => {
       </div>
 
       {/* Error Alert */}
-      {error && (
+      {error && !error.includes("Event tidak ditemukan") && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+          className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl"
+        >
           <div className="flex items-start gap-3">
             <AlertCircle className="text-red-400 mt-0.5" size={20} />
             <div className="flex-1">
@@ -228,7 +438,8 @@ const CreateParticipant = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl"
+        >
           <div className="flex items-start gap-3">
             <CheckCircle className="text-green-400 mt-0.5" size={20} />
             <div className="flex-1">
@@ -243,6 +454,72 @@ const CreateParticipant = () => {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Event Information Card - Tampilkan jika event sudah dipilih */}
+        {selectedEvent && (
+          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Calendar className="text-blue-400" size={24} />
+              <h3 className="text-lg font-semibold text-white">
+                Informasi Event
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-400">Nama Event</p>
+                <p className="text-white font-medium">
+                  {selectedEvent.name || selectedEvent.event_name || "N/A"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-400">Tanggal</p>
+                <p className="text-white font-medium">
+                  {selectedEvent.start_date
+                    ? formatEventDate(selectedEvent.start_date)
+                    : "N/A"}
+                  {selectedEvent.end_date &&
+                    ` - ${formatEventDate(selectedEvent.end_date)}`}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-400">Lokasi</p>
+                <p className="text-white font-medium">
+                  {selectedEvent.location || "N/A"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-400">Penyelenggara</p>
+                <p className="text-white font-medium">
+                  {selectedEvent.organized_by || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {/* Debug Info - Tampilkan di development mode */}
+            {process.env.NODE_ENV === "development" && (
+              <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Info size={16} className="text-blue-400 mt-0.5" />
+                  <div>
+                    <p className="text-blue-300 text-sm font-medium">
+                      Debug Info:
+                    </p>
+                    <p className="text-blue-200 text-xs">
+                      Event ID: {selectedEvent.id}
+                      <br />
+                      Endpoint: POST /events/{selectedEvent.id}
+                      /create-participants
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-6">
@@ -261,7 +538,8 @@ const CreateParticipant = () => {
                   onChange={handleChange}
                   required
                   disabled={loadingCategories || submitting}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none">
+                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
+                >
                   <option value="">-- Pilih Kategori --</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -277,65 +555,79 @@ const CreateParticipant = () => {
               </div>
             </div>
 
-            {/* Event Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                <div className="flex items-center gap-2">
-                  <CalendarDays size={16} />
-                  Pilih Event *
-                </div>
-              </label>
-
-              {loadingEvents ? (
-                <div className="flex items-center gap-2 px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl">
-                  <Loader className="animate-spin text-gray-400" size={16} />
-                  <span className="text-gray-400">Memuat daftar event...</span>
-                </div>
-              ) : events.length === 0 ? (
-                <div className="space-y-3">
-                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-                    <p className="text-yellow-400 text-sm">
-                      Belum ada event tersedia. Buat event terlebih dahulu.
-                    </p>
+            {/* Event Selection - Hanya tampilkan jika ada multiple events atau tidak ada event_id dari params */}
+            {/* {(assignedEvents.length > 1 || !eventIdFromParams) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays size={16} />
+                    Pilih Event *
+                    {eventIdFromParams && (
+                      <span className="text-xs text-blue-400">
+                        (Opsional - bisa diubah)
+                      </span>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/organizer/events/create")}
-                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2">
-                    <PlusCircle size={18} />
-                    Buat Event Baru
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <select
-                    name="event_id"
-                    value={formData.event_id}
-                    onChange={handleChange}
-                    required
-                    disabled={submitting}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none">
-                    <option value="">-- Pilih Event --</option>
-                    {events.map((event) => {
-                      const eventLabel =
-                        event.name ??
-                        event.event_name ??
-                        event.title ??
-                        event.organized_by ??
-                        `Event #${event.id}`;
+                </label>
 
-                      return (
-                        <option key={event.id} value={event.id}>
-                          {eventLabel}
-                          {event.start_date &&
-                            ` (${formatEventDate(event.start_date)})`}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-              )}
-            </div>
+                {loadingEvents ? (
+                  <div className="flex items-center gap-2 px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl">
+                    <Loader className="animate-spin text-gray-400" size={16} />
+                    <span className="text-gray-400">
+                      Memuat daftar event...
+                    </span>
+                  </div>
+                ) : assignedEvents.length === 0 ? (
+                  <div className="space-y-3">
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                      <p className="text-yellow-400 text-sm">
+                        Anda belum di-assign ke event apapun. Hubungi admin
+                        untuk diassign ke event.
+                      </p>
+                    </div>
+                    {user.role === "organizer" && (
+                      <button
+                        type="button"
+                        onClick={() => navigate("/organizer/events/create")}
+                        className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+                      >
+                        <PlusCircle size={18} />
+                        Buat Event Baru
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <select
+                      name="event_id"
+                      value={formData.event_id}
+                      onChange={handleChange}
+                      required
+                      disabled={submitting}
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
+                    >
+                      <option value="">-- Pilih Event --</option>
+                      {assignedEvents.map((event) => {
+                        const eventLabel =
+                          event.name ??
+                          event.event_name ??
+                          event.title ??
+                          event.organized_by ??
+                          `Event #${event.id}`;
+
+                        return (
+                          <option key={event.id} value={event.id}>
+                            {eventLabel}
+                            {event.start_date &&
+                              ` (${formatEventDate(event.start_date)})`}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )} */}
 
             {/* School Name */}
             <div>
@@ -446,7 +738,8 @@ const CreateParticipant = () => {
                     type="button"
                     onClick={removeImage}
                     disabled={submitting}
-                    className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full transition-colors disabled:opacity-50">
+                    className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full transition-colors disabled:opacity-50"
+                  >
                     <X size={16} />
                   </button>
                 </div>
@@ -480,19 +773,45 @@ const CreateParticipant = () => {
           </div>
         </div>
 
+        {/* Information for judges/organizers */}
+        {!eventIdFromParams && assignedEvents.length > 0 && (
+          <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Info size={20} className="text-blue-400 mt-0.5" />
+              <div>
+                <p className="text-blue-300 text-sm">
+                  <span className="font-medium">Info:</span> Anda dapat
+                  menambahkan peserta untuk event yang sudah di-assign ke Anda.
+                  {assignedEvents.length === 1
+                    ? " Hanya ada 1 event yang tersedia."
+                    : ` Tersedia ${assignedEvents.length} event.`}
+                </p>
+                <p className="text-blue-200 text-xs mt-1">
+                  Data akan dikirim ke endpoint:{" "}
+                  <code className="bg-gray-800 px-1 rounded">
+                    /events/{formData.event_id || "?"}/create-participants
+                  </code>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="flex justify-end gap-4 pt-6 border-t border-gray-800">
           <button
             type="button"
             onClick={() => navigate("/organizer/participants")}
             disabled={submitting}
-            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50">
+            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
+          >
             Batal
           </button>
           <button
             type="submit"
-            disabled={submitting || loadingCategories || loadingEvents}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            disabled={submitting || loadingCategories || !formData.event_id}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             {submitting ? (
               <>
                 <Loader className="animate-spin" size={18} />
