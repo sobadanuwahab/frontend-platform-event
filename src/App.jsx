@@ -31,6 +31,7 @@ import SettingsTab from "./pages/admin/components/SettingsTab";
 import EventsList from "./pages/admin/components/events/index";
 import CreateEvent from "./pages/admin/components/events/CreateEvent";
 import EditEvent from "./pages/admin/components/events/EditEvent";
+import CreateAssignment from "./pages/admin/components/events/CreateAssignment"; // ✅ FIX TYPO
 
 // Import Organizer Pages
 import OrganizerPage from "./pages/organizer/OrganizerPage";
@@ -52,11 +53,11 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* AUTH ROUTES (Tanpa Layout) */}
+          {/* AUTH ROUTES */}
           <Route path="/auth/login" element={<LoginPage />} />
           <Route path="/auth/register" element={<RegisterPage />} />
 
-          {/* PUBLIC ROUTES (Tanpa auth) - hanya untuk guest */}
+          {/* PUBLIC ROUTES */}
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="home" element={<Home />} />
@@ -64,7 +65,7 @@ function App() {
             <Route path="/verify-email" element={<VerifyEmailPage />} />
           </Route>
 
-          {/* USER ROUTES dengan Layout Global - HANYA untuk role "user" */}
+          {/* USER ROUTES */}
           <Route
             path="/"
             element={
@@ -91,7 +92,7 @@ function App() {
             />
           </Route>
 
-          {/* JUDGING ROUTES dengan Layout Khusus - untuk "juri" dan "admin" */}
+          {/* JUDGING ROUTES */}
           <Route
             path="/judging"
             element={
@@ -105,7 +106,7 @@ function App() {
             <Route path="criteria" element={<CriteriaPage />} />
           </Route>
 
-          {/* ADMIN ROUTES dengan Layout Khusus - HANYA untuk "admin" */}
+          {/* ADMIN ROUTES - FIXED STRUCTURE */}
           <Route
             path="/admin"
             element={
@@ -114,14 +115,25 @@ function App() {
               </ProtectedRoute>
             }
           >
+            {/* Main Dashboard */}
             <Route index element={<OverviewTab />} />
             <Route path="dashboard" element={<OverviewTab />} />
 
-            {/* Event Management Routes - DI ADMIN */}
-            <Route path="events/list" element={<EventsList />} />
-            <Route path="events/create" element={<CreateEvent />} />
-            <Route path="events/edit/:id" element={<EditEvent />} />
+            {/* Event Management - SEMUA di bawah /admin/events */}
+            <Route path="events">
+              {/* /admin/events → tampilkan list */}
+              <Route index element={<EventsList />} />
+              {/* /admin/events/list → juga tampilkan list */}
+              <Route path="list" element={<EventsList />} />
+              {/* /admin/events/create */}
+              <Route path="create" element={<CreateEvent />} />
+              {/* /admin/events/edit/:id */}
+              <Route path="edit/:id" element={<EditEvent />} />
+              {/* /admin/events/assign/:eventId */}
+              <Route path="assign/:eventId" element={<CreateAssignment />} />
+            </Route>
 
+            {/* Other Admin Routes */}
             <Route path="users" element={<UserManagementTab />} />
             <Route path="transactions" element={<TransactionsTab />} />
             <Route path="tickets" element={<TicketsTab />} />
@@ -129,7 +141,7 @@ function App() {
             <Route path="settings" element={<SettingsTab />} />
           </Route>
 
-          {/* ORGANIZER ROUTES dengan Layout Khusus - HANYA untuk "organizer" */}
+          {/* ORGANIZER ROUTES */}
           <Route
             path="/organizer"
             element={
@@ -143,13 +155,13 @@ function App() {
             <Route path="participants/create" element={<CreateParticipant />} />
             <Route path="participants/edit/:id" element={<EditParticipant />} />
 
-            {/* New Organizer Menu Routes */}
+            {/* Organizer Menu Routes */}
             <Route path="documents" element={<DocumentsPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="settings" element={<OrganizerSettings />} />
           </Route>
 
-          {/* Global 404 untuk routes yang tidak ditangkap */}
+          {/* Global 404 */}
           <Route
             path="*"
             element={

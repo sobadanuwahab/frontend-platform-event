@@ -17,8 +17,7 @@ import {
   RefreshCw,
   Globe,
   Clock,
-  Database,
-  Bug,
+  UserPlus,
 } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 import api from "../../../../services/api";
@@ -291,7 +290,7 @@ const Events = () => {
               <span className="hidden sm:inline">Refresh</span>
             </button>
             <button
-              onClick={() => navigate("/admin/events/create")} // ✅ UBAH KE ADMIN
+              onClick={() => navigate("/admin/events/create")}
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium flex items-center gap-2"
             >
               <Plus size={20} />
@@ -314,7 +313,7 @@ const Events = () => {
             </div>
             {error.includes("Belum ada event") && (
               <button
-                onClick={() => navigate("/admin/events/create")} // ✅ UBAH KE ADMIN
+                onClick={() => navigate("/admin/events/create")}
                 className="px-4 py-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 transition-colors text-sm"
               >
                 Buat Event
@@ -504,7 +503,7 @@ const Events = () => {
                       Belum ada event yang dibuat
                     </p>
                     <button
-                      onClick={() => navigate("/admin/events/create")} // ✅ UBAH KE ADMIN
+                      onClick={() => navigate("/admin/events/create")}
                       className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium"
                     >
                       Buat Event Pertama
@@ -572,6 +571,18 @@ const Events = () => {
                       </div>
 
                       <div className="flex items-center gap-3">
+                        {/* TOMBOL ASSIGN JURI - TAMBAHKAN DI SINI */}
+                        <button
+                          onClick={() =>
+                            navigate(`/admin/events/assign/${event.id}`)
+                          }
+                          className="px-4 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-400 transition-colors flex items-center gap-2"
+                          title="Assign Juri"
+                        >
+                          <UserPlus size={16} />
+                          <span className="hidden sm:inline">Assign Juri</span>
+                        </button>
+
                         <button
                           onClick={() => navigate(`/admin/events/${event.id}`)}
                           className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors flex items-center gap-2"
@@ -580,8 +591,8 @@ const Events = () => {
                           <span className="hidden sm:inline">Detail</span>
                         </button>
                         <button
-                          onClick={
-                            () => navigate(`/admin/events/edit/${event.id}`) // ✅ UBAH KE ADMIN
+                          onClick={() =>
+                            navigate(`/admin/events/edit/${event.id}`)
                           }
                           className="px-4 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 transition-colors flex items-center gap-2"
                         >
