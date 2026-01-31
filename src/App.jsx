@@ -31,12 +31,14 @@ import SettingsTab from "./pages/admin/components/SettingsTab";
 import EventsList from "./pages/admin/components/events/index";
 import CreateEvent from "./pages/admin/components/events/CreateEvent";
 import EditEvent from "./pages/admin/components/events/EditEvent";
-import CreateAssignment from "./pages/admin/components/events/CreateAssignment"; // ✅ FIX TYPO
+import CreateAssignment from "./pages/admin/components/events/CreateAssignment";
 
 // Import Organizer Pages
 import OrganizerPage from "./pages/organizer/OrganizerPage";
 import Dashboard from "./pages/organizer/Dashboard";
-import ParticipantsList from "./pages/organizer/participants";
+
+// Import Participants
+import ParticipantsIndex from "./pages/organizer/participants"; // Halaman pilih event
 import CreateParticipant from "./pages/organizer/participants/CreateParticipants";
 import EditParticipant from "./pages/organizer/participants/EditParticipants";
 
@@ -72,8 +74,7 @@ function App() {
               <ProtectedRoute allowedRoles={["user"]}>
                 <Layout />
               </ProtectedRoute>
-            }
-          >
+            }>
             <Route
               path="ticket"
               element={
@@ -99,37 +100,30 @@ function App() {
               <ProtectedRoute allowedRoles={["juri", "admin"]}>
                 <JudgingPage />
               </ProtectedRoute>
-            }
-          >
+            }>
             <Route index element={<ScoreForm />} />
             <Route path="ranking" element={<RankingPage />} />
             <Route path="criteria" element={<CriteriaPage />} />
           </Route>
 
-          {/* ADMIN ROUTES - FIXED STRUCTURE */}
+          {/* ADMIN ROUTES */}
           <Route
             path="/admin"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
                 <DashboardPage />
               </ProtectedRoute>
-            }
-          >
+            }>
             {/* Main Dashboard */}
             <Route index element={<OverviewTab />} />
             <Route path="dashboard" element={<OverviewTab />} />
 
-            {/* Event Management - SEMUA di bawah /admin/events */}
+            {/* Event Management */}
             <Route path="events">
-              {/* /admin/events → tampilkan list */}
               <Route index element={<EventsList />} />
-              {/* /admin/events/list → juga tampilkan list */}
               <Route path="list" element={<EventsList />} />
-              {/* /admin/events/create */}
               <Route path="create" element={<CreateEvent />} />
-              {/* /admin/events/edit/:id */}
               <Route path="edit/:id" element={<EditEvent />} />
-              {/* /admin/events/assign/:eventId */}
               <Route path="assign/:eventId" element={<CreateAssignment />} />
             </Route>
 
@@ -141,19 +135,35 @@ function App() {
             <Route path="settings" element={<SettingsTab />} />
           </Route>
 
-          {/* ORGANIZER ROUTES */}
+          {/* ORGANIZER ROUTES - STRUKTUR YANG BENAR */}
           <Route
             path="/organizer"
             element={
               <ProtectedRoute allowedRoles={["organizer"]}>
                 <OrganizerPage />
               </ProtectedRoute>
-            }
-          >
+            }>
+            {/* Dashboard */}
             <Route index element={<Dashboard />} />
-            <Route path="participants" element={<ParticipantsList />} />
-            <Route path="participants/create" element={<CreateParticipant />} />
-            <Route path="participants/edit/:id" element={<EditParticipant />} />
+
+            {/* Halaman pertama: Pilih Event */}
+            <Route path="participants" element={<ParticipantsIndex />} />
+
+            {/* Routes untuk Event tertentu */}
+            <Route path="events/:eventId">
+              {/* Daftar peserta di event tertentu */}
+              <Route path="participants" element={<ParticipantsIndex />} />
+              {/* Tambah peserta baru */}
+              <Route
+                path="participants/create"
+                element={<CreateParticipant />}
+              />
+              {/* Edit peserta */}
+              <Route
+                path="participants/edit/:id"
+                element={<EditParticipant />}
+              />
+            </Route>
 
             {/* Organizer Menu Routes */}
             <Route path="documents" element={<DocumentsPage />} />
@@ -171,8 +181,7 @@ function App() {
                   <p className="text-gray-300 mb-8">Halaman tidak ditemukan</p>
                   <a
                     href="/"
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                     Kembali ke Beranda
                   </a>
                 </div>

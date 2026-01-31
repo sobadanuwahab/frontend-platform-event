@@ -14,8 +14,6 @@ import {
   Award,
   Loader,
   Image as ImageIcon,
-  CalendarDays,
-  PlusCircle,
   Calendar,
   Info,
 } from "lucide-react";
@@ -25,7 +23,7 @@ import { useAuth } from "../../../context/AuthContext";
 const CreateParticipant = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { eventId: eventIdFromParams } = useParams(); // Ambil event_id dari URL params jika ada
+  const { eventId: eventIdFromParams } = useParams();
 
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -33,7 +31,7 @@ const CreateParticipant = () => {
 
   const [categories, setCategories] = useState([]);
   const [events, setEvents] = useState([]);
-  const [assignedEvents, setAssignedEvents] = useState([]); // Event yang sudah di-assign ke user
+  const [assignedEvents, setAssignedEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -46,7 +44,7 @@ const CreateParticipant = () => {
     coach: "",
     coach_whatsapp: "",
     image: null,
-    event_id: eventIdFromParams || "", // Gunakan dari params jika ada
+    event_id: eventIdFromParams || "",
     participant_category_id: "",
   });
 
@@ -379,8 +377,7 @@ const CreateParticipant = () => {
         </p>
         <button
           onClick={() => navigate("/auth/login")}
-          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl"
-        >
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl">
           Login Sekarang
         </button>
       </div>
@@ -392,8 +389,7 @@ const CreateParticipant = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="max-w-4xl mx-auto"
-    >
+      className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
@@ -419,8 +415,7 @@ const CreateParticipant = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl"
-        >
+          className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
           <div className="flex items-start gap-3">
             <AlertCircle className="text-red-400 mt-0.5" size={20} />
             <div className="flex-1">
@@ -438,8 +433,7 @@ const CreateParticipant = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl"
-        >
+          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
           <div className="flex items-start gap-3">
             <CheckCircle className="text-green-400 mt-0.5" size={20} />
             <div className="flex-1">
@@ -499,7 +493,7 @@ const CreateParticipant = () => {
             </div>
 
             {/* Debug Info - Tampilkan di development mode */}
-            {process.env.NODE_ENV === "development" && (
+            {/* {process.env.NODE_ENV === "development" && (
               <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <div className="flex items-start gap-2">
                   <Info size={16} className="text-blue-400 mt-0.5" />
@@ -516,7 +510,7 @@ const CreateParticipant = () => {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
           </div>
         )}
 
@@ -538,8 +532,7 @@ const CreateParticipant = () => {
                   onChange={handleChange}
                   required
                   disabled={loadingCategories || submitting}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
-                >
+                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none">
                   <option value="">-- Pilih Kategori --</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -738,8 +731,7 @@ const CreateParticipant = () => {
                     type="button"
                     onClick={removeImage}
                     disabled={submitting}
-                    className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full transition-colors disabled:opacity-50"
-                  >
+                    className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full transition-colors disabled:opacity-50">
                     <X size={16} />
                   </button>
                 </div>
@@ -803,15 +795,13 @@ const CreateParticipant = () => {
             type="button"
             onClick={() => navigate("/organizer/participants")}
             disabled={submitting}
-            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50"
-          >
+            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50">
             Batal
           </button>
           <button
             type="submit"
             disabled={submitting || loadingCategories || !formData.event_id}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             {submitting ? (
               <>
                 <Loader className="animate-spin" size={18} />
