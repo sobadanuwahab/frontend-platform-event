@@ -50,7 +50,7 @@ const Layout = () => {
     }
   }, [location.pathname, shouldRender]);
 
-  // Loading animation
+  // Loading animation dengan tema Bariskreasi hijau
   const pageVariants = {
     initial: {
       opacity: 0,
@@ -78,10 +78,18 @@ const Layout = () => {
   // Tampilkan loading selama pengecekan
   if (loading || isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-black to-black">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Memuat halaman...</p>
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-green-200 rounded-full"></div>
+            <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="mt-6 text-gray-700 font-medium">
+            Memuat Bariskreasi...
+          </p>
+          <p className="text-green-600 text-sm mt-2">
+            Wadah Kreasi Baris Berbaris Indonesia
+          </p>
         </div>
       </div>
     );
@@ -90,12 +98,17 @@ const Layout = () => {
   // Jika user dengan role khusus, jangan render layout ini
   if (!shouldRender) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-black to-black">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Mengarahkan ke dashboard...</p>
-          <p className="text-gray-500 text-sm mt-2">
-            Layout ini hanya untuk guest atau user biasa
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-green-200 rounded-full"></div>
+            <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="mt-6 text-gray-700 font-medium">
+            Mengarahkan ke dashboard...
+          </p>
+          <p className="text-green-600 text-sm mt-2">
+            Anda akan diarahkan ke panel khusus {user?.role}
           </p>
         </div>
       </div>
@@ -103,10 +116,10 @@ const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-black via-black to-black">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 via-white to-emerald-50">
       <Header />
 
-      {/* Main Content - tanpa pt-16 di sini, biar komponen handle sendiri */}
+      {/* Main Content */}
       <AnimatePresence mode="wait">
         <motion.main
           key={location.pathname}
@@ -115,7 +128,8 @@ const Layout = () => {
           animate="in"
           exit="out"
           transition={pageTransition}
-          className="flex-grow relative z-10">
+          className="flex-grow relative z-10"
+        >
           <Outlet />
         </motion.main>
       </AnimatePresence>

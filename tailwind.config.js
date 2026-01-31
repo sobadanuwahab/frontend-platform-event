@@ -1,37 +1,52 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        // Primary Colors (Blue Theme for Professional Look)
+        // Primary Colors (Green Theme for Bariskreasi)
         primary: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-          800: "#1e40af",
-          900: "#1e3a8a",
+          50: "#f0fdf4",
+          100: "#dcfce7",
+          200: "#bbf7d0",
+          300: "#86efac",
+          400: "#4ade80",
+          500: "#22c55e",
+          600: "#16a34a",
+          700: "#15803d",
+          800: "#166534",
+          900: "#14532d",
+          950: "#052e16",
         },
-        // Secondary Colors (Purple Accents)
+        // Secondary Colors (Emerald Accents)
         secondary: {
-          50: "#faf5ff",
-          100: "#f3e8ff",
-          200: "#e9d5ff",
-          300: "#d8b4fe",
-          400: "#c084fc",
-          500: "#a855f7",
-          600: "#9333ea",
-          700: "#7e22ce",
-          800: "#6b21a8",
-          900: "#581c87",
+          50: "#ecfdf5",
+          100: "#d1fae5",
+          200: "#a7f3d0",
+          300: "#6ee7b7",
+          400: "#34d399",
+          500: "#10b981",
+          600: "#059669",
+          700: "#047857",
+          800: "#065f46",
+          900: "#064e3b",
+          950: "#022c22",
         },
-        // Success/Green Colors
+        // Accent Colors (Orange for highlights)
+        accent: {
+          50: "#fff7ed",
+          100: "#ffedd5",
+          200: "#fed7aa",
+          300: "#fdba74",
+          400: "#fb923c",
+          500: "#f97316",
+          600: "#ea580c",
+          700: "#c2410c",
+          800: "#9a3412",
+          900: "#7c2d12",
+          950: "#431407",
+        },
+        // Success/Green Colors (additional shades)
         success: {
           50: "#f0fdf4",
           100: "#dcfce7",
@@ -70,7 +85,7 @@ export default {
           800: "#991b1b",
           900: "#7f1d1d",
         },
-        // Neutral Colors
+        // Neutral Colors (light theme focused)
         neutral: {
           50: "#fafafa",
           100: "#f5f5f5",
@@ -83,10 +98,39 @@ export default {
           800: "#262626",
           900: "#171717",
         },
+        // Custom Colors for Bariskreasi
+        bariskreasi: {
+          green: {
+            light: "#d1fae5",
+            DEFAULT: "#10b981",
+            dark: "#047857",
+          },
+          emerald: {
+            light: "#a7f3d0",
+            DEFAULT: "#059669",
+            dark: "#047857",
+          },
+          background: "#ffffff",
+          surface: "#f8fafc",
+          text: {
+            primary: "#1f2937",
+            secondary: "#4b5563",
+            muted: "#9ca3af",
+          },
+          border: "#e5e7eb",
+        },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Poppins", "system-ui", "sans-serif"],
+        sans: ["Ruda", "system-ui", "sans-serif"],
+        display: ["Ruda", "system-ui", "sans-serif"],
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "monospace",
+        ],
       },
       fontSize: {
         xs: ["0.75rem", { lineHeight: "1rem" }],
@@ -99,31 +143,71 @@ export default {
         "4xl": ["2.25rem", { lineHeight: "2.5rem" }],
         "5xl": ["3rem", { lineHeight: "1" }],
         "6xl": ["3.75rem", { lineHeight: "1" }],
+        "7xl": ["4.5rem", { lineHeight: "1" }],
+        "8xl": ["6rem", { lineHeight: "1" }],
+      },
+      fontWeight: {
+        light: "300",
+        normal: "400",
+        medium: "500",
+        semibold: "600",
+        bold: "700",
+        extrabold: "800",
+        black: "900",
       },
       boxShadow: {
+        sm: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        DEFAULT:
+          "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        xl: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "2xl": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+        inner: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
         soft: "0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)",
         medium:
           "0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
         hard: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-        glow: "0 0 20px rgba(59, 130, 246, 0.15)",
-        "inner-glow": "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)",
+        "glow-green": "0 0 20px rgba(34, 197, 94, 0.15)",
+        "glow-emerald": "0 0 20px rgba(16, 185, 129, 0.15)",
+        bariskreasi:
+          "0 4px 20px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)",
+        "bariskreasi-lg":
+          "0 10px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.06)",
       },
       borderRadius: {
+        sm: "0.25rem",
+        DEFAULT: "0.375rem",
+        md: "0.5rem",
+        lg: "0.75rem",
         xl: "1rem",
         "2xl": "1.5rem",
         "3xl": "2rem",
+        "4xl": "2.5rem",
+        full: "9999px",
       },
       animation: {
         "fade-in": "fadeIn 0.5s ease-in-out",
+        "fade-out": "fadeOut 0.5s ease-in-out",
         "slide-up": "slideUp 0.3s ease-out",
         "slide-down": "slideDown 0.3s ease-out",
+        "slide-left": "slideLeft 0.3s ease-out",
+        "slide-right": "slideRight 0.3s ease-out",
         "pulse-slow": "pulse 3s infinite",
         "bounce-slow": "bounce 2s infinite",
+        "spin-slow": "spin 3s linear infinite",
+        "ping-slow": "ping 2s cubic-bezier(0, 0, 0.2, 1) infinite",
+        float: "float 6s ease-in-out infinite",
+        shimmer: "shimmer 2s infinite",
       },
       keyframes: {
         fadeIn: {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
+        },
+        fadeOut: {
+          "0%": { opacity: "1" },
+          "100%": { opacity: "0" },
         },
         slideUp: {
           "0%": { transform: "translateY(10px)", opacity: "0" },
@@ -133,9 +217,87 @@ export default {
           "0%": { transform: "translateY(-10px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
         },
+        slideLeft: {
+          "0%": { transform: "translateX(10px)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        slideRight: {
+          "0%": { transform: "translateX(-10px)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       backdropBlur: {
         xs: "2px",
+        sm: "4px",
+        DEFAULT: "8px",
+        md: "12px",
+        lg: "16px",
+        xl: "24px",
+        "2xl": "40px",
+        "3xl": "64px",
+      },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-conic":
+          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+        "gradient-bariskreasi":
+          "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+        "gradient-bariskreasi-light":
+          "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)",
+        "gradient-bariskreasi-dark":
+          "linear-gradient(135deg, #047857 0%, #065f46 100%)",
+      },
+      gradientColorStops: {
+        "bariskreasi-start": "#10b981",
+        "bariskreasi-end": "#059669",
+      },
+      spacing: {
+        18: "4.5rem",
+        88: "22rem",
+        128: "32rem",
+        144: "36rem",
+      },
+      maxWidth: {
+        "8xl": "88rem",
+        "9xl": "96rem",
+      },
+      minHeight: {
+        12: "3rem",
+        16: "4rem",
+        24: "6rem",
+        32: "8rem",
+        48: "12rem",
+        64: "16rem",
+        72: "18rem",
+        80: "20rem",
+        96: "24rem",
+        128: "32rem",
+      },
+      zIndex: {
+        60: "60",
+        70: "70",
+        80: "80",
+        90: "90",
+        100: "100",
+      },
+      transitionProperty: {
+        height: "height",
+        spacing: "margin, padding",
+        size: "width, height",
+        "transform-opacity": "transform, opacity",
+      },
+      scale: {
+        102: "1.02",
+        103: "1.03",
+        98: "0.98",
       },
     },
   },

@@ -23,7 +23,7 @@
   }
 
   body {
-    @apply bg-black text-gray-100; /* Changed to dark theme */
+    @apply bg-white text-gray-900; /* Changed to white theme */
     font-family: var(--font-sans);
   }
 
@@ -50,64 +50,64 @@
     font-family: var(--font-sans);
   }
 
-  /* Custom scrollbar for dark theme */
+  /* Custom scrollbar untuk tema light Bariskreasi */
   ::-webkit-scrollbar {
     @apply w-2;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-gray-800; /* Dark track */
+    @apply bg-gray-100;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-red-500 rounded-full hover:bg-red-600 transition-colors; /* Brighter red for dark theme */
+    @apply bg-green-500 rounded-full hover:bg-green-600 transition-colors;
   }
 }
 
 @layer components {
-  /* Button Styles - Updated for dark theme */
+  /* Button Styles - Tema Light Hijau Bariskreasi */
   .btn {
     @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
     font-family: var(--font-sans);
   }
 
   .btn-primary {
-    @apply btn bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 focus:ring-red-500 shadow-lg hover:shadow-xl;
-  }
-
-  .btn-secondary {
-    @apply btn bg-gradient-to-r from-gray-700 to-gray-800 text-white hover:from-gray-800 hover:to-gray-900 focus:ring-gray-600 shadow-lg hover:shadow-xl;
-  }
-
-  .btn-success {
     @apply btn bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 focus:ring-green-500 shadow-lg hover:shadow-xl;
   }
 
+  .btn-secondary {
+    @apply btn bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 focus:ring-emerald-500 shadow-lg hover:shadow-xl;
+  }
+
+  .btn-success {
+    @apply btn bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 focus:ring-green-500 shadow-lg hover:shadow-xl;
+  }
+
   .btn-outline {
-    @apply btn border-2 border-red-500 text-red-400 hover:bg-red-500/10 focus:ring-red-500 bg-transparent;
+    @apply btn border-2 border-green-500 text-green-600 hover:bg-green-50 focus:ring-green-500 bg-transparent;
   }
 
   .btn-ghost {
-    @apply btn text-gray-300 hover:bg-gray-800 hover:text-white focus:ring-gray-600;
+    @apply btn text-gray-600 hover:bg-green-50 hover:text-green-700 focus:ring-green-500;
   }
 
-  /* Card Styles - Updated for dark theme */
+  /* Card Styles - Tema Light Hijau Bariskreasi */
   .card {
-    @apply bg-gray-800 rounded-2xl shadow-lg border border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-xl;
+    @apply bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-xl;
     font-family: var(--font-sans);
   }
 
   .card-hover {
-    @apply card hover:-translate-y-1 hover:border-red-500/30;
+    @apply card hover:-translate-y-1 hover:border-green-300;
   }
 
   .card-elevated {
-    @apply card shadow-xl border-gray-600;
+    @apply card shadow-xl border-gray-300;
   }
 
-  /* Form Styles - Updated for dark theme */
+  /* Form Styles - Tema Light Hijau Bariskreasi */
   .form-input {
-    @apply w-full px-4 py-3 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-800 text-white placeholder:text-gray-400;
+    @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 placeholder:text-gray-500;
     font-family: var(--font-sans);
   }
 
@@ -116,102 +116,102 @@
   }
 
   .form-label {
-    @apply block text-sm font-medium text-gray-300 mb-2;
+    @apply block text-sm font-medium text-gray-700 mb-2;
     font-family: var(--font-sans);
   }
 
-  /* Badge Styles - Updated for dark theme */
+  /* Badge Styles - Tema Light Hijau Bariskreasi */
   .badge {
     @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
     font-family: var(--font-sans);
   }
 
   .badge-primary {
-    @apply badge bg-red-500/20 text-red-300 border border-red-500/30;
+    @apply badge bg-green-100 text-green-700 border border-green-200;
   }
 
   .badge-secondary {
-    @apply badge bg-gray-700 text-gray-300 border border-gray-600;
+    @apply badge bg-emerald-100 text-emerald-700 border border-emerald-200;
   }
 
   .badge-success {
-    @apply badge bg-green-500/20 text-green-300 border border-green-500/30;
+    @apply badge bg-green-100 text-green-700 border border-green-200;
   }
 
   .badge-warning {
-    @apply badge bg-yellow-500/20 text-yellow-300 border border-yellow-500/30;
+    @apply badge bg-yellow-100 text-yellow-700 border border-yellow-200;
   }
 
   .badge-error {
-    @apply badge bg-red-500/20 text-red-300 border border-red-500/30;
+    @apply badge bg-red-100 text-red-700 border border-red-200;
   }
 
-  /* Glass Effect - Updated for dark theme */
+  /* Glass Effect - Tema Light Bariskreasi */
   .glass {
-    @apply bg-gray-800/70 backdrop-blur-md border border-gray-700/50;
+    @apply bg-white/80 backdrop-blur-md border border-green-100;
     font-family: var(--font-sans);
   }
 
-  /* Gradient Text - Updated for dark theme */
+  /* Gradient Text - Tema Light Hijau Bariskreasi */
   .gradient-text {
-    @apply bg-gradient-to-r from-red-400 to-red-300 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent;
     font-family: var(--font-sans);
   }
 
-  /* Section Title - Updated for dark theme */
+  /* Section Title - Tema Light Bariskreasi */
   .section-title {
-    @apply text-3xl md:text-4xl font-bold text-white mb-4;
+    @apply text-3xl md:text-4xl font-bold text-gray-900 mb-4;
     font-family: var(--font-sans);
   }
 
   .section-subtitle {
-    @apply text-lg text-gray-400 mb-8 max-w-2xl;
+    @apply text-lg text-gray-600 mb-8 max-w-2xl;
     font-family: var(--font-sans);
   }
 
-  /* Stats Card - Updated for dark theme */
+  /* Stats Card - Tema Light Bariskreasi */
   .stat-card {
-    @apply card p-6 bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700;
+    @apply card p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100;
   }
 
-  /* Typography Classes - Updated for dark theme */
+  /* Typography Classes - Tema Light Bariskreasi */
   .display-1 {
-    @apply text-5xl md:text-6xl font-bold text-white;
+    @apply text-5xl md:text-6xl font-bold text-gray-900;
     font-family: var(--font-sans);
   }
 
   .display-2 {
-    @apply text-4xl md:text-5xl font-bold text-white;
+    @apply text-4xl md:text-5xl font-bold text-gray-900;
     font-family: var(--font-sans);
   }
 
   .heading-1 {
-    @apply text-3xl md:text-4xl font-bold text-white;
+    @apply text-3xl md:text-4xl font-bold text-gray-900;
     font-family: var(--font-sans);
   }
 
   .heading-2 {
-    @apply text-2xl md:text-3xl font-semibold text-white;
+    @apply text-2xl md:text-3xl font-semibold text-gray-800;
     font-family: var(--font-sans);
   }
 
   .heading-3 {
-    @apply text-xl md:text-2xl font-semibold text-white;
+    @apply text-xl md:text-2xl font-semibold text-gray-800;
     font-family: var(--font-sans);
   }
 
   .body-large {
-    @apply text-lg text-gray-300;
+    @apply text-lg text-gray-700;
     font-family: var(--font-sans);
   }
 
   .body-base {
-    @apply text-base text-gray-300;
+    @apply text-base text-gray-700;
     font-family: var(--font-sans);
   }
 
   .body-small {
-    @apply text-sm text-gray-400;
+    @apply text-sm text-gray-600;
     font-family: var(--font-sans);
   }
 
@@ -311,14 +311,14 @@
   animation: bounce 1s ease-in-out infinite;
 }
 
-/* Glow animation - Updated for dark theme */
+/* Glow animation - Tema Light Hijau */
 @keyframes glow {
   0%,
   100% {
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
   }
   50% {
-    box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
   }
 }
 
@@ -358,17 +358,17 @@
   overflow: hidden;
 }
 
-/* Text shadows for better readability on dark theme */
+/* Text shadows untuk tema light */
 .text-shadow-sm {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .text-shadow-md {
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .text-shadow-lg {
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .page-transition-enter {
@@ -440,13 +440,13 @@ body.mobile-menu-open {
   0%,
   100% {
     box-shadow:
-      0 0 20px rgba(239, 68, 68, 0.4),
-      0 0 40px rgba(219, 39, 119, 0.3);
+      0 0 20px rgba(34, 197, 94, 0.2),
+      0 0 40px rgba(21, 128, 61, 0.15);
   }
   50% {
     box-shadow:
-      0 0 30px rgba(239, 68, 68, 0.6),
-      0 0 60px rgba(219, 39, 119, 0.4);
+      0 0 30px rgba(34, 197, 94, 0.3),
+      0 0 60px rgba(21, 128, 61, 0.2);
   }
 }
 
@@ -560,7 +560,7 @@ body.mobile-menu-open {
     opacity: 1;
   }
   50% {
-    opacity: 0.3;
+    opacity: 0.5;
   }
 }
 
@@ -583,7 +583,7 @@ body.mobile-menu-open {
     opacity: 1;
   }
   50% {
-    opacity: 0.3;
+    opacity: 0.5;
   }
 }
 
@@ -681,7 +681,7 @@ body.mobile-menu-open {
   animation-delay: 1000ms;
 }
 
-/* Gradient Backgrounds - Updated for dark theme */
+/* Gradient Backgrounds - Tema Light Bariskreasi */
 .bg-gradient-radial {
   background-image: radial-gradient(var(--tw-gradient-stops));
 }
@@ -693,30 +693,30 @@ body.mobile-menu-open {
   );
 }
 
-/* Text Gradients - Updated for dark theme */
-.text-gradient-red {
-  background: linear-gradient(45deg, #f87171, #ef4444, #dc2626);
+/* Text Gradients - Tema Light Hijau Bariskreasi */
+.text-gradient-green {
+  background: linear-gradient(45deg, #16a34a, #15803d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-emerald {
+  background: linear-gradient(45deg, #059669, #047857);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-hijau {
+  background: linear-gradient(45deg, #22c55e, #16a34a);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .text-gradient-orange {
-  background: linear-gradient(45deg, #fb923c, #f97316, #ea580c);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.text-gradient-purple {
-  background: linear-gradient(45deg, #a78bfa, #8b5cf6, #7c3aed);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.text-gradient-pink {
-  background: linear-gradient(45deg, #f472b6, #ec4899, #db2777);
+  background: linear-gradient(45deg, #f97316, #ea580c);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -725,10 +725,10 @@ body.mobile-menu-open {
 .text-gradient-rainbow {
   background: linear-gradient(
     45deg,
-    #ef4444,
-    #f97316,
-    #eab308,
     #22c55e,
+    #16a34a,
+    #eab308,
+    #f97316,
     #3b82f6,
     #8b5cf6,
     #ec4899
@@ -740,26 +740,19 @@ body.mobile-menu-open {
   animation: gradient-shift 8s ease infinite;
 }
 
-/* Glass Morphism Effects - Updated for dark theme */
-.glass-dark {
-  background: rgba(30, 41, 59, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
+/* Glass Morphism Effects - Tema Light Bariskreasi */
 .glass-light {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
-.glass-red {
-  background: rgba(239, 68, 68, 0.2);
+.glass-green {
+  background: rgba(240, 253, 244, 0.9);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 /* Particle Effects */
@@ -803,97 +796,87 @@ body.mobile-menu-open {
   transform: rotateY(5deg) rotateX(5deg);
 }
 
-/* Advanced Shadow Effects - Updated for dark theme */
-.shadow-glow-red {
+/* Advanced Shadow Effects - Tema Light Bariskreasi */
+.shadow-glow-green {
   box-shadow:
-    0 4px 20px rgba(239, 68, 68, 0.25),
-    0 0 40px rgba(239, 68, 68, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 4px 20px rgba(34, 197, 94, 0.15),
+    0 0 40px rgba(34, 197, 94, 0.1);
 }
 
-.shadow-glow-blue {
+.shadow-glow-emerald {
   box-shadow:
-    0 4px 20px rgba(59, 130, 246, 0.25),
-    0 0 40px rgba(59, 130, 246, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.shadow-glow-purple {
-  box-shadow:
-    0 4px 20px rgba(139, 92, 246, 0.25),
-    0 0 40px rgba(139, 92, 246, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 4px 20px rgba(16, 185, 129, 0.15),
+    0 0 40px rgba(16, 185, 129, 0.1);
 }
 
 .shadow-float {
   box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.3),
-    0 20px 60px rgba(0, 0, 0, 0.2),
-    0 30px 90px rgba(0, 0, 0, 0.1);
+    0 10px 30px rgba(0, 0, 0, 0.1),
+    0 20px 60px rgba(0, 0, 0, 0.08);
 }
 
-/* Border Gradient Effects - Updated for dark theme */
+/* Border Gradient Effects - Tema Light Bariskreasi */
 .border-gradient {
   position: relative;
   border: double 2px transparent;
   border-radius: 16px;
   background-image:
-    linear-gradient(rgb(30, 41, 59), rgb(30, 41, 59)),
-    linear-gradient(45deg, #ef4444, #db2777, #8b5cf6);
+    linear-gradient(white, white),
+    linear-gradient(45deg, #22c55e, #16a34a, #059669);
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
 
-.border-gradient-red {
+.border-gradient-green {
   position: relative;
   border: double 2px transparent;
   border-radius: 16px;
   background-image:
-    linear-gradient(rgb(30, 41, 59), rgb(30, 41, 59)),
-    linear-gradient(45deg, #ef4444, #dc2626, #b91c1c);
+    linear-gradient(white, white),
+    linear-gradient(45deg, #22c55e, #16a34a, #15803d);
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
 
-.border-gradient-purple {
+.border-gradient-emerald {
   position: relative;
   border: double 2px transparent;
   border-radius: 16px;
   background-image:
-    linear-gradient(rgb(30, 41, 59), rgb(30, 41, 59)),
-    linear-gradient(45deg, #8b5cf6, #7c3aed, #6d28d9);
+    linear-gradient(white, white),
+    linear-gradient(45deg, #10b981, #059669, #047857);
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
 
-/* Custom Scrollbars for dark theme */
+/* Custom Scrollbars untuk tema light */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(220, 252, 231, 0.5);
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #ef4444, #db2777);
+  background: linear-gradient(to bottom, #22c55e, #16a34a);
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #dc2626, #be185d);
+  background: linear-gradient(to bottom, #16a34a, #15803d);
 }
 
-/* Typography Enhancements for dark theme */
+/* Typography Enhancements untuk tema light */
 .text-stroke {
-  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.1);
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.1);
   paint-order: stroke fill;
 }
 
-.text-stroke-red {
-  -webkit-text-stroke: 1px #ef4444;
+.text-stroke-green {
+  -webkit-text-stroke: 1px #22c55e;
   paint-order: stroke fill;
 }
 
@@ -923,17 +906,17 @@ body.mobile-menu-open {
   mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
 }
 
-/* Filter Effects for dark theme */
+/* Filter Effects untuk tema light */
 .filter-drop-shadow {
-  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1));
 }
 
-.filter-glow-red {
-  filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.4));
+.filter-glow-green {
+  filter: drop-shadow(0 0 20px rgba(34, 197, 94, 0.2));
 }
 
-.filter-glow-blue {
-  filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.4));
+.filter-glow-emerald {
+  filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.2));
 }
 
 /* Blur Effects */
@@ -977,17 +960,17 @@ body.mobile-menu-open {
   transform: skewY(-2deg);
 }
 
-/* Grid Patterns for dark theme */
+/* Grid Patterns untuk tema light */
 .grid-pattern {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(34, 197, 94, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 197, 94, 0.1) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
 .grid-pattern-dots {
   background-image: radial-gradient(
-    rgba(255, 255, 255, 0.1) 1px,
+    rgba(34, 197, 94, 0.15) 1px,
     transparent 1px
   );
   background-size: 20px 20px;
@@ -1042,11 +1025,11 @@ body.mobile-menu-open {
   border: 0;
 }
 
-/* Focus Styles for Accessibility - Updated for dark theme */
+/* Focus Styles for Accessibility - Tema Light */
 .focus-visible-ring:focus-visible {
-  outline: 2px solid #ef4444;
+  outline: 2px solid #22c55e;
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
 }
 
 /* Reduced motion preferences */
@@ -1061,10 +1044,10 @@ body.mobile-menu-open {
   }
 }
 
-/* Custom Variables for dark theme */
+/* Custom Variables untuk tema light Bariskreasi */
 :root {
-  --color-primary: 239 68 68; /* red-500 */
-  --color-secondary: 59 130 246; /* blue-500 */
+  --color-primary: 34 197 94; /* green-500 */
+  --color-secondary: 16 185 129; /* emerald-500 */
   --color-accent: 139 92 246; /* purple-500 */
   --color-success: 34 197 94; /* green-500 */
   --color-warning: 234 179 8; /* yellow-500 */
@@ -1097,48 +1080,199 @@ body.mobile-menu-open {
   perspective: 1000;
 }
 
-/* Loading skeletons for dark theme */
+/* Loading skeletons untuk tema light */
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.06) 25%,
-    rgba(255, 255, 255, 0.15) 37%,
-    rgba(255, 255, 255, 0.06) 63%
+    rgba(220, 252, 231, 0.3) 25%,
+    rgba(187, 247, 208, 0.6) 37%,
+    rgba(220, 252, 231, 0.3) 63%
   );
   background-size: 400% 100%;
   animation: shimmer-effect 1.4s ease infinite;
 }
 
-/* Dark theme specific utilities */
-.dark-bg {
-  @apply bg-gray-900;
+/* Tema light specific utilities */
+.light-bg {
+  @apply bg-white;
 }
 
-.dark-card {
-  @apply bg-gray-800 border-gray-700;
+.light-card {
+  @apply bg-white border-gray-200;
 }
 
-.dark-text {
-  @apply text-gray-100;
+.light-text {
+  @apply text-gray-900;
 }
 
-.dark-text-secondary {
-  @apply text-gray-400;
+.light-text-secondary {
+  @apply text-gray-600;
 }
 
-.dark-border {
-  @apply border-gray-700;
+.light-border {
+  @apply border-gray-300;
 }
 
-/* Text contrast utilities for dark theme */
+/* Text contrast utilities untuk tema light */
 .text-contrast-high {
-  @apply text-white;
+  @apply text-gray-900;
 }
 
 .text-contrast-medium {
-  @apply text-gray-300;
+  @apply text-gray-700;
 }
 
 .text-contrast-low {
   @apply text-gray-500;
+}
+
+/* Bariskreasi Specific Utilities - Light Theme */
+.bariskreasi-bg {
+  @apply bg-gradient-to-br from-green-50 via-white to-emerald-50;
+}
+
+.bariskreasi-card {
+  @apply bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300;
+}
+
+.bariskreasi-text {
+  @apply text-gray-900;
+}
+
+.bariskreasi-text-secondary {
+  @apply text-gray-600;
+}
+
+.bariskreasi-accent {
+  @apply text-yellow-600;
+}
+
+.bariskreasi-btn-primary {
+  @apply bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl;
+}
+
+.bariskreasi-btn-secondary {
+  @apply bg-white text-green-700 hover:bg-green-50 transition-all duration-200 border border-green-200 hover:border-green-300;
+}
+
+.bariskreasi-badge {
+  @apply bg-green-100 text-green-700 border border-green-200 rounded-full px-3 py-1 text-xs font-semibold;
+}
+
+/* Event Status Badges - Light Theme */
+.event-status-voting {
+  @apply bg-green-100 text-green-700 border border-green-200;
+}
+
+.event-status-upcoming {
+  @apply bg-yellow-100 text-yellow-700 border border-yellow-200;
+}
+
+.event-status-completed {
+  @apply bg-gray-100 text-gray-700 border border-gray-200;
+}
+
+/* Stats Gradient - Light Theme */
+.stats-gradient {
+  @apply bg-gradient-to-r from-green-50 via-white to-emerald-50;
+}
+
+/* Hero Gradient - Light Theme */
+.hero-gradient {
+  @apply bg-gradient-to-t from-green-100 via-white to-white;
+}
+
+/* Glass Effects for Bariskreasi - Light Theme */
+.glass-bariskreasi {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom fonts for Bariskreasi */
+.font-bariskreasi {
+  font-family: "Ruda", sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+/* Custom scrollbar untuk Bariskreasi - Light Theme */
+.scrollbar-bariskreasi::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-bariskreasi::-webkit-scrollbar-track {
+  background: rgba(220, 252, 231, 0.5);
+  border-radius: 3px;
+}
+
+.scrollbar-bariskreasi::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #22c55e, #16a34a);
+  border-radius: 3px;
+}
+
+/* Workflow Step Colors - Light Theme */
+.workflow-step-1 {
+  @apply from-green-600 to-green-700;
+}
+.workflow-step-2 {
+  @apply from-emerald-500 to-emerald-600;
+}
+.workflow-step-3 {
+  @apply from-green-500 to-emerald-500;
+}
+.workflow-step-4 {
+  @apply from-yellow-500 to-yellow-600;
+}
+.workflow-step-5 {
+  @apply from-orange-500 to-orange-600;
+}
+
+/* Color Utilities for Bariskreasi */
+.bg-bariskreasi-green {
+  @apply bg-green-600;
+}
+
+.text-bariskreasi-green {
+  @apply text-green-600;
+}
+
+.border-bariskreasi-green {
+  @apply border-green-600;
+}
+
+.bg-bariskreasi-light {
+  @apply bg-green-50;
+}
+
+.text-bariskreasi-light {
+  @apply text-green-700;
+}
+
+/* Shadow utilities for light theme */
+.shadow-bariskreasi {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.hover-shadow-bariskreasi:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Utility classes for Bariskreasi components */
+.event-card {
+  @apply bariskreasi-card p-6 hover:translate-y-[-4px] transition-all duration-300;
+}
+
+.stats-item {
+  @apply stat-card flex flex-col items-center justify-center text-center;
+}
+
+.feature-card {
+  @apply bariskreasi-card p-8 hover:border-green-300 transition-all duration-300;
+}
+
+.cta-section {
+  @apply py-16 px-4 bg-gradient-to-r from-green-50 to-emerald-50;
 }
