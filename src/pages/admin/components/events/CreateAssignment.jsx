@@ -467,8 +467,7 @@ const CreateAssignment = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-6xl mx-auto p-4"
-    >
+      className="max-w-6xl mx-auto p-4">
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -556,8 +555,7 @@ const CreateAssignment = () => {
               <p className="text-yellow-300 text-sm mt-1">{error}</p>
               <button
                 onClick={() => navigate("/admin/users")}
-                className="mt-3 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg text-sm transition-colors"
-              >
+                className="mt-3 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg text-sm transition-colors">
                 Kelola Users
               </button>
             </div>
@@ -609,8 +607,7 @@ const CreateAssignment = () => {
                   {searchTerm && (
                     <button
                       onClick={() => setSearchTerm("")}
-                      className="mt-2 px-4 py-2 text-sm rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
-                    >
+                      className="mt-2 px-4 py-2 text-sm rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors">
                       Reset Pencarian
                     </button>
                   )}
@@ -634,8 +631,7 @@ const CreateAssignment = () => {
                             : "bg-gray-900/50 border-gray-700 hover:bg-gray-800/50"
                         }
                         ${isAssigned ? "border-green-500/30 bg-green-500/5" : ""}
-                      `}
-                    >
+                      `}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div
@@ -643,8 +639,7 @@ const CreateAssignment = () => {
                               isAssigned
                                 ? "bg-green-500/20 text-green-400"
                                 : getRoleColor(userItem.role).split(" ")[0]
-                            }`}
-                          >
+                            }`}>
                             <Users
                               size={18}
                               className={
@@ -664,8 +659,7 @@ const CreateAssignment = () => {
                                   `User ${userItem.id}`}
                               </p>
                               <span
-                                className={`px-2 py-0.5 text-xs rounded-full ${getRoleColor(userItem.role)}`}
-                              >
+                                className={`px-2 py-0.5 text-xs rounded-full ${getRoleColor(userItem.role)}`}>
                                 {formatRole(userItem.role)}
                               </span>
                               {isAssigned && (
@@ -734,8 +728,7 @@ const CreateAssignment = () => {
                   return (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-2 hover:bg-gray-800/30 rounded-lg"
-                    >
+                      className="flex items-center justify-between p-2 hover:bg-gray-800/30 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center">
                           <CheckCircle size={12} className="text-green-400" />
@@ -751,8 +744,7 @@ const CreateAssignment = () => {
                             </p>
                             {userInfo && (
                               <span
-                                className={`text-xs px-1.5 py-0.5 rounded ${getRoleColor(userInfo.role)}`}
-                              >
+                                className={`text-xs px-1.5 py-0.5 rounded ${getRoleColor(userInfo.role)}`}>
                                 {formatRole(userInfo.role)}
                               </span>
                             )}
@@ -766,8 +758,7 @@ const CreateAssignment = () => {
                           )
                         }
                         className="p-1 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/10"
-                        title="Hapus assignment"
-                      >
+                        title="Hapus assignment">
                         <XCircle size={16} />
                       </button>
                     </div>
@@ -788,8 +779,7 @@ const CreateAssignment = () => {
                     disabled={
                       submitting || success || selectedUserIds.length === 0
                     }
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                     {submitting ? (
                       <>
                         <Loader className="animate-spin h-5 w-5 border-t-2 border-b-2 border-white" />
@@ -807,8 +797,7 @@ const CreateAssignment = () => {
 
                   <button
                     onClick={() => navigate(`/admin/events/list`)}
-                    className="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium"
-                  >
+                    className="w-full py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium">
                     Kembali ke Daftar Event
                   </button>
                 </div>
@@ -833,19 +822,9 @@ const CreateAssignment = () => {
               {/* Role Distribution */}
               <div className="pt-4 border-t border-gray-700">
                 <h5 className="text-sm font-medium text-gray-300 mb-2">
-                  Distribusi Role:
+                  Distribusi Users:
                 </h5>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="text-center p-2 bg-red-500/10 rounded">
-                    <p className="text-lg font-bold text-red-400">
-                      {
-                        allUsers.filter(
-                          (u) => u.role?.toLowerCase() === "admin",
-                        ).length
-                      }
-                    </p>
-                    <p className="text-xs text-gray-400">Admin</p>
-                  </div>
                   <div className="text-center p-2 bg-blue-500/10 rounded">
                     <p className="text-lg font-bold text-blue-400">
                       {
@@ -867,15 +846,6 @@ const CreateAssignment = () => {
                       }
                     </p>
                     <p className="text-xs text-gray-400">Organizer</p>
-                  </div>
-                  <div className="text-center p-2 bg-gray-500/10 rounded">
-                    <p className="text-lg font-bold text-gray-400">
-                      {
-                        allUsers.filter((u) => u.role?.toLowerCase() === "user")
-                          .length
-                      }
-                    </p>
-                    <p className="text-xs text-gray-400">User</p>
                   </div>
                 </div>
               </div>
