@@ -511,7 +511,7 @@ const OrganizerPage = () => {
             </nav>
 
             {/* Quick Actions for Mobile */}
-            <div className="mb-6">
+            {/* <div className="mb-6">
               <h2 className="text-lg font-bold mb-4">Aksi Cepat</h2>
               <div className="space-y-3">
                 {activeTab === "participants" && (
@@ -543,7 +543,7 @@ const OrganizerPage = () => {
                   <span>Upload Dokumen</span>
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {/* Stats for Mobile */}
             <div className="mb-6">
