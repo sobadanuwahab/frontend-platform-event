@@ -10,10 +10,6 @@ import {
   Loader,
   Image as ImageIcon,
   Trash2,
-  Eye,
-  Bug,
-  User,
-  Info,
 } from "lucide-react";
 import api from "../../../../services/api";
 import { useAuth } from "../../../../context/AuthContext";
@@ -79,15 +75,13 @@ const EditEvent = () => {
           image: null,
         });
 
-        // console.log("EVENT RAW FROM API:", event);
-
         if (event.image) {
           const imgUrl = `https://apipaskibra.my.id/storage/${event.image}`;
           setImagePreview(imgUrl);
           setOriginalImage(imgUrl);
         }
       } catch (err) {
-        navigate("/organizer/events", { replace: true });
+        navigate("/admin/events", { replace: true });
       } finally {
         setLoading(false);
       }
@@ -117,7 +111,6 @@ const EditEvent = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -152,9 +145,22 @@ const EditEvent = () => {
       });
 
       setSuccess(true);
-      setTimeout(() => navigate("/organizer/events"), 1200);
+
+      // Tampilkan notifikasi sukses sebentar sebelum redirect
+      setTimeout(() => {
+        // Redirect ke halaman admin events
+        navigate("/admin/events", {
+          replace: true,
+          state: {
+            showSuccessMessage: true,
+            message: "Event berhasil diperbarui!",
+          },
+        });
+      }, 1500);
     } catch (err) {
-      setError(err.message || "Gagal update event");
+      setError(
+        err.response?.data?.message || err.message || "Gagal update event",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -162,23 +168,59 @@ const EditEvent = () => {
 
   /* ================= DELETE ================= */
   const handleDeleteEvent = async () => {
-    if (!window.confirm("Hapus event ini?")) return;
-    await api.delete(`/delete-event/${id}`);
-    navigate("/organizer/events");
+    if (
+      !window.confirm(
+        "Hapus event ini? Data yang dihapus tidak dapat dikembalikan.",
+      )
+    )
+      return;
+
+    try {
+      await api.delete(`/delete-event/${id}`);
+      // Redirect ke admin events setelah delete
+      navigate("/admin/events", {
+        replace: true,
+        state: {
+          showSuccessMessage: true,
+          message: "Event berhasil dihapus!",
+        },
+      });
+    } catch (err) {
+      setError(err.response?.data?.message || "Gagal menghapus event");
+    }
+  };
+
+  // Fungsi reset form
+  const resetForm = () => {
+    if (eventData) {
+      setFormData({
+        name: eventData.name ?? "",
+        organized_by: eventData.organized_by ?? "",
+        location: eventData.location ?? "",
+        event_info: eventData.event_info ?? "",
+        term_condition: eventData.term_condition ?? "",
+        start_date: toDateInputValue(eventData.start_date),
+        end_date: toDateInputValue(eventData.end_date),
+        image: null,
+      });
+      setImagePreview(originalImage);
+      setError("");
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
         <Loader className="animate-spin h-10 w-10 text-blue-500" />
+        <p className="text-gray-400 mt-3">Memuat data event...</p>
       </div>
     );
   }
 
   if (!eventData) {
     return (
-      <div className="max-w-4xl mx-auto text-center p-8">
-        <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <AlertCircle className="h-16 w-16 text-red-400 mb-4" />
         <h2 className="text-2xl font-bold text-white mb-2">
           Event Tidak Ditemukan
         </h2>
@@ -187,8 +229,7 @@ const EditEvent = () => {
         </p>
         <button
           onClick={() => navigate("/admin/events")}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600"
-        >
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all">
           Kembali ke Daftar Event
         </button>
       </div>
@@ -200,14 +241,51 @@ const EditEvent = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto"
-    >
+      className="max-w-4xl mx-auto">
+      {/* Success Message */}
+      {success && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="text-green-400 mt-0.5" size={20} />
+            <div className="flex-1">
+              <p className="text-green-400 font-medium">Sukses!</p>
+              <p className="text-green-300 text-sm mt-1">
+                Event berhasil diperbarui. Mengarahkan ke halaman events...
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="text-red-400 mt-0.5" size={20} />
+            <div className="flex-1">
+              <p className="text-red-400 font-medium">Error</p>
+              <p className="text-red-300 text-sm mt-1">{error}</p>
+            </div>
+            <button
+              onClick={() => setError("")}
+              className="p-1 hover:bg-red-500/20 rounded-lg transition-colors">
+              <X size={16} className="text-red-400" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <button
           onClick={() => navigate("/admin/events")}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6"
-        >
+          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6">
           <ArrowLeft size={20} />
           <span>Kembali ke Daftar Event</span>
         </button>
@@ -389,8 +467,7 @@ const EditEvent = () => {
                 {/* Upload Area */}
                 <label
                   htmlFor="event-image-upload"
-                  className={`flex-1 cursor-pointer ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
+                  className={`flex-1 cursor-pointer ${submitting ? "opacity-50 cursor-not-allowed" : ""}`}>
                   <div className="border-2 border-dashed border-gray-700 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors h-full">
                     <div className="flex flex-col items-center space-y-4">
                       <ImageIcon size={32} className="text-gray-400" />
@@ -440,14 +517,6 @@ const EditEvent = () => {
                             alt="Event Preview"
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              console.error(
-                                "❌ Error loading preview:",
-                                imagePreview,
-                              );
-                              addDebugLog(
-                                `❌ Failed to load image: ${imagePreview}`,
-                              );
-
                               // Fallback ke placeholder jika gambar gagal load
                               e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name || "Event")}&background=1e40af&color=fff&size=400`;
                               e.target.className =
@@ -455,28 +524,24 @@ const EditEvent = () => {
                             }}
                           />
 
-                          {/* Image change indicator */}
                           {formData.image && (
                             <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
                               Gambar Baru
                             </div>
                           )}
 
-                          {/* Remove button */}
                           {formData.image && (
                             <button
                               type="button"
                               onClick={removeImage}
                               disabled={submitting}
                               className="absolute top-2 right-2 p-2 rounded-lg bg-red-500/80 hover:bg-red-600 text-white disabled:opacity-50"
-                              title="Hapus gambar baru"
-                            >
+                              title="Hapus gambar baru">
                               <X size={16} />
                             </button>
                           )}
                         </div>
 
-                        {/* Image Info */}
                         <div className="space-y-2">
                           {formData.image ? (
                             <>
@@ -506,8 +571,7 @@ const EditEvent = () => {
                                   href={imagePreview}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-xs text-blue-400 hover:text-blue-300 underline"
-                                >
+                                  className="text-xs text-blue-400 hover:text-blue-300 underline">
                                   Lihat gambar asli
                                 </a>
                               </div>
@@ -533,47 +597,43 @@ const EditEvent = () => {
           <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6 border-t border-gray-700">
             <button
               type="button"
-              onClick={() => navigate("/organizer/events")}
-              disabled={submitting}
-              className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
-            >
+              onClick={() => navigate("/admin/events")}
+              disabled={submitting || success}
+              className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50">
               Batal
             </button>
 
             <div className="flex gap-4">
               <button
                 type="button"
-                onClick={() => {
-                  if (eventData) {
-                    populateForm(eventData);
-                    setImagePreview(originalImage);
-                  }
-                  setError("");
-                  addDebugLog("Form reset to original values");
-                }}
-                disabled={submitting}
-                className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50"
-              >
+                onClick={resetForm}
+                disabled={submitting || success}
+                className="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors font-medium disabled:opacity-50">
                 Reset
               </button>
 
               <button
-                onClick={handleChange}
-                className="px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition-colors font-medium flex items-center gap-2"
-              >
+                type="button"
+                onClick={handleDeleteEvent}
+                disabled={submitting || success}
+                className="px-6 py-3 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition-colors font-medium flex items-center gap-2 disabled:opacity-50">
                 <Trash2 size={16} />
-                Hapus
+                Hapus Event
               </button>
 
               <button
                 type="submit"
                 disabled={submitting || success}
-                className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
+                className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
                 {submitting ? (
                   <>
                     <Loader className="animate-spin h-5 w-5 border-t-2 border-b-2 border-white" />
                     <span>Mengupdate...</span>
+                  </>
+                ) : success ? (
+                  <>
+                    <CheckCircle size={20} />
+                    <span>Berhasil!</span>
                   </>
                 ) : (
                   <>
